@@ -1,17 +1,25 @@
-(ns ^:figwheel-always sagsbehandler.core
+(ns ^:figwheel-always bracketbird.core
   (:require [reagent.core :as r])
-  (:import [goog Uri]))
+  )
+
+
+(defonce state (r/atom {:a 0}))
 
 
 (defn on-js-reload
   "optionally touch your app-state to force rerendering depending on
   your application"
-  [])
+  []
+  (print "waaa" @state)
+  (swap! state update :a inc))
 
 
-(defn- application[]
-  [:div "in-the-air"])
+(defn b[a]
+  [:div (str "aa" a)])
+
+(defn- application[state]
+  [:div [b (:a @state)]])
 
 (defn main []
   (enable-console-print!)
-  (r/render-component [application] (js/document.getElementById "application")))
+  (r/render-component [application state] (js/document.getElementById "application")))

@@ -1,6 +1,6 @@
 (defproject bracketbird "0.1.0-SNAPSHOT"
-  :description "Tournament manager"
-  :url "http://bracketbird.com"
+  :description "Tournament Manager System"
+  :url "http://www.bracketbird.com"
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/clojurescript "1.7.170"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
@@ -12,17 +12,25 @@
                  [com.andrewmcveigh/cljs-time "0.3.13"]
                  [bidi "1.25.0" :exclusions [prismatic/schema]]]
 
+
+  :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
+
   :plugins [[lein-cljsbuild "1.1.2"]
             [lein-figwheel "0.5.0-2" :exclusions [ring/ring-core org.clojure/clojure org.clojure/tools.reader]]
+            [lein-codox "0.9.0"]
             [lein-doo "0.1.6"]]
   :hooks [leiningen.cljsbuild]
-  :profiles {:dev  {:dependencies [[com.cemerick/piggieback "0.2.1"]
-                                   [figwheel-sidecar "0.5.0-2" :exclusions [org.clojure/core.async org.clojure/data.priority-map org.codehaus.plexus/plexus-utils joda-time]]
-                                   [lein-doo "0.1.6"]]
-                    :source-paths ["cljs_src" "dev"]}
-             :repl {:plugins [[cider/cider-nrepl "0.10.0"]]}}
+  :profiles
+  {:dev  {:dependencies [[com.cemerick/piggieback "0.2.1"]
+                         [org.clojure/tools.nrepl "0.2.10"]
+                         [figwheel-sidecar "0.5.0-2" :exclusions [org.clojure/core.async org.clojure/data.priority-map org.codehaus.plexus/plexus-utils joda-time]]
+                         [lein-doo "0.1.6"]]
+          :source-paths ["cljs_src" "dev"]}
+   :repl {:plugins [[cider/cider-nrepl "0.10.0"]]}}
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   :source-paths ["src"]
+  :codox {:language :clojurescript}
+
   :doo {:build "test"
         :paths {:phantom "./bin/phantomjs"}}
 
@@ -33,7 +41,7 @@
                       {"unit-tests"
                        ["./bin/phantomjs" "resources/private/js/compiled/unit-test.js"]}
               :builds [{:id           "dev"
-                        :source-paths ["src" "src-common"]
+                        :source-paths ["src"]
 
                         :figwheel     {:on-jsload "bracketbird.core/on-js-reload"}
 
@@ -42,9 +50,8 @@
                                        :output-to            "resources/public/js/compiled/bracketbird.js"
                                        :output-dir           "resources/public/js/compiled/out"
                                        :source-map-timestamp true}}
-
                        {:id           "deploy"
-                        :source-paths ["src" "src-common"]
+                        :source-paths ["src"]
                         :compiler     {:main          bracketbird.core
                                        :output-dir    "resources/public/js/compiled/deploy_out"
                                        :output-to     "resources/public/js/compiled/bracketbird_deploy.js"
@@ -55,7 +62,7 @@
                                        :optimizations :whitespace}}
 
                        {:id           "test"
-                        :source-paths ["src-common" "test"]
+                        :source-paths ["test"]
                         :compiler     {:output-to     "resources/private/js/compiled/unit-test.js"
                                        :optimizations :whitespace
                                        :pretty-print  true}}]}
