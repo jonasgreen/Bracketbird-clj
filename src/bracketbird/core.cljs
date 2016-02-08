@@ -10,12 +10,12 @@
   "optionally touch your app-state to force rerendering depending on
   your application"
   []
-  (print "waaa" @state)
+  (print "waaasdfasdfaasdf" @state)
   (swap! state update :a inc))
 
 
 (defn b[a]
-  [:div (str "aa" a)])
+  [:div (str "aaasdfasdfa" a)])
 
 (defn- application[state]
   [:div [b (:a @state)]])
