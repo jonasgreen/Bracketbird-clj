@@ -1,5 +1,6 @@
 (ns ^:figwheel-always bracketbird.core
-  (:require [reagent.core :as r])
+  (:require [reagent.core :as r]
+            [bracketbird.model.event :as id])
   )
 
 
@@ -14,10 +15,12 @@
   (swap! state update :a inc))
 
 
-(defn b[a]
-  [:div (str "aaasdfasdfa" a)])
 
-(defn- application[state]
+(defn b [a]
+  (let [i (id/squuid)]
+    [:div (str "id " i "time " (js/Date. (id/squuid-time-millis i)))]))
+
+(defn- application [state]
   [:div [b (:a @state)]])
 
 (defn main []
