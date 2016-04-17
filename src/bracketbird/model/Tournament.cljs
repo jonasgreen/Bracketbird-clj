@@ -17,6 +17,6 @@
   :teams)
 
 (def final-ranking-key
-  "Final raning of the tournament. format: [[team1][team2][team3 team4]]"
+  "Final raning of the tournament. format: [[team1][team2][team3 team4]...]"
   :final-ranking)
 

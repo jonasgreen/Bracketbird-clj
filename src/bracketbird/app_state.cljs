@@ -1,4 +1,9 @@
-(ns bracketbird.model.state)
+(ns bracketbird.app-state
+  (:require [reagent.core :as r]))
+
+
+(defonce state (r/atom {:a 0}))
+
 
 
 (def not-ready :state/not-ready)

@@ -16,12 +16,8 @@
             [lein-figwheel "0.5.0-2" :exclusions [ring/ring-core org.clojure/clojure org.clojure/tools.reader]]]
 
   :hooks [leiningen.cljsbuild]
-
-
   :source-paths ["src" "dev"]
-
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target" "resources/private/js/compiled"]
-
 
   :profiles {:dev {:dependencies [[figwheel-sidecar "0.5.0-2" :exclusions [org.clojure/core.async org.clojure/data.priority-map org.codehaus.plexus/plexus-utils joda-time]]]}}
 
