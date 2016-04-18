@@ -19,18 +19,6 @@
   ctx/IBusiness-event
   (-execute-business [this data]))
 
-(defrecord Replace-tillaeg-nedslag-event [tn tn-index belongs-to]
-  ctx/IBusiness-event
-  (-execute-business [this data]))
-
-(defrecord Remove-tillaeg-nedslag-event [tn belongs-to]
-  ctx/IBusiness-event
-  (-execute-business [this data]))
-
-
-(defrecord save-vurdering [ctx]
-  ctx/IBusiness-event)
-
 
 (defn next-event-id [tournament-ctx]
   (count (ctx/get-in-ctx tournament-ctx [:events])))

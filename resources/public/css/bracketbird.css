@@ -1,70 +1,37 @@
-#application {
-    height: 100%;
+input {
+    background: transparent;
+    border: 1px solid rgb(217, 217, 217);
+    border-top-color: rgb(192, 192, 192);
+
+    color: #37474F;
+    font-family: "klavika";
+    font-size: 16px;
+    font-stretch: normal;
+    font-style: normal;
+    font-weight: normal;
+    height: 22px;
+    line-height: 1.25;
+    padding: 2px 2px 0;
 }
 
-button:disabled {
-    box-shadow: none;
-    cursor: not-allowed;
+
+::-webkit-input-placeholder {
+    color: #37474f;
+    font-style: italic;
     opacity: 0.5;
 }
 
-.text-button {
-    color: rgba(25, 118, 210, 1);
-    padding: 0;
-    background-color: transparent;
-}
-
-.text-button:hover {
-    text-decoration: underline;
-}
-
-.text-button:focus {
-    outline: auto;
-}
-
-.flat-action-button {
-    background-color: rgba(33, 150, 243, 1);
-    border-radius: 2px;
-    color: white;
-    font-weight: bold;
-    padding: 12px 18px;
-}
-
-.flat-action-button:hover {
-    box-shadow: 0 1px 2px rgba(66, 66, 66, 1);
-}
-
-.flat-action-button:focus {
-    background-color: rgba(25, 118, 210, 1);
-}
-
-.flat-action-button:active {
-    background-color: rgba(25, 118, 210, 1);
-    box-shadow: 0 0 0 rgba(66, 66, 66, 1);
-}
-
-.raised-button {
-    background-color: rgba(69, 90, 100, 1);
-    border-radius: 2px;
-    padding: 12px 18px;
-    box-shadow: 0 1px 2px rgba(66, 66, 66, 1);
-}
-
-.raised-button:hover {
-    box-shadow: 0 2px 3px rgba(66, 66, 66, 1);
-}
-
-.raised-button:active {
-    box-shadow: 0 0 0 rgba(66, 66, 66, 1);
-}
-
-.raised-button:focus {
-    background-color: rgba(25, 118, 210, 1);
+::-moz-placeholder {
+    color: #37474f;
+    font-style: italic;
+    opacity: 0.5;
 
 }
 
+:-ms-input-placeholder {
+    color: #37474f;
+    font-style: italic;
+    opacity: 0.5;
 
-.ol-zoom {
-    margin-left: -5px;
-    margin-top: 28px;
 }
+

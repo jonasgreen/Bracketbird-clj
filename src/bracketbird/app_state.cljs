@@ -2,7 +2,7 @@
   (:require [reagent.core :as r]))
 
 
-(defonce state (r/atom {:a 0}))
+(defonce state (r/atom {:figwheel-reloads 0}))
 
 
 
