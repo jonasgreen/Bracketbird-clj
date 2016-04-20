@@ -15,6 +15,67 @@ input {
 }
 
 
+
+.primaryButton, .primaryButton:link {
+    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    background: #3B9EBF;
+    color: white;
+    display: inline-block;
+    font-size: 16px;
+    padding-top: 5px;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-bottom: 3px;
+    font-family: klavika;
+    border: 1px solid #0097BF;
+    border-radius: 2px;
+    white-space: nowrap;
+    z-index: 20;
+}
+
+.primaryButton:hover, .primaryButton:visited {
+    cursor: pointer;
+    -webkit-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+    -moz-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+.primaryButton:active {
+    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.largeButton, .largeButton:link {
+    font-size: 24px;
+    padding-top: 10px;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 6px;
+}
+
+.secondaryButton, .secondaryButton:link {
+    color: #3B9EBF;
+    display: inline-block;
+    font-size: 16px;
+    padding-top: 5px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 3px;
+    font-family: klavika;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    white-space: nowrap;
+}
+
+.secondaryButton:hover {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+
 ::-webkit-input-placeholder {
     color: #37474f;
     font-style: italic;

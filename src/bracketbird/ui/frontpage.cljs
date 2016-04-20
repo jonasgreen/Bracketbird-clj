@@ -21,5 +21,5 @@
    [:div {:style {:display :flex :flex-direction :column :align-items :center}}
     [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
      "Instant tournaments"]
-    [:button "Create a tournament"]
+    [:button {:class "largeButton primaryButton"} "Create a tournament"]
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])

@@ -1,6 +1,6 @@
 (ns ^:figwheel-always bracketbird.core
   (:require [reagent.core :as r]
-            [bracketbird.model.event :as id]
+            [bracketbird.model.uuid :as id]
             [bracketbird.ui.frontpage :as front-page]
             [bracketbird.app-state :as app-state]))
 

@@ -1,4 +1,4 @@
-(ns bracketbird.model.Tournament)
+(ns bracketbird.model.tournament)
 
 
 (def id-key :id)
@@ -20,3 +20,5 @@
   "Final raning of the tournament. format: [[team1][team2][team3 team4]...]"
   :final-ranking)
 
+
+(defn add-team [team])

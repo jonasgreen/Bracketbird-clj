@@ -1,4 +1,4 @@
-(ns bracketbird.model.event)
+(ns bracketbird.model.uuid)
 
 
 (defn- squuid-seconds-component
@@ -29,3 +29,4 @@
       (.slice 0 8)
       (js/parseInt 16)
       (* 1000)))
+
