@@ -1,9 +1,7 @@
-(ns bracketbird.model.team
-  (:require [bracketbird.model.tournament-event :as t-event-m]
-            [bracketbird.model-util :as util]))
+(ns bracketbird.model.team)
 
 
 
-(defn team [e]
-  (-> {}
-      (merge (select-keys e [:model-id :team-name]))))
+(defn create [entity-id]
+  {:entity-id entity-id
+   :name ""})

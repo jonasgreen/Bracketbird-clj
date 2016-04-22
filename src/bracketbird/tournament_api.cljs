@@ -24,12 +24,12 @@
 ;-------
 
 ;create
-(defmethod execute [:create-team] [t e]
-  (tournament/add-team t (:model-id e)))
+(defmethod execute [:add-team] [t e]
+  (tournament/add-team t (:entity-id e)))
 
 ;update
 (defmethod execute [:update-team-name] [t e]
-  (tournament/update-team-name ))
+  (tournament/update-team-name t (:entity-id e) (:name e)))
 
 ;delete
 (defmethod execute [:delete-team] [t e])

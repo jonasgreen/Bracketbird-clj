@@ -1,5 +1,5 @@
 (ns bracketbird.model-util)
 
 
-(defn get-model [models id]
-  (some (fn [c] (when (= id (:id c)) c)) models))
+(defn get-entity [entities e-id]
+  (some (fn [c] (when (= e-id (:entity-id c)) c)) entities))
