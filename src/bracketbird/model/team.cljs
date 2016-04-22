@@ -1,6 +1,6 @@
 (ns bracketbird.model.team
   (:require [bracketbird.model.tournament-event :as t-event-m]
-            [bracketbird.util :as util]))
+            [bracketbird.model-util :as util]))
 
 
 

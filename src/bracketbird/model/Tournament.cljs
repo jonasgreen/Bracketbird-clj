@@ -1,24 +1,20 @@
-(ns bracketbird.model.tournament)
+(ns bracketbird.model.tournament
+  (:require [bracketbird.model-util :as m-util]))
+
+(defn create []
+  {:teams []
+   :stages []})
 
 
-(def id-key :id)
-(def state-key :state)
+(defn teams [t]
+  (:teams t))
 
-(def url-key :url)
-(def url-view-key :url-view)
-(def channel-id-key :channel-id)
+(defn team [t id]
+  (m-util/get-model (teams t) id))
 
-(def stages-key
-  "A tournament is made of one or more stages, ie. group-play followed by knockout-play."
-  :stages)
+(defn add-team [t team-id]
+  (update t :teams conj {:id}))
 
-(def teams-key
-  "Teams participating"
-  :teams)
+(defn update-team-name [team-id name]
 
-(def final-ranking-key
-  "Final raning of the tournament. format: [[team1][team2][team3 team4]...]"
-  :final-ranking)
-
-
-(defn add-team [team])
+  )
