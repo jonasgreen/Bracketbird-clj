@@ -1,10 +1,8 @@
 (ns bracketbird.tournament-api
-  (:require [bracketbird.model.tournament-event :as t-event]
-            [bracketbird.model.tournament :as tournament]
-            [bracketbird.contexts.context :as ctx]
-            [bracketbird.model.team :as team]))
+  (:require [bracketbird.model.tournament :as tournament]
+            [bracketbird.contexts.context :as ctx]))
 
-(defmulti execute (fn [t event] (:type event)))
+(defmulti execute (fn [t event] (:event-type event)))
 
 (defn update-state [t])
 
@@ -31,8 +29,12 @@
 (defmethod execute [:update-team-name] [t e]
   (tournament/update-team-name t (:entity-id e) (:name e)))
 
+(defmethod execute [:update-team-seeding] [t e]
+  (tournament/update-team-seeding t (:entity-id e) (:seeding e)))
+
 ;delete
-(defmethod execute [:delete-team] [t e])
+(defmethod execute [:delete-team] [t e]
+  (tournament/delete-team t (:entity-id e)))
 
 
 
