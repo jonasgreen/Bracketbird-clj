@@ -2,6 +2,14 @@
   (:require [bracketbird.model.tournament :as tournament]
             [bracketbird.contexts.context :as ctx]))
 
+
+(defrecord add-team [team-id])
+(defrecord update-team-name [team-id name])
+(defrecord update-team-seeding [team-id seeding])
+(defrecord delete-team [team-id])
+
+
+
 (defmulti execute (fn [t event] (:event-type event)))
 
 (defn update-state [t])
