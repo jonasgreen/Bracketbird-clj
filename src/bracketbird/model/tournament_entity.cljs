@@ -6,6 +6,10 @@
 (def state-rank-equality 3)
 (def state-finished 4)
 
-(defprotocol ITournament-entity
+(defprotocol IEntity
+  (-entity-id [this])
   (-state [this]))
+
+
+(defn in-progress? [entity])
 

@@ -1,12 +1,35 @@
 (ns bracketbird.tournament-api
   (:require [bracketbird.model.tournament :as tournament]
-            [bracketbird.contexts.context :as ctx]))
+            [bracketbird.contexts.context :as ctx]
+            [bracketbird.model.uuid :as uuid]))
 
 
-(defrecord add-team [team-id])
-(defrecord update-team-name [team-id name])
-(defrecord update-team-seeding [team-id seeding])
-(defrecord delete-team [team-id])
+(defn event [event-type]
+  {:id         (uuid/squuid)
+   :event-type event-type})
+
+;-------------
+; team-events
+;-------------
+
+(defn- team-event [event-type team-id]
+  (-> (event event-type)
+      (assoc :team-id team-id)))
+
+(defn add-team-event [team-id]
+  (team-event :add-team team-id))
+
+(defn delete-team-event [team-id]
+  (team-event :delete-team team-id))
+
+(defn update-team-name-event [team-id name]
+  (-> (team-event :update-team-name team-id)
+      (assoc :name name)))
+
+(defn update-team-seeding-event [team-id seeding]
+  (-> (team-event :update-team-name team-id)
+      (assoc :seeding seeding)))
+
 
 
 
@@ -20,14 +43,10 @@
        (update-state)
        (ctx/swap-data! t-ctx)))
 
-(defn api-event [event-type ctx-id model-id]
-  {:event-type event-type
-   :ctx-id     ctx-id
-   :model-id   model-id})
 
-;-------
-; teams
-;-------
+;------------------------
+; executing teams events
+;------------------------
 
 ;create
 (defmethod execute [:add-team] [t e]

@@ -5,11 +5,8 @@
 (defonce state (r/atom {:figwheel-reloads 0}))
 
 
-
-(def not-ready :state/not-ready)
-(def ready :state/ready)
-(def active :state/active)
-
-;Only Tournament, stages, groups can be in this one
-(def done :state/done)
-(def finish :state/finish)
+(def not-ready :not-ready)
+(def ready :ready)
+(def in-progress :in-progress)
+(def rank-equality :rank-equality)
+(def finished :finished)
