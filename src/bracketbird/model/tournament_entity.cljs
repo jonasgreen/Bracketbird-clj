@@ -1,15 +1,17 @@
 (ns bracketbird.model.tournament-entity)
 
-(def state-not-ready 0)
-(def state-ready 1)
-(def state-in-progress 2)
-(def state-rank-equality 3)
-(def state-finished 4)
+(def not-ready 0)
+(def ready 1)
+(def in-progress 2)
+(def rank-equality 3)
+(def finished 4)
 
 (defprotocol IEntity
-  (-entity-id [this])
+  (-id [this])
   (-state [this]))
 
 
-(defn in-progress? [entity])
+(defn started?
+  [entity]
+  (> (-state entity) in-progress))
 

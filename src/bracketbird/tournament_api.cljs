@@ -5,7 +5,7 @@
 
 
 (defn event [event-type]
-  {:id         (uuid/squuid)
+  {:event-id         (uuid/squuid)
    :event-type event-type})
 
 ;-------------
@@ -16,8 +16,8 @@
   (-> (event event-type)
       (assoc :team-id team-id)))
 
-(defn add-team-event [team-id]
-  (team-event :add-team team-id))
+(defn add-team-event []
+  (team-event :add-team (uuid/squuid)))
 
 (defn delete-team-event [team-id]
   (team-event :delete-team team-id))
