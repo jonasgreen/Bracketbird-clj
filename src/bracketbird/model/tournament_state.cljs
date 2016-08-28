@@ -1,4 +1,4 @@
-(ns bracketbird.model.tournament-entity)
+(ns bracketbird.model.tournament-state)
 
 (def not-ready 0)
 (def ready 1)
@@ -6,7 +6,7 @@
 (def rank-equality 3)
 (def finished 4)
 
-(defprotocol IEntity
+(defprotocol IState
   (-id [this])
   (-state [this]))
 
