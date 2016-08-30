@@ -24,3 +24,4 @@
   (if (-> t-ctx ctx/get-data state/started?)
     (println "warning - tournament already started")
     (router/dispatch t-ctx (api/delete-team-event team-id))))
+

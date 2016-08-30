@@ -47,11 +47,11 @@
 ;-------------------------
 ; event-wrapper-functions
 ;-------------------------
-(declare ->Tournament-context)
+(declare create-tournament-context)
 
 (defn create-tournament []
-  (let [t-ctx (->Tournament-context uuid/squuid)]
-        (ctx/dispatch t-ctx (map->create-tournament-event (client-event t-ctx :create-tournament (uuid/squuid))))))
+  (let [t-ctx (create-tournament-context uuid/squuid)]
+    (ctx/dispatch t-ctx (map->create-tournament-event (client-event t-ctx :create-tournament (uuid/squuid))))))
 
 (defn create-team [t-ctx team-name]
   (ctx/dispatch t-ctx (map->create-team-event (merge {:team-name team-name} (client-event t-ctx :create-team (uuid/squuid))))))
@@ -59,9 +59,9 @@
 
 ;-------- ctx --------------
 
-(defrecord Tournament-context [tournament-id]
+(defrecord Tournament-context [get-state-fn tournament-id]
   ctx/IContext
-  (-state [this] app-state/state)
+  (-state [this] (get-state-fn))
   (-root-path [this] [:ctx-tournament])
   (-id [this] (keyword (str tournament-id)))
   (-load [this]
@@ -69,6 +69,12 @@
 
   (-unload [this]
     (ctx/remove-context! this)))
+
+(defn create-tournament-context [tournament-id]
+  (->Tournament-context (fn [] (app-state/state)) uuid/squuid)
+
+  )
+
 
 ;----- subscriptions ----
 

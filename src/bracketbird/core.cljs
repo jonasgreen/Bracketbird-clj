@@ -1,8 +1,13 @@
 (ns ^:figwheel-always bracketbird.core
   (:require [reagent.core :as r]
-            [bracketbird.model.uuid :as id]
-            [bracketbird.ui.frontpage :as front-page]
-            [bracketbird.app-state :as app-state]))
+            [goog.events :as events]
+            [goog.history.EventType :as EventType]
+            [bracketbird.application-ui :as app]
+            [bracketbird.app-state :as app-state]
+            [bracketbird.application-controller :as app-ctrl])
+
+  (:import [goog Uri]
+           [goog.history Html5History]))
 
 
 
@@ -13,9 +18,15 @@
   (swap! app-state/state update :figwheel-reloads inc))
 
 
-(defn render-application []
-  [front-page/render @app-state/state])
+
 
 (defn main []
   (enable-console-print!)
-  (r/render [render-application] (js/document.getElementById "application")))
+  (println "main")
+
+
+  (let [history (Html5History. js/window)]
+    (events/listen history EventType/NAVIGATE #(app-ctrl/on-navigation-changed %))
+    (.setEnabled history true))
+
+  (r/render [app/render app-state/state] (js/document.getElementById "application")))
