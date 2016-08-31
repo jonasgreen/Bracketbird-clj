@@ -1,4 +1,4 @@
-(ns bracketbird.model.uuid)
+(ns bracketbird.util.uuid)
 
 
 (defn- squuid-seconds-component

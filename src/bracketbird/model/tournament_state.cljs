@@ -13,5 +13,6 @@
 
 (defn started?
   [entity]
-  (> (-state entity) in-progress))
+  false
+  #_(> (-state entity) in-progress))
 

@@ -1,11 +1,7 @@
 (ns bracketbird.event-router
   (:require [reagent.ratom :as ratom]
-            [bracketbird.model.uuid :as uuid]))
-
-(defprotocol IEvent-subscriber
-  (-execute [this events])
-  (-re-execute [this events])
-  (-error [this event]))
+            [bracketbird.tournament-api :as t-api]
+            [bracketbird.util.uuid :as uuid]))
 
 (defn pending-packet [router-id event]
   {:id          (uuid/squuid)
@@ -16,7 +12,9 @@
 
 (defn- send [state event bumb-level?])
 
-(defn dispatch [t-ctx api-event])
+(defn dispatch [ctx api-event]
+  (println "dispatch" api-event)
+  (t-api/execute-api-event ctx api-event))
 
 (defn create-router [id subscriber]
   (let [state (ratom/atom {:router-id       id

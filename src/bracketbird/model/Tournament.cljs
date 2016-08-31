@@ -1,12 +1,13 @@
 (ns bracketbird.model.tournament
-  (:require [bracketbird.util :as util]
+  (:require [bracketbird.util.utils :as util]
             [bracketbird.model.team :as team]))
 
-(defn create [entity-id]
-  {:entity-id entity-id
-   :teams     []
-   :stages    []
-   :dirty     false
+(defn mk [tournament-id]
+  {:tournament-id tournament-id
+   :teams         []
+   :stages        []
+   :dirty         false
+   :history       []
    :final-ranking []})
 
 
@@ -50,3 +51,6 @@
 (defn delete-team [t team-id]
   (-> (assoc t :teams (util/remove-entity (teams t) team-id))
       (dirtify)))
+
+(defn add-history [event t]
+  (update t :history conj event))
