@@ -2,11 +2,8 @@
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [bracketbird.application-state :as app-state]
             [bracketbird.api.application-api :as app-api]
-            [bracketbird.util.uuid :as uid]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.history :as history]))
-
-
 
 (defn- front-page-ctx []
   {:page :front-page
@@ -46,6 +43,17 @@
 (defn trigger-ui-reload []
   (app-api/reload-ui))
 
+(defn get-state-atom []
+  app-state/state)
+
+(defn toggle-state-tool []
+  (swap! app-state/state update-in [:system :show-state?] not))
+
+(defn toggle-design-tool []
+  (swap! app-state/state update-in [:system :show-design?] not))
+
+(defn close-tools []
+  (swap! app-state/state update-in [:system] assoc :show-state? false :show-design? false))
 
 ;---------------
 ; subscriptions
