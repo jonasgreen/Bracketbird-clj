@@ -6,6 +6,9 @@
             [bracketbird.util.uuid :as uid]
             [bracketbird.application-state :as app-state]))
 
+;-------
+; utils
+;-------
 
 (defn event [event-type]
   {:event-id   (uid/squuid)
@@ -18,7 +21,6 @@
 (defn- team-event [event-type team-id]
   (-> (event event-type)
       (assoc :team-id team-id)))
-
 
 ;-------------
 ; api-events
@@ -41,8 +43,9 @@
   (-> (team-event [:team :seeding :update] team-id)
       (assoc :seeding seeding)))
 
-
-
+;----------------------
+; executing api events
+;----------------------
 
 (defmulti execute (fn [event t] (:event-type event)))
 
@@ -55,10 +58,9 @@
        (update-state)
        (ctx/swap-data! t-ctx)))
 
-
-;------------------------
-; executing api events
-;------------------------
+;-----------------------------------
+; api events execution counterparts
+;-----------------------------------
 
 ;create tournament
 (defmethod execute [:tournament :create] [e t]
