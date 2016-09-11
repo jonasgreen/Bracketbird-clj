@@ -14,8 +14,8 @@
   (let [p (:position s)]
     (if p @p 0)))
 
-(defn scroll [s]
-  (:scroll-to s))
+(defn scroll [s p]
+  ((:scroll-to s) p))
 
 (defn has-scroll [s]
   (< 0 (position s)))

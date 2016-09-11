@@ -8,10 +8,10 @@
             [bracketbird.context :as context]
             [reagent.core :as r]))
 
-(def m-teams {:name "TEAMS" :render #(teams/render %)})
-(def m-settings {:name "SETTINGS" :render #(settings/render %)})
-(def m-matches {:name "MATCHES" :render #(matches/render %)})
-(def m-scores {:name "SCORES" :render #(scores/render %)})
+(def m-teams {:name "TEAMS" :render (fn [ctx] [teams/render ctx])})
+(def m-settings {:name "SETTINGS" :render (fn [ctx] [settings/render ctx])})
+(def m-matches {:name "MATCHES" :render (fn [ctx] [matches/render ctx])})
+(def m-scores {:name "SCORES" :render (fn [ctx] [scores/render ctx])})
 
 (def m-items [m-teams m-settings m-matches m-scores])
 
@@ -40,4 +40,4 @@
        [menu-panel m-items selector]
        ;content
        (when-let [{:keys [render name]} (sel/selected selector)]
-         (render (context/sub-ui ctx [(keyword (clojure.string/lower-case name))])))])))
+         [render (context/sub-ui ctx [(keyword (clojure.string/lower-case name))])])])))
