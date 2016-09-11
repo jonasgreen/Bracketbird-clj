@@ -1,4 +1,5 @@
-(ns bracketbird.pages.settings)
+(ns bracketbird.pages.settings
+  (:require [bracketbird.ui.styles :as s]))
 
 
 
@@ -11,6 +12,6 @@
 
 
 (defn render [ctx]
-  [:div "settings"]
+  [:div {:style s/page-style} "settings"]
 
   )

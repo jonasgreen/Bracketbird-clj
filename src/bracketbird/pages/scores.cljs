@@ -1,4 +1,5 @@
-(ns bracketbird.pages.scores)
+(ns bracketbird.pages.scores
+  (:require [bracketbird.ui.styles :as s]))
 
 
 
@@ -11,6 +12,6 @@
 
 
 (defn render [ctx]
-  [:div "scores"]
+  [:div {:style s/page-style} "scores"]
 
   )

@@ -1,3 +1,7 @@
+#application {
+    height: 100%;
+}
+
 input {
     background: transparent;
     border: 1px solid rgb(217, 217, 217);

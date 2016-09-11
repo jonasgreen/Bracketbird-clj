@@ -22,7 +22,7 @@
 (defn render [_]
   (let [{:keys [page ctx]} @(app-ctrl/subscribe-page-context)
         system @(app-ctrl/subscribe-system)]
-    [:div
+    [:div {:style {:height "100%"}}
     (condp = page
       :front-page [front-page/render ctx]
       :tournament-page [tournament-page/render ctx]
