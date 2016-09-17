@@ -22,7 +22,7 @@
 (defn ui [ctx]
   (get-in @app-state/state (ui-path ctx)))
 
-(defn sub-ui [ctx path]
+(defn sub-ui-ctx [ctx path]
   (->> (into (ui-path ctx) path)
        (assoc ctx ui-path)))
 

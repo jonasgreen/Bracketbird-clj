@@ -1,0 +1,56 @@
+(ns bracketbird.pages.teams-tab
+  (:require [bracketbird.ui.styles :as s]
+            [bracketbird.ui.panels :as p]
+            [bracketbird.ui.ui-scroller :as scroll]
+            [bracketbird.pages.tournament-tab-content :as tab-content]))
+
+
+
+(defn content [ctx]
+  (println "render-content-team")
+  [:div
+   [:div "ateams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "ccc"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "teams"]
+   [:div "xxxx"]])
+
+(defn render [ctx]
+  [tab-content/render ctx [content ctx]])

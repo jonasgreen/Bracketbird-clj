@@ -1,4 +1,4 @@
-(ns bracketbird.ui-selector
+(ns bracketbird.ui.ui-selector
   (:require [bracketbird.context :as context]))
 
 
@@ -13,7 +13,7 @@
       (context/update-ui! ctx (first items)))))
 
 (defn subscribe-single-selection [ctx]
-  (let [s-ctx (context/sub-ui ctx [:selected-item])]
+  (let [s-ctx (context/sub-ui-ctx ctx [:selected-item])]
     {:selected-item         (context/subscribe-ui s-ctx)
      :item-selector         (item-selector-fn s-ctx)
      :initial-item-selector (initial-item-selector-fn s-ctx)}))
