@@ -1,6 +1,8 @@
 (ns bracketbird.application-ui
   (:require
     [goog.events :as events]
+    [reagent.core :as r]
+
     [bracketbird.util.keyboard :as k]
     [bracketbird.application-controller :as app-ctrl]
     [bracketbird.pages.front-page :as front-page]

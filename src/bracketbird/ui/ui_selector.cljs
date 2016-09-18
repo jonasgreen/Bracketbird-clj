@@ -22,7 +22,7 @@
   (when-let [item (:selected-item s)]
     @item))
 
-(defn select [s]
+(defn item-selector [s]
   (:item-selector s))
 
 (defn initial-select [s items]

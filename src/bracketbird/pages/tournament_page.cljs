@@ -7,7 +7,6 @@
             [bracketbird.ui.styles :as s]
             [bracketbird.context :as context]
             [reagent.core :as r]
-            [bracketbird.ui.ui-scroller :as scroll]
             [bracketbird.ui.panels :as p]))
 
 ;------------
@@ -32,11 +31,13 @@
 
 (defn menu-panel [items selector]
   (r/create-class
-    {:reagent-render
 
+    {:reagent-render
      (fn [items selector]
-       [:div {:style s/menu-panel-style}
-        (doall (map (fn [item] ^{:key (:name item)} [menu-item item (= (:name item) (:name (sel/selected selector))) (sel/select selector)]) items))])
+       (let [selected-name (:name (sel/selected selector))
+             item-selector (sel/item-selector selector)]
+         [:div {:style s/menu-panel-style}
+          (map (fn [item] ^{:key (:name item)} [menu-item item (= (:name item) selected-name) item-selector]) items)]))
 
      :component-did-mount
      (fn [_]
