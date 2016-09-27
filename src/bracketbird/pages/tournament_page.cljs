@@ -49,6 +49,10 @@
 
 (defn render [ctx]
   (let [selector (sel/subscribe-single-selection ctx)]
+
+    ;hack to create tournament when reloading page - for development
+    (when-not (context/data ctx) (bracketbird.tournament-controller/create-tournament ctx))
+
     (fn [ctx]
       [:div {:style s/tournament-page-style}
        [menu-panel m-items selector]

@@ -1,6 +1,8 @@
 (ns bracketbird.ui.styles)
 
 
+(def row-height 30)
+
 (def font-color "rgba(55, 71, 79, 1)")
 
 (def menu-font-size 22)
@@ -11,6 +13,8 @@
 (def page-bottom-space 40)
 (def page-side-space 120)
 
+(def input-text-field {:border  :none
+                       :padding 0})
 
 (def menu-panel-style {:display       :flex
                        :align-items   :center
@@ -30,7 +34,7 @@
                             :flex-direction :column})
 
 (def tournamet-tab-content-style {:padding-bottom page-bottom-space
-                              :overflow-y         :scroll
-                              :padding-left       page-side-space
-                              :padding-right      page-side-space
-                              :padding-top        page-top-space})
+                                  :overflow-y     :scroll
+                                  :padding-left   page-side-space
+                                  :padding-right  page-side-space
+                                  :padding-top    page-top-space})

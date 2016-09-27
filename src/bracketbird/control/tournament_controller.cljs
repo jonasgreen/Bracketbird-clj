@@ -1,44 +1,66 @@
 (ns bracketbird.tournament-controller
-  (:require [bracketbird.context :as ctx]
+  (:require [bracketbird.context :as context]
             [bracketbird.model.tournament-state :as t-state]
+            [bracketbird.model.tournament :as t]
             [bracketbird.event-router :as router]
+            [bracketbird.model.team :as team-m]
+            [bracketbird.util.utils :as ut]
             [bracketbird.tournament-api :as api]
             [bracketbird.application-state :as app-state]))
 
 
 (defn mk-ctx [tournament-id]
-  (ctx/mk :tournament tournament-id))
+  (context/mk :tournament tournament-id))
 
 ;--- utils ---
 
 (defn count-tournaments []
   (count (get @app-state/state :tournament)))
 
+(defn tournament [ctx]
+  (-> ctx context/data))
+
+(defn teams [ctx]
+  (-> ctx tournament t/teams))
+
+(defn last-team [ctx]
+  (-> ctx teams last))
+
+(defn last-team? [ctx team]
+  (= team (last-team ctx)))
+
+(defn next-team [ctx team]
+  (-> ctx teams (ut/next-entity team)))
+
+(defn previous-team [ctx team]
+  (-> ctx teams (ut/previous-entity team)))
+
 
 ;--- api ---
 
-(defn create-tournament [t-ctx]
-  (->> (api/create-tournament-event (:id t-ctx))
-       (router/dispatch t-ctx)))
+(defn create-tournament [ctx]
+  (->> (api/create-tournament-event (:id ctx))
+       (router/dispatch ctx)))
 
 
-(defn add-team [t-ctx]
-  (if (-> t-ctx ctx/data t-state/started?)
+(defn add-team [ctx name]
+  (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
-    (->> (api/add-team-event)
-         (router/dispatch t-ctx))))
+    (->> (api/add-team-event name)
+         (router/dispatch ctx))))
 
-(defn update-team-name [t-ctx team-id name]
+(defn update-team-name [ctx team-id name]
   (->> (api/update-team-name-event team-id name)
-       (router/dispatch t-ctx)))
+       (router/dispatch ctx)))
 
-(defn delete-team [t-ctx team-id]
-  (if (-> t-ctx ctx/data t-state/started?)
+(defn delete-team [ctx team]
+  (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
-    (router/dispatch t-ctx (api/delete-team-event team-id))))
+    (router/dispatch ctx (api/delete-team-event (team-m/team-id team)))))
+
 
 
 ;--- subscriptions ---
 
 (defn subscribe-teams [ctx]
-  (ctx/subscribe-data ctx [:teams]))
+  (context/subscribe-data ctx [:teams]))

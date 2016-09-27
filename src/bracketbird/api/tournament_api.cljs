@@ -29,8 +29,9 @@
 (defn create-tournament-event [tournament-id]
   (tournament-event [:tournament :create] tournament-id))
 
-(defn add-team-event []
-  (team-event [:team :add] (uid/squuid)))
+(defn add-team-event [name]
+  (-> (team-event [:team :add] (uid/squuid))
+      (assoc :name name)))
 
 (defn delete-team-event [team-id]
   (team-event [:team :delete] team-id))
@@ -64,12 +65,11 @@
 
 ;create tournament
 (defmethod execute [:tournament :create] [e t]
-  (println "execute" t)
   (tournament/mk (:tournament-id e)))
 
 ;add
-(defmethod execute [:team :add] [e t]
-  (tournament/add-team t (:team-id e)))
+(defmethod execute [:team :add] [{:keys [team-id name]} t]
+  (tournament/add-team t team-id name))
 
 ;update
 (defmethod execute [:team :name :update] [e t]

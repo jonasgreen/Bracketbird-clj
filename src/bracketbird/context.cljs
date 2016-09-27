@@ -41,3 +41,10 @@
 
 (defn subscribe-ui [ctx]
   (reaction (get-in @app-state/state (ui-path ctx))))
+
+
+;------ util ---------
+
+(defn update-ui-on-input-change! [ctx]
+  (fn [e]
+    (update-ui! ctx (.. e -target -value))))

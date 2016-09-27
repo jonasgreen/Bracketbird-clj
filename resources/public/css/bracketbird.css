@@ -2,6 +2,26 @@
     height: 100%;
 }
 
+::-webkit-input-placeholder {
+    color: #37474f;
+    font-style: normal;
+    opacity: 0.5;
+}
+
+::-moz-placeholder {
+    color: #37474f;
+    font-style: normal;
+    opacity: 0.5;
+
+}
+
+:-ms-input-placeholder {
+    color: #37474f;
+    font-style: normal;
+    opacity: 0.5;
+}
+
+
 input {
     background: transparent;
     border: 1px solid rgb(217, 217, 217);
@@ -16,6 +36,10 @@ input {
     height: 22px;
     line-height: 1.25;
     padding: 2px 2px 0;
+}
+
+input:focus, select:focus, textarea:focus, button:focus {
+    outline: none;
 }
 
 

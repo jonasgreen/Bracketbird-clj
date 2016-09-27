@@ -18,6 +18,7 @@
    :ctx  nil})
 
 (defn- mk-page-context [token]
+  (println "mk-page-context" token)
   (cond
     (clojure.string/blank? token) (front-page-ctx)
     (= (str (int token)) token) (tournament-page-ctx (t-ctrl/mk-ctx token))

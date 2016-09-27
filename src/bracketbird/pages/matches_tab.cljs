@@ -9,8 +9,7 @@
 
 
 (defn- content [ctx]
-  [:div "matches-tab"]
-  )
+  [:div "matches-tab"])
 
 
 (defn render [ctx]
