@@ -37,7 +37,7 @@
   (util/entity (teams t) team-id))
 
 (defn set-teams [t teams]
-  (assoc t :teams teams))
+  (assoc t :teams (vec teams)))
 
 (defn add-team [t t-id t-name]
   (-> t

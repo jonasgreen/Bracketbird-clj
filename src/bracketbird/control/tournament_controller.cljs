@@ -44,6 +44,7 @@
 
 
 (defn add-team [ctx name]
+  (println "teams" (teams ctx))
   (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
     (->> (api/add-team-event name)

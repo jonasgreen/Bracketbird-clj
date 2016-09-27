@@ -16,24 +16,13 @@
   (-> (ut/next-entity entities entity)
       (ut/focus-by-entity sub-key)))
 
-
-#_(defn focus-table [enter-team-ctx]
-    {:type     :table
-     :row      [:team-seeding :team-name]
-     :entities t-ctrl/teams
-     :up-in
-               :down-in
-     ;:up-out
-     :down-out #(ut/focus-by-ui-ctx enter-team-ctx :enter-team)})
-
-(defn focus-item [])
-
 (defn component-dispatcher [ctx enter-team-ctx]
   (let [config {:team-name  {:up     (fn [t] (move-entity-focus-up (t-ctrl/teams ctx) t :team-name))
                              :down   (fn [t] (when-not (move-entity-focus-down (t-ctrl/teams ctx) t :team-name)
                                                (ut/focus-by-ui-ctx enter-team-ctx :enter-team)))
 
                              :left   (fn [t] (ut/focus-by-entity t :team-id))
+                             :update (fn[t team-name])
                              :delete (fn [t] (t-ctrl/delete-team ctx t))}
 
                 :team-id    {:up    (fn [t])
@@ -48,12 +37,10 @@
                                             (t-ctrl/add-team ctx team-name)
                                             (context/update-ui! enter-team-ctx ""))}}]
 
-    (fn [path x]
+    (fn [path & args]
       (if-let [f (get-in config path)]
-        (f x)
-        (.warn js/console "Unable to dispatch " path " on " x)
-        ))))
-
+        (apply f args)
+        (.warn js/console "Unable to dispatch " path " with " args)))))
 
 (defn enter-team-panel [ctx _]
   (let [team-name (context/subscribe-ui ctx)]
