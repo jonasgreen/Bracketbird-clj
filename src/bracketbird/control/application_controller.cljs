@@ -47,15 +47,6 @@
 (defn get-state-atom []
   app-state/state)
 
-(defn toggle-state-tool []
-  (swap! app-state/state update-in [:system :show-state?] not))
-
-(defn toggle-design-tool []
-  (swap! app-state/state update-in [:system :show-design?] not))
-
-(defn close-tools []
-  (swap! app-state/state update-in [:system] assoc :show-state? false :show-design? false))
-
 ;---------------
 ; subscriptions
 ;---------------
@@ -63,5 +54,3 @@
 (defn subscribe-page-context []
   (reaction (get @app-state/state :page-context)))
 
-(defn subscribe-system []
-  (reaction (get @app-state/state :system)))

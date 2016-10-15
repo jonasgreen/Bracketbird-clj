@@ -3,7 +3,7 @@
             [bracketbird.context :as context]
             [bracketbird.model.team :as t]
             [bracketbird.util.utils :as ut]
-            [bracketbird.util.keyboard :as k]
+            [airboss.utils :as k]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.pages.tournament-tab-content :as tab-content]
             [reagent.core :as r]))
@@ -22,7 +22,7 @@
                                                (ut/focus-by-ui-ctx enter-team-ctx :enter-team)))
 
                              :left   (fn [t] (ut/focus-by-entity t :team-id))
-                             :update (fn[t team-name])
+                             :update (fn [t team-name])
                              :delete (fn [t] (t-ctrl/delete-team ctx t))}
 
                 :team-id    {:up    (fn [t])
@@ -42,17 +42,17 @@
         (apply f args)
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
-(defn enter-team-panel [ctx _]
+(defn enter-team-panel [ctx _ teams-count]
   (let [team-name (context/subscribe-ui ctx)]
     (fn [ctx dispatcher]
-      [:div {:style {:display :flex :padding-left 30 :align-items :center :padding-top 30}}
+      [:div {:style {:display :flex :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
                 :id          (ut/dom-id-from-ui-ctx ctx :enter-team)
                 :type        :text
                 :style       s/input-text-field
                 :value       @team-name
-                :on-key-down #(when (k/arrow-up? %) (dispatcher [:enter-team :up]))
-                :on-key-up   #(when (k/enter? %) (dispatcher [:enter-team :create-team] @team-name))
+                :on-key-down #(when (k/key? :UP %) (dispatcher [:enter-team :up]))
+                :on-key-up   #(when (k/key? :ENTER %) (dispatcher [:enter-team :create-team] @team-name))
                 :on-change   (context/update-ui-on-input-change! ctx)}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
@@ -60,46 +60,38 @@
 
 (defn team-name-panel [])
 
-(defn team-panel [_ team _]
+(defn team-panel [position team _]
   (let [team-name-state (r/atom (t/team-name team))
         delete-by-backspace (atom (clojure.string/blank? (t/team-name team)))]
     (r/create-class
-      {:reagent-render      (fn [position team dispatcher]
-                              (println "2")
+      {:reagent-render (fn [position team dispatcher]
 
-                              [:div {:style {:display     :flex
-                                             :align-items :center
-                                             :position    :absolute
-                                             :top         (* position 30)
-                                             ;:transition  "top 2s linear"
-                                             :min-height  30}}
-                               [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
-                               [:input {:id          (ut/dom-id-from-entity team :team-name)
-                                        :style       s/input-text-field
-                                        :value       @team-name-state
-                                        :on-key-down (fn [e] (cond (and (k/backspace? e) @delete-by-backspace)
-                                                                   (dispatcher [:team-name :delete] team)
+                         [:div {:style {:display     :flex
+                                        :align-items :center
+                                        :min-height  30}}
+                          [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
+                          [:input {:id          (ut/dom-id-from-entity team :team-name)
+                                   :style       s/input-text-field
+                                   :value       @team-name-state
+                                   :on-key-down (fn [e] (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
+                                                              (dispatcher [:team-name :delete] team)
 
-                                                                   (k/arrow-down? e)
-                                                                   (dispatcher [:team-name :down] team)
+                                                              (k/key? :DOWN e)
+                                                              (dispatcher [:team-name :down] team)
 
-                                                                   (k/arrow-up? e)
-                                                                   (dispatcher [:team-name :up] team)))
+                                                              (k/key? :UP e)
 
-                                        :on-key-up   (fn [e] (when (clojure.string/blank? @team-name-state)
-                                                               (reset! delete-by-backspace true)))
+                                                              (dispatcher [:team-name :up] team)))
 
-                                        :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])
+                                   :on-key-up   (fn [e] (when (clojure.string/blank? @team-name-state)
+                                                          (reset! delete-by-backspace true)))
 
-       :component-did-mount (fn [this]
-                              #_(.info js/console (.-style (r/dom-node this)))
-                              #_(.setProperty (.-style (r/dom-node this)) "top" (+ 30 (* position 30))))
-       })))
+                                   :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])})))
 
 (defn teams-panel [ctx _]
   (let [teams (t-ctrl/subscribe-teams ctx)]
-    (fn [ctx dispatcher]
-      [:div {:style {:position :relative :min-height (* 30 (count @teams))}}
+    (fn [_ dispatcher]
+      [:div
        (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) @teams)])))
 
 (defn content [ctx]

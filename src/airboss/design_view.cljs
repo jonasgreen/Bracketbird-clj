@@ -1,8 +1,9 @@
-(ns bracketbird.ui.design-view
+(ns airboss.design-view
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [goog.events :as events]
             [goog.dom :as dom]
-            [reagent.core :as r])
+            [reagent.core :as r]
+            [airboss.utils :as ut])
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
 ;--------
@@ -21,14 +22,14 @@
   (merge text-style {:font-size 10
                      :position  :absolute}))
 
-(def design-view-style {:position   :absolute
+(def design-view-style {:position    :absolute
                         :will-change :transform
-                        :background "rgba(0,0,0,0.4)"
-                        :z-index    1000
-                        :right      0
-                        :top        0
-                        :width      "100vw"
-                        :height     "100vh"})
+                        :background  "rgba(0,0,0,0.4)"
+                        :z-index     200000
+                        :right       0
+                        :top         0
+                        :width       "100vw"
+                        :height      "100vh"})
 
 ;--------
 ; state
@@ -36,20 +37,7 @@
 
 (defonce state (r/atom nil))
 
-;-----------------
-; browser-storage
-;-----------------
-
-(def browser-state-id "design-view")
-
-(defn browser-save-state [s]
-  (.setItem (.-localStorage js/window) browser-state-id (js/JSON.stringify (clj->js s))))
-
-(defn browser-get-state []
-  (js->clj (js/JSON.parse (.getItem (.-localStorage js/window) browser-state-id)) :keywordize-keys true))
-
-(defn browser-remove-state []
-  (.removeItem (.-localStorage js/window) browser-state-id))
+(def local-storage-id "airboss-design-viewer")
 
 ;-------
 ; utils
@@ -209,7 +197,7 @@
   (cond
     (= KeyCodes.R (.-keyCode e))
     (do
-      (browser-remove-state)
+      (ut/local-storage-remove local-storage-id)
       (reset! state (init-data)))
 
     (= KeyCodes.F (.-keyCode e))
@@ -224,7 +212,7 @@
   (swap! state assoc :dimensions (get-dimensions)))
 
 (defn render []
-  (let [local-state (browser-get-state)]
+  (let [local-state (ut/local-storage local-storage-id)]
     (reset! state (if (seq local-state) local-state (init-data))))
 
 
@@ -244,7 +232,7 @@
                                   [x-labels points (:width dimensions)]
                                   [y-labels points (:height dimensions)]]))
 
-     :component-did-mount    (fn [r-comp]
+     :component-did-mount    (fn [_]
                                (events/listen js/window EventType.KEYDOWN key-down-handler)
                                (events/listen js/window EventType.RESIZE resize-handler)
                                (swap! state assoc :dimensions (get-dimensions))
@@ -254,7 +242,22 @@
                                             (if (keyword? focus-id) focus-id (keyword focus-id)))]
                                  (.focus (dom/getElement (str r-id)))))
 
-     :component-will-unmount (fn [r-comp]
-                               (browser-save-state @state)
+     :component-will-unmount (fn [_]
+                               (ut/local-storage-write local-storage-id @state)
                                (events/unlisten js/window EventType.KEYDOWN key-down-handler)
                                (events/unlisten js/window EventType.RESIZE resize-handler))}))
+
+
+(defn- ui-toggler []
+  (let [visible (r/atom false)]
+
+    (events/listen js/window "keydown"
+                   (fn [e] (cond
+                             (ut/key? :F10 e) (do (.preventDefault e) (reset! visible (not @visible)))
+                             (ut/key? :ESC e) (do (.preventDefault e) (reset! visible false)))))
+
+    (fn [] (when @visible [render]))))
+
+(defn load []
+  (r/render-component [ui-toggler] (-> (.-body js/document)
+                                                      (.appendChild (dom/createElement "div")))))
