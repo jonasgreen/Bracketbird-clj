@@ -49,7 +49,6 @@
 (defn enter-team-panel [ctx _ _]
   (let [team-name (context/subscribe-ui ctx)]
     (fn [ctx dispatcher teams-count]
-      (println "teamscount" teams-count)
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
                 :id          (ut/dom-id-from-ui-ctx ctx :enter-team)
@@ -77,8 +76,6 @@
                                    :style       (merge s/input-text-field {:min-width 200})
                                    :value       @team-name-state
                                    :on-key-down (fn [e]
-
-                                                  (println "name" @team-name-state)
                                                   (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
                                                         (dispatcher [:team-name :delete] team)
 
