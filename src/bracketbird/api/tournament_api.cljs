@@ -33,6 +33,11 @@
   (-> (team-event [:team :add] (uid/squuid))
       (assoc :name name)))
 
+(defn insert-team-event [name index]
+  (-> (team-event [:team :insert] (uid/squuid))
+      (assoc :name name :index index)))
+
+
 (defn delete-team-event [team-id]
   (team-event [:team :delete] team-id))
 
@@ -70,6 +75,10 @@
 ;add
 (defmethod execute [:team :add] [{:keys [team-id name]} t]
   (tournament/add-team t team-id name))
+
+(defmethod execute [:team :insert] [{:keys [team-id name index]} t]
+  (tournament/insert-team t team-id name index))
+
 
 ;update
 (defmethod execute [:team :name :update] [e t]

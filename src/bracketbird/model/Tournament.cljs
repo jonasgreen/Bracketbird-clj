@@ -1,5 +1,5 @@
 (ns bracketbird.model.tournament
-  (:require [bracketbird.util.utils :as util]
+  (:require [bracketbird.model.entity :as e]
             [bracketbird.model.team :as team]))
 
 (defn mk [tournament-id]
@@ -30,11 +30,11 @@
   (:teams t))
 
 (defn- update-team [t team-id k value]
-  (update-in t [:teams (util/index-of-entity-id (teams t) team-id)] assoc k value))
+  (update-in t [:teams (e/index-of-entity (teams t) team-id)] assoc k value))
 
 
 (defn team [t team-id]
-  (util/entity (teams t) team-id))
+  (e/entity (teams t) team-id))
 
 (defn set-teams [t teams]
   (assoc t :teams (vec teams)))
@@ -42,6 +42,11 @@
 (defn add-team [t t-id t-name]
   (-> t
       (update :teams conj (team/mk-team t-id t-name))
+      (dirtify)))
+
+(defn insert-team [t t-id t-name index]
+  (-> t
+      (update :teams e/insert index (team/mk-team t-id t-name))
       (dirtify)))
 
 (defn update-team-name [t team-id name]
@@ -53,7 +58,7 @@
 
 (defn delete-team [t team-id]
   (-> (teams t)
-      (util/remove-entity-by-id team-id)
+      (e/remove-entity team-id)
       (->> (set-teams t)
            (dirtify))))
 

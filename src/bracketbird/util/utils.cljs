@@ -1,29 +1,7 @@
 (ns bracketbird.util.utils
   [:require [bracketbird.model.entity :as ie]
             [bracketbird.context :as context]
-            [goog.dom :as dom]
-
-            [bracketbird.util.position :as pos]])
-
-
-(defn entity [entities e-id]
-  (some (fn [e] (when (= e-id (:entity-id e)) e)) entities))
-
-(defn index-of-entity-id
-  "Returns [index-of-entity entity]"
-  [entities e-id]
-  (first (keep-indexed (fn [i e] (when (= e-id (ie/-id e)) i)) entities)))
-
-(defn remove-entity-by-id [entities e-id]
-  (remove (fn [e] (= (ie/-id e) e-id)) entities))
-
-(defn next-entity [entities entity]
-  (let [index (index-of-entity-id entities (ie/-id entity))]
-    (when index (get (vec entities) (inc index)))))
-
-(defn previous-entity [entities entity]
-  (let [index (index-of-entity-id entities (ie/-id entity))]
-    (when index (get (vec entities) (dec index)))))
+            [goog.dom :as dom]])
 
 (defn r-key [entity r-form]
   (with-meta r-form {:key (hash (ie/-id entity))}))

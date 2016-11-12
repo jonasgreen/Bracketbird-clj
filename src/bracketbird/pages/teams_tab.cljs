@@ -6,14 +6,16 @@
             [airboss.utils :as k]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.pages.tournament-tab-content :as tab-content]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [bracketbird.model.entity :as e]))
 
 (defn move-entity-focus-up [entities entity sub-key]
-  (-> (ut/previous-entity entities entity)
+  (-> (e/previous-entity entities entity)
       (ut/focus-by-entity sub-key)))
 
 (defn move-entity-focus-down [entities entity sub-key]
-  (-> (ut/next-entity entities entity)
+  (println "down" (e/next-entity entities entity))
+  (-> (e/next-entity entities entity)
       (ut/focus-by-entity sub-key)))
 
 (defn component-dispatcher [ctx enter-team-ctx]
@@ -23,6 +25,9 @@
 
                              :left   (fn [t] (ut/focus-by-entity t :team-id))
                              :update (fn [t team-name])
+                             :inject (fn [t] (let [index (t-ctrl/index-of-team ctx t)]
+                                               (t-ctrl/insert-team ctx "" index)))
+
                              :delete (fn [t] (let [next-focus-team (or (t-ctrl/next-team ctx t) (t-ctrl/previous-team ctx t))]
                                                (t-ctrl/delete-team ctx t)
                                                (if next-focus-team
@@ -55,8 +60,13 @@
                 :type        :text
                 :style       s/input-text-field
                 :value       @team-name
-                :on-key-down #(when (k/key? :UP %) (dispatcher [:enter-team :up]))
-                :on-key-up   #(when (k/key? :ENTER %) (dispatcher [:enter-team :create-team] @team-name))
+                :on-key-down #(cond
+                                (k/key? :UP %)
+                                (dispatcher [:enter-team :up])
+
+                                (k/key? :ENTER %) 
+                                (dispatcher [:enter-team :create-team] @team-name))
+
                 :on-change   (context/update-ui-on-input-change! ctx)}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
@@ -78,6 +88,18 @@
                                    :on-key-down (fn [e]
                                                   (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
                                                         (dispatcher [:team-name :delete] team)
+
+                                                        (k/key? :ENTER e)
+                                                        (do
+                                                          (.stopPropagation e)
+                                                          (.preventDefault e)
+                                                          (dispatcher [:team-name :down] team))
+
+                                                        (k/key-and-modifier? :ENTER k/shift-modifier? e)
+                                                        (do
+                                                          (.stopPropagation e)
+                                                          (.preventDefault e)
+                                                          (dispatcher [:team-name :inject] team))
 
                                                         (k/key? :DOWN e)
                                                         (dispatcher [:team-name :down] team)

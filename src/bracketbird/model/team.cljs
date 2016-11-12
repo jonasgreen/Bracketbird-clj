@@ -8,11 +8,9 @@
 (def team-id :team-id)                                      ;(mk-kw 'id))
 
 
-
 (defrecord Team [team-id team-name]
   e/IEntity
   (-id [this] team-id))
-
 
 (defn mk-team [t-id t-name]
   (->Team t-id t-name))

@@ -2,6 +2,7 @@
   (:require [bracketbird.context :as context]
             [bracketbird.model.tournament-state :as t-state]
             [bracketbird.model.tournament :as t]
+            [bracketbird.model.entity :as e]
             [bracketbird.event-router :as router]
             [bracketbird.model.team :as team-m]
             [bracketbird.util.utils :as ut]
@@ -27,13 +28,19 @@
   (-> ctx teams last))
 
 (defn last-team? [ctx team]
-  (= team (last-team ctx)))
+  (-> (last-team ctx)
+      (e/same? team)))
+
+(defn index-of-team [ctx team]
+  (-> ctx
+      teams
+      (e/index-of-entity team)))
 
 (defn next-team [ctx team]
-  (-> ctx teams (ut/next-entity team)))
+  (-> ctx teams (e/next-entity team)))
 
 (defn previous-team [ctx team]
-  (-> ctx teams (ut/previous-entity team)))
+  (-> ctx teams (e/previous-entity team)))
 
 
 ;--- api ---
@@ -42,9 +49,14 @@
   (->> (api/create-tournament-event (:id ctx))
        (router/dispatch ctx)))
 
+(defn insert-team [ctx name index]
+  (if (-> ctx context/data t-state/started?)
+    (println "warning - tournament already started")
+    (->> (api/insert-team-event name index)
+         (router/dispatch ctx))))
+
 
 (defn add-team [ctx name]
-  (println "teams" (teams ctx))
   (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
     (->> (api/add-team-event name)
