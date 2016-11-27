@@ -134,5 +134,7 @@
   (and (= (k key-codes) (.-keyCode event))
        (m-pred event)))
 
+(defn no-modifiers? [event])
+
 (defn key? [k event]
   (key-and-modifier? k (comp not modifier?) event))

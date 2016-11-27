@@ -34,9 +34,6 @@
                                                  (ut/focus-by-entity next-focus-team :team-name)
                                                  (ut/focus-by-ui-ctx enter-team-ctx :enter-team))))}
 
-                :team-id    {:up    (fn [t])
-                             :down  (fn [t])
-                             :right (fn [t] (ut/focus-by-entity t :team-name))}
 
                 :enter-team {:up          (fn []
                                             (when-let [last-team (t-ctrl/last-team ctx)]
@@ -51,23 +48,27 @@
         (apply f args)
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
-(defn enter-team-panel [ctx _ _]
+(defn handle-key [handle-map]
+  (fn [e]))
+
+(defn handle-change [ctx]
+  (fn [e]
+    (context/update-ui-on-input-change! ctx)))
+
+(defn enter-team-panel [ctx _]
   (let [team-name (context/subscribe-ui ctx)]
-    (fn [ctx dispatcher teams-count]
+    (fn [ctx dispatch]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
                 :id          (ut/dom-id-from-ui-ctx ctx :enter-team)
                 :type        :text
                 :style       s/input-text-field
                 :value       @team-name
-                :on-key-down #(cond
-                                (k/key? :UP %)
-                                (dispatcher [:enter-team :up])
+                :on-key-down (handle-key
+                               {:UP        {k/no-modifiers? #(dispatch [:enter-team :up])}
+                                :BACKSPACE {k/no-modifiers? #(dispatch [:enter-team :create-team] @team-name)}})
 
-                                (k/key? :ENTER %) 
-                                (dispatcher [:enter-team :create-team] @team-name))
-
-                :on-change   (context/update-ui-on-input-change! ctx)}]
+                :on-change   (handle-change ctx)}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
@@ -75,45 +76,58 @@
 (defn team-panel [position team _]
   (let [team-name-state (r/atom (t/team-name team))
         delete-by-backspace (atom (clojure.string/blank? (t/team-name team)))]
-    (r/create-class
-      {:reagent-render (fn [position team dispatcher]
+    (fn [position team dispatcher]
 
-                         [:div {:style {:display     :flex
-                                        :align-items :center
-                                        :min-height  30}}
-                          [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
-                          [:input {:id          (ut/dom-id-from-entity team :team-name)
-                                   :style       (merge s/input-text-field {:min-width 200})
-                                   :value       @team-name-state
-                                   :on-key-down (fn [e]
-                                                  (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
-                                                        (dispatcher [:team-name :delete] team)
+      [:div {:style {:display     :flex
+                     :align-items :center
+                     :min-height  30}}
+       [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
+       [:input {:id          (ut/dom-id-from-entity team :team-name)
+                :style       (merge s/input-text-field {:min-width 200})
+                :value       @team-name-state
 
-                                                        (k/key? :ENTER e)
-                                                        (do
-                                                          (.stopPropagation e)
-                                                          (.preventDefault e)
-                                                          (dispatcher [:team-name :down] team))
 
-                                                        (k/key-and-modifier? :ENTER k/shift-modifier? e)
-                                                        (do
-                                                          (.stopPropagation e)
-                                                          (.preventDefault e)
-                                                          (dispatcher [:team-name :inject] team))
+                #_(:on-key-down {:ENTER     {k/no-modifiers?   #(dispatcher [:team-name :down] team)
+                                             k/shift-modifier? #(dispatcher [:team-name :inject] team)}
+                                 :BACKSPACE {#(@delete-by-backspace) (dispatcher [:team-name :delete] team)}
 
-                                                        (k/key? :DOWN e)
-                                                        (dispatcher [:team-name :down] team)
+                                 :DOWN      {k/no-modifiers? #(dispatcher [:team-name :down] team)}
+                                 :UP        {k/no-modifiers? #(dispatcher [:team-name :up] team)}
+                                 :ELSE      {#(not (clojure.string/blank? @team-name-state)) (reset! delete-by-backspace false)}})
 
-                                                        (k/key? :UP e)
-                                                        (dispatcher [:team-name :up] team)
 
-                                                        :else (when-not (clojure.string/blank? @team-name-state)
-                                                                (reset! delete-by-backspace false))))
 
-                                   :on-key-up   (fn [e] (when (clojure.string/blank? @team-name-state)
-                                                          (reset! delete-by-backspace true)))
+                :on-key-down (fn [e]
+                               (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
+                                     (dispatcher [:team-name :delete] team)
 
-                                   :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])})))
+                                     (k/key? :ENTER e)
+                                     (do
+                                       (.stopPropagation e)
+                                       (.preventDefault e)
+                                       (dispatcher [:team-name :down] team))
+
+                                     (k/key-and-modifier? :ENTER k/shift-modifier? e)
+                                     (do
+                                       (.stopPropagation e)
+                                       (.preventDefault e)
+                                       (dispatcher [:team-name :inject] team))
+
+                                     (k/key? :DOWN e)
+                                     (do (.stopPropagation e)
+                                         (.preventDefault e)
+                                         (dispatcher [:team-name :down] team))
+
+                                     (k/key? :UP e)
+                                     (dispatcher [:team-name :up] team)
+
+                                     :else (when-not (clojure.string/blank? @team-name-state)
+                                             (reset! delete-by-backspace false))))
+
+                :on-key-up   (fn [e] (when (clojure.string/blank? @team-name-state)
+                                       (reset! delete-by-backspace true)))
+
+                :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 (defn teams-panel [ctx dispatcher teams]
   [:div
@@ -126,7 +140,7 @@
 
     (fn [ctx] [:div
                [teams-panel ctx dispatcher @teams]
-               [enter-team-panel enter-team-ctx dispatcher (count @teams)]])))
+               [enter-team-panel enter-team-ctx dispatcher]])))
 
 (defn render [ctx]
   [tab-content/render ctx [content ctx]])
