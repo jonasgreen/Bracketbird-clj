@@ -65,8 +65,9 @@
                 :style       s/input-text-field
                 :value       @team-name
                 :on-key-down (handle-key
-                               {:UP        {k/no-modifiers? #(dispatch [:enter-team :up])}
-                                :BACKSPACE {k/no-modifiers? #(dispatch [:enter-team :create-team] @team-name)}})
+                               {:UP        {k/no-modifiers? [#(dispatch [:enter-team :up]) .stopPropagation]}
+                                :BACKSPACE {k/shift-modifier? [#(dispatch [:enter-team :create-team] @team-name) .stopPropagation]}
+                                :ELSE      {identity [#()]}})
 
                 :on-change   (handle-change ctx)}]
 
