@@ -1,5 +1,27 @@
-(ns bracketbird.util.uuid)
+(ns bracketbird.util.utils
+  [:require [bracketbird.model.entity :as ie]
+            [bracketbird.context :as context]
+            [utils.dom :as dom]])
 
+(defn r-key [entity r-form]
+  (with-meta r-form {:key (hash (ie/-id entity))}))
+
+(defn dom-id-from-entity [entity sub-key]
+  (str (hash [(ie/-id entity) sub-key])))
+
+(defn dom-id-from-ui-ctx [ctx sub-key]
+  (str (hash (str (context/ui-path ctx) sub-key))))
+
+(defn focus-by-entity [entity sub-key]
+  (when entity
+    (-> entity (dom-id-from-entity sub-key) dom/focus-by-id)))
+
+(defn focus-by-ui-ctx [ctx sub-key]
+  (-> ctx (dom-id-from-ui-ctx sub-key) dom/focus-by-id))
+
+
+; Uuid
+; --------
 
 (defn- squuid-seconds-component
   "Returns the current time rounded to the nearest second."

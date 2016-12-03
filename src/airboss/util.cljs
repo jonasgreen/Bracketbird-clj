@@ -1,5 +1,4 @@
-(ns airboss.utils
-
+(ns utils.util
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
 
