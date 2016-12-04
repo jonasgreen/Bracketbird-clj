@@ -5,7 +5,7 @@
             [bracketbird.model.entity :as e]
             [bracketbird.event-router :as router]
             [bracketbird.model.team :as team-m]
-            [bracketbird.util.utils :as ut]
+            [bracketbird.util :as ut]
             [bracketbird.tournament-api :as api]
             [bracketbird.application-state :as app-state]))
 

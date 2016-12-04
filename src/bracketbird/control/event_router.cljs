@@ -1,10 +1,10 @@
 (ns bracketbird.event-router
   (:require [reagent.ratom :as ratom]
             [bracketbird.tournament-api :as t-api]
-            [bracketbird.util.uuid :as uuid]))
+            [bracketbird.util :as ut]))
 
 (defn pending-packet [router-id event]
-  {:id          (uuid/squuid)
+  {:id          (ut/squuid)
    :router-id   router-id
    :count       nil                                         ;(+ (count (:packets @state-atom)) (count (:out @state-atom)))
    :level-count nil                                         ;1

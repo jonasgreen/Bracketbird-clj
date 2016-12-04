@@ -1,25 +1,21 @@
 (defproject bracketbird "0.1.0-SNAPSHOT"
   :description "Tournament Manager"
   :url "http://www.bracketbird.com"
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.228"]
-                 [org.clojure/core.async "0.2.374"]
-                 [prismatic/schema "1.0.1"]
-                 [devcards "0.2.1-6" :exclusions [org.clojure/core.async]]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.9.229"]
                  [noencore "0.2.0"]
-                 [reagent "0.6.0-alpha"]
+                 [reagent "0.6.0"]
                  [cljs-ajax "0.5.4"]
-                 [funcool/promesa "0.4.0"]
-                 [com.andrewmcveigh/cljs-time "0.3.13"]
+                 [com.andrewmcveigh/cljs-time "0.4.0"]
                  [com.cemerick/url "0.1.1"]
-                 [reagent-utils "0.1.7"]
-                 [cljs-http "0.1.39"]
-                 [bidi "1.25.0" :exclusions [prismatic/schema]]]
+                 [reagent-utils "0.1.8"]
+                 [cljs-http "0.1.40"]
+                 [bidi "2.0.9" :exclusions [clj-time]]]
 
-  :plugins [[lein-cljsbuild "1.1.2"]
-            [lein-figwheel "0.5.0-2" :exclusions [ring/ring-core org.clojure/clojure org.clojure/tools.reader]]
+  :plugins [[lein-cljsbuild "1.1.3"]
+            [lein-figwheel "0.5.7"]
             [lein-codox "0.9.0"]
-            [lein-doo "0.1.6"]]
+            [lein-doo "0.1.6" :exclusions [org.clojure/tools.reader]]]
 
   :hooks [leiningen.cljsbuild]
 
@@ -32,7 +28,7 @@
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target" "resources/private/js/compiled"]
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
-                                  [figwheel-sidecar "0.5.0-2" :exclusions [org.clojure/core.async org.clojure/data.priority-map org.codehaus.plexus/plexus-utils joda-time]]
+                                  [figwheel-sidecar "0.5.7"]
                                   [lein-doo "0.1.6"]]}}
 
   :cljsbuild {

@@ -3,15 +3,15 @@
   Takes one or more tournament events and executes them blindly on the tournament, ie. updates the tournament."
   (:require [bracketbird.model.tournament :as tournament]
             [bracketbird.context :as ctx]
-            [bracketbird.util.uuid :as uid]
-            [bracketbird.application-state :as app-state]))
+            [bracketbird.util :as ut]))
+
 
 ;-------
 ; utils
 ;-------
 
 (defn event [event-type]
-  {:event-id   (uid/squuid)
+  {:event-id   (ut/squuid)
    :event-type event-type})
 
 (defn- tournament-event [event-type tournament-id]
@@ -30,11 +30,11 @@
   (tournament-event [:tournament :create] tournament-id))
 
 (defn add-team-event [name]
-  (-> (team-event [:team :add] (uid/squuid))
+  (-> (team-event [:team :add] (ut/squuid))
       (assoc :name name)))
 
 (defn insert-team-event [name index]
-  (-> (team-event [:team :insert] (uid/squuid))
+  (-> (team-event [:team :insert] (ut/squuid))
       (assoc :name name :index index)))
 
 

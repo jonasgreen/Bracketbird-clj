@@ -1,31 +1,8 @@
-(ns utils.util
+(ns airboss.util
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
 
 (defonce key-codes (js->clj goog.events.KeyCodes :keywordize-keys true))
-
-;------------
-; Stylesheet
-;------------
-
-(defn get-style-sheet [s-name]
-  (let [length (-> js/document (.-styleSheets) (.-length))
-        sheets (-> js/document (.-styleSheets))]
-
-    (for [i (vec (range length))
-          ;sheet (aget sheets i)
-          :when (= s-name (.-title (aget sheets i)))] (aget sheets i))))
-
-(defn mk-stylesheet [unique-name]
-  (let [sheet (-> js/document
-                  (.createElement "style"))]
-
-    (aset sheet "title" unique-name)
-    (.info js/console sheet)
-
-    (-> js/document
-        (.-body)
-        (.appendChild sheet))))
 
 
 ;-----------------------

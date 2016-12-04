@@ -1,6 +1,6 @@
 (ns airboss.state-view
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [airboss.utils :as ut]
+  (:require [airboss.util :as ut]
             [reagent.core :as r]
             [clojure.string :as s]
             [goog.dom :as dom-helper]

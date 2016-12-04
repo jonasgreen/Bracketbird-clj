@@ -1,4 +1,4 @@
-(ns bracketbird.util.utils
+(ns bracketbird.util
   [:require [bracketbird.model.entity :as ie]
             [bracketbird.context :as context]
             [utils.dom :as dom]])

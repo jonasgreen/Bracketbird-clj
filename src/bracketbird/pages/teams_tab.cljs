@@ -2,8 +2,8 @@
   (:require [bracketbird.ui.styles :as s]
             [bracketbird.context :as context]
             [bracketbird.model.team :as t]
-            [bracketbird.util.utils :as ut]
-            [airboss.utils :as k]
+            [bracketbird.util :as ut]
+            [utils.dom :as dom]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.pages.tournament-tab-content :as tab-content]
             [reagent.core :as r]
@@ -14,7 +14,6 @@
       (ut/focus-by-entity sub-key)))
 
 (defn move-entity-focus-down [entities entity sub-key]
-  (println "down" (e/next-entity entities entity))
   (-> (e/next-entity entities entity)
       (ut/focus-by-entity sub-key)))
 
@@ -48,12 +47,6 @@
         (apply f args)
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
-(defn handle-key [handle-map]
-  (fn [e]))
-
-(defn handle-change [ctx]
-  (fn [e]
-    (context/update-ui-on-input-change! ctx)))
 
 (defn enter-team-panel [ctx _]
   (let [team-name (context/subscribe-ui ctx)]
@@ -64,12 +57,13 @@
                 :type        :text
                 :style       s/input-text-field
                 :value       @team-name
-                :on-key-down (handle-key
-                               {:UP        {k/no-modifiers? [#(dispatch [:enter-team :up]) .stopPropagation]}
-                                :BACKSPACE {k/shift-modifier? [#(dispatch [:enter-team :create-team] @team-name) .stopPropagation]}
-                                :ELSE      {identity [#()]}})
 
-                :on-change   (handle-change ctx)}]
+                :on-key-down (dom/handle-key
+                               {:UP        {dom/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
+                                :BACKSPACE {dom/shift-modifier? [(fn [e] (dispatch [:enter-team :create-team] @team-name))]}
+                                :ELSE      {identity []}})
+
+                :on-change   (context/update-ui-on-input-change! ctx)}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
@@ -88,38 +82,38 @@
                 :value       @team-name-state
 
 
-                #_(:on-key-down {:ENTER     {k/no-modifiers?   #(dispatcher [:team-name :down] team)
-                                             k/shift-modifier? #(dispatcher [:team-name :inject] team)}
+                #_(:on-key-down {:ENTER     {dom/no-modifiers?   #(dispatcher [:team-name :down] team)
+                                             dom/shift-modifier? #(dispatcher [:team-name :inject] team)}
                                  :BACKSPACE {#(@delete-by-backspace) (dispatcher [:team-name :delete] team)}
 
-                                 :DOWN      {k/no-modifiers? #(dispatcher [:team-name :down] team)}
-                                 :UP        {k/no-modifiers? #(dispatcher [:team-name :up] team)}
+                                 :DOWN      {dom/no-modifiers? #(dispatcher [:team-name :down] team)}
+                                 :UP        {dom/no-modifiers? #(dispatcher [:team-name :up] team)}
                                  :ELSE      {#(not (clojure.string/blank? @team-name-state)) (reset! delete-by-backspace false)}})
 
 
 
                 :on-key-down (fn [e]
-                               (cond (and (k/key? :BACKSPACE e) @delete-by-backspace)
+                               (cond (and (dom/key? :BACKSPACE e) @delete-by-backspace)
                                      (dispatcher [:team-name :delete] team)
 
-                                     (k/key? :ENTER e)
+                                     (dom/key? :ENTER e)
                                      (do
                                        (.stopPropagation e)
                                        (.preventDefault e)
                                        (dispatcher [:team-name :down] team))
 
-                                     (k/key-and-modifier? :ENTER k/shift-modifier? e)
+                                     (dom/key-and-modifier? :ENTER dom/shift-modifier? e)
                                      (do
                                        (.stopPropagation e)
                                        (.preventDefault e)
                                        (dispatcher [:team-name :inject] team))
 
-                                     (k/key? :DOWN e)
+                                     (dom/key? :DOWN e)
                                      (do (.stopPropagation e)
                                          (.preventDefault e)
                                          (dispatcher [:team-name :down] team))
 
-                                     (k/key? :UP e)
+                                     (dom/key? :UP e)
                                      (dispatcher [:team-name :up] team)
 
                                      :else (when-not (clojure.string/blank? @team-name-state)
