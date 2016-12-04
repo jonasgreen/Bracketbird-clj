@@ -3,7 +3,7 @@
             [bracketbird.context :as context]
             [bracketbird.model.team :as t]
             [bracketbird.util :as ut]
-            [utils.dom :as dom]
+            [utils.dom :as d]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.pages.tournament-tab-content :as tab-content]
             [reagent.core :as r]
@@ -58,9 +58,17 @@
                 :style       s/input-text-field
                 :value       @team-name
 
-                :on-key-down (dom/handle-key
-                               {:UP    {dom/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
+                :on-key-down (d/handle-key
+                               {:UP    {d/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
                                 :ENTER #(dispatch [:enter-team :create-team] @team-name)})
+
+                :on-key-down (d/handle-key
+                               {:UP    {:predicate d/no-modifiers?
+                                        :action    #(dispatch [:enter-team :up])
+                                        :post      [:stop-event :prevent-event]}
+
+                                :ENTER {:action #(dispatch [:enter-team :create-team] @team-name)}})
+
 
                 :on-change   (context/update-ui-on-input-change! ctx)}]
 
@@ -81,38 +89,38 @@
                 :value       @team-name-state
 
 
-                #_(:on-key-down {:ENTER     {dom/no-modifiers?   #(dispatcher [:team-name :down] team)
-                                             dom/shift-modifier? #(dispatcher [:team-name :inject] team)}
+                #_(:on-key-down {:ENTER     {d/no-modifiers?   #(dispatcher [:team-name :down] team)
+                                             d/shift-modifier? #(dispatcher [:team-name :inject] team)}
                                  :BACKSPACE {#(@delete-by-backspace) (dispatcher [:team-name :delete] team)}
 
-                                 :DOWN      {dom/no-modifiers? #(dispatcher [:team-name :down] team)}
-                                 :UP        {dom/no-modifiers? #(dispatcher [:team-name :up] team)}
+                                 :DOWN      {d/no-modifiers? #(dispatcher [:team-name :down] team)}
+                                 :UP        {d/no-modifiers? #(dispatcher [:team-name :up] team)}
                                  :ELSE      {#(not (clojure.string/blank? @team-name-state)) (reset! delete-by-backspace false)}})
 
 
 
                 :on-key-down (fn [e]
-                               (cond (and (dom/key? :BACKSPACE e) @delete-by-backspace)
+                               (cond (and (d/key? :BACKSPACE e) @delete-by-backspace)
                                      (dispatcher [:team-name :delete] team)
 
-                                     (dom/key? :ENTER e)
+                                     (d/key? :ENTER e)
                                      (do
                                        (.stopPropagation e)
                                        (.preventDefault e)
                                        (dispatcher [:team-name :down] team))
 
-                                     (dom/key-and-modifier? :ENTER dom/shift-modifier? e)
+                                     (d/key-and-modifier? :ENTER d/shift-modifier? e)
                                      (do
                                        (.stopPropagation e)
                                        (.preventDefault e)
                                        (dispatcher [:team-name :inject] team))
 
-                                     (dom/key? :DOWN e)
+                                     (d/key? :DOWN e)
                                      (do (.stopPropagation e)
                                          (.preventDefault e)
                                          (dispatcher [:team-name :down] team))
 
-                                     (dom/key? :UP e)
+                                     (d/key? :UP e)
                                      (dispatcher [:team-name :up] team)
 
                                      :else (when-not (clojure.string/blank? @team-name-state)
