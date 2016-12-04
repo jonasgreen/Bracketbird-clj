@@ -177,7 +177,8 @@
   (and (= (k key-to-codes) (.-keyCode event))
        (m-pred event)))
 
-(defn no-modifiers? [event])
+(defn no-modifiers? [event]
+  (-> event modifier? not))
 
 (defn key? [k event]
   (key-and-modifier? k (comp not modifier?) event))
@@ -187,6 +188,7 @@
   {:UP   {f-pred1 fkv1
           f-pred2 fkv2}
    :DOWN  {f-pred fkv}
+   :RIGHT fkv
    ...
    :ELSE  {f-pred fkv}}
    -------------------
@@ -199,15 +201,19 @@
    "
   [m]
   (fn [e]
-    (println m)
-    (when-let [action-map (->> (get codes-to-keys (.-keyCode e) :ELSE)
-                               (get m))]
-      (println action-map)
-      (when-let [pred (->> (keys action-map)
-                           ;find first predicate
-                           (filter (fn [p] (p e)))
-                           (first))]
-        (doseq [fkv-item (get m pred)]
+    (when-let [value (->> (get codes-to-keys (.-keyCode e) :ELSE)
+                          (get m))]
+      (println "value" value)
+      (when-let [fkv (if (map? value)
+                       (->> (keys value)
+                            (filter (fn [p] (p e)))
+                            (first)
+                            (ut/prn-str')
+                            (get value))
+                       value)]
+
+        (println "FKV" fkv)
+        (doseq [fkv-item (if (seq? fkv) fkv [fkv])]
           (cond
             (fn? fkv-item) (fkv-item e)
             (= :stop-event) (.stopPropagation e)

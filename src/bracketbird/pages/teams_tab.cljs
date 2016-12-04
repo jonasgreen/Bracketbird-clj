@@ -59,9 +59,8 @@
                 :value       @team-name
 
                 :on-key-down (dom/handle-key
-                               {:UP        {dom/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
-                                :BACKSPACE {dom/shift-modifier? [(fn [e] (dispatch [:enter-team :create-team] @team-name))]}
-                                :ELSE      {identity []}})
+                               {:UP    {dom/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
+                                :ENTER #(dispatch [:enter-team :create-team] @team-name)})
 
                 :on-change   (context/update-ui-on-input-change! ctx)}]
 
