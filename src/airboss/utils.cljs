@@ -1,8 +1,32 @@
-(ns airboss.util
+(ns airboss.utils
+
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
 
 (defonce key-codes (js->clj goog.events.KeyCodes :keywordize-keys true))
+
+;------------
+; Stylesheet
+;------------
+
+(defn get-style-sheet [s-name]
+  (let [length (-> js/document (.-styleSheets) (.-length))
+        sheets (-> js/document (.-styleSheets))]
+
+    (for [i (vec (range length))
+          ;sheet (aget sheets i)
+          :when (= s-name (.-title (aget sheets i)))] (aget sheets i))))
+
+(defn mk-stylesheet [unique-name]
+  (let [sheet (-> js/document
+                  (.createElement "style"))]
+
+    (aset sheet "title" unique-name)
+    (.info js/console sheet)
+
+    (-> js/document
+        (.-body)
+        (.appendChild sheet))))
 
 
 ;-----------------------
@@ -86,6 +110,8 @@
 
 ; ------- key utils ----
 
+(defn key? [k event]
+  (= (k key-codes) (.-keyCode event)))
 
 (defn shift-modifier? [event]
   (when event (.-shiftKey event)))
@@ -99,18 +125,32 @@
 (defn meta-modifier? [event]
   (when event (.-metaKey event)))
 
-
 (defn modifier? [event]
   (or (shift-modifier? event)(ctrl-modifier? event)(alt-modifier? event)(meta-modifier? event)))
 
-(defn not-modifier? [event]
-  (-> event modifier? not))
 
-(defn key-and-modifier? [k m-pred event]
-  (and (= (k key-codes) (.-keyCode event))
-       (m-pred event)))
+;-----------------------
 
-(defn no-modifiers? [event])
+(defn index-of
+  ([item coll] (index-of 0 item coll =))
 
-(defn key? [k event]
-  (key-and-modifier? k (comp not modifier?) event))
+  ([item coll condition-fn] (index-of 0 item coll condition-fn))
+
+  ([index item coll condition-fn]
+   (cond
+     (empty? coll) -1
+     (condition-fn item (first coll)) index
+     :else (recur (inc index) item (rest coll) condition-fn))))
+
+
+(defn cyclic-previous [item coll]
+  (cond
+    (nil? item) (last coll)
+    (= item (first coll)) (last coll)
+    :else (nth coll (dec (index-of item coll)))))
+
+(defn cyclic-next [item coll]
+  (cond
+    (nil? item) (first coll)
+    (= item (last coll)) (first coll)
+    :else (nth coll (inc (index-of item coll)))))

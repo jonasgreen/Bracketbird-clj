@@ -3,7 +3,7 @@
   (:require [goog.events :as events]
             [goog.dom :as dom]
             [reagent.core :as r]
-            [airboss.util :as ut])
+            [airboss.utils :as ut])
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
 ;--------

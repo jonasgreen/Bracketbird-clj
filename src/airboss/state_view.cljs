@@ -1,18 +1,41 @@
 (ns airboss.state-view
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [airboss.util :as ut]
+  (:require [airboss.utils :as ut]
             [reagent.core :as r]
+            [reagent.ratom :as r-atom]
             [clojure.string :as s]
             [goog.dom :as dom-helper]
             [goog.events :as events]
+            [airboss.state-editor :as editor]
             [clojure.walk :as w])
 
-  (:import [goog]
-           [goog.events KeyCodes]))
+  (:import [goog]))
 
 (def search-field-id "airbus-state_viewer_search_field")
 (def local-storage-id "airboss-state-viewer")
 (def panel-id "airbus-state_viewer_panel")
+
+
+(defn nt [n t]
+  {:name n :type? t})
+
+(def types [(nt "Map" map?)
+            (nt "Vector" vector?)
+            (nt "Lazy Sequence" (fn [v] (instance? LazySeq v)))
+            (nt "Sequence" seq?)
+            (nt "nil" nil?)
+            (nt "String" string?)
+            (nt "Number" number?)
+            (nt "Big-number" (fn [v] (instance? js/BigNumber v)))
+            (nt "Boolean" boolean?)
+            (nt "Keyword" keyword?)
+            (nt "Symbol" symbol?)
+            (nt "Reaction (reagent)" (fn [v] (instance? r-atom/Reaction v)))
+            (nt "RAtom (reagent)" (fn [v] (instance? r-atom/RAtom v)))
+            (nt "RCursor (reagent)" (fn [v] (instance? r-atom/RCursor v)))
+            (nt "Atom" (fn [v] (instance? Atom v)))
+            (nt "JavaScript-Object" (fn [v] (instance? js/Object v)))
+            (nt "Unknown" (fn [_] true))])
 
 ;--------
 ; styles
@@ -46,9 +69,11 @@
 
 (def style-row {:width       "100%"
                 :display     :flex
+                :align-items :center
                 :line-height 1
+                :height      25
                 :padding     6
-                :align-items :flex-end})
+                })
 
 (def default-hide-key :ESC)
 (def default-show-key :F12)
@@ -58,6 +83,7 @@
                     :key-width     200
                     :tab-width     200
                     :open-rows     #{[]}
+                    :editing-row   nil
                     :filter-text   ""
                     :position      :fullscreen
                     :size          "45%"
@@ -91,6 +117,9 @@
 
 (defn- open? [state-atom path]
   (contains? (:open-rows @state-atom) path))
+
+(defn- editing? [state-atom path]
+  (= (:editing-row @state-atom) path))
 
 (declare focus)
 
@@ -155,7 +184,7 @@
                          (println path args)
                          (.warn js/console "Unable to dispatch " path " with " args))))]
 
-    (fn [models state-atom last-focus-atom]
+    (fn [data-atom models state-atom last-focus-atom]
       (reset! handlers-atom {[:app :move-left]    (fn [] (update-position state-atom :left))
                              [:app :move-right]   (fn [] (update-position state-atom :right))
                              [:app :move-up]      (fn [] (update-position state-atom :up))
@@ -166,6 +195,42 @@
                              [:search :move-down] (fn [] (focus-row (first models)))
 
                              [:row :on-focus]     (fn [rm] (swap! last-focus-atom assoc :last-focus (dom-id-model rm) :rm rm))
+                             [:row :start-edit]   (fn [rm] (swap! state-atom assoc :editing-row (:path rm)))
+                             [:row :stop-edit]    (fn [rm] (swap! state-atom dissoc :editing-row)
+                                                    (focus-row rm))
+                             [:row :change-value] (fn [rm v]
+                                                    (loop [last-atom data-atom
+                                                           path (vec (:path rm))
+                                                           index 1]
+
+                                                      (cond
+                                                        ;updating at root level in last-atom
+                                                        (not (seq path))
+                                                        (reset! last-atom v)
+
+                                                        ;updating none root level
+                                                        (= index (count path))
+                                                        (swap! last-atom assoc-in path v)
+
+                                                        :else
+                                                        (do
+                                                          (let [value-at-index (get-in @last-atom (subvec path 0 index))]
+                                                            (if (atom? value-at-index)
+                                                              ;new last-atom
+                                                              (recur value-at-index
+                                                                     (subvec path index)
+                                                                     (inc index))
+
+                                                              ;same last-atom - same path
+                                                              (recur last-atom
+                                                                     path
+                                                                     (inc index)))))))
+
+
+                                                    (swap! state-atom dissoc :editing-row)
+                                                    (focus-row rm))
+
+
                              [:row :move-up]      (fn [rm]
                                                     (let [index (index-of-model models rm)]
                                                       (if (= 0 index)
@@ -224,26 +289,23 @@
        (when (contains-string filter-text (str k))
          [[k]])))))
 
-
-(defn- build-row-model [open path value]
+(defn- build-row-model [edit open path value]
   (let [is-atom (atom? value)]
-    {:path    path
-     :open    open
-     :value   (if is-atom @value value)
-     :is-atom is-atom}))
-
-
+    {:path      path
+     :edit      edit
+     :open      open
+     :raw-value value
+     :value     (if is-atom @value value)
+     :is-atom   is-atom}))
 
 (defn- build-row-models [state-atom data]
   (let [filter-text (:filter-text @state-atom)
         paths (if (s/blank? filter-text) (build-paths state-atom data) (build-paths-from-filter data filter-text))]
-    (map (fn [p] (build-row-model (open? state-atom p) p (get-data p data))) paths)))
-
+    (map (fn [p] (build-row-model (editing? state-atom p) (open? state-atom p) p (get-data p data))) paths)))
 
 ;--------------
 ; search-field
 ;--------------
-
 
 (defn- search-field [value _]
   (let [state (r/atom {:filter-text value
@@ -299,24 +361,47 @@
       (render-value-container-with-children m))
     (render-value-empty-container m)))
 
-(defn- render-value [{:keys [value is-atom] :as m}]
+(defn- render-value-leaf [{:keys [value edit is-atom] :as m} dispatcher]
+  (if edit
+    [editor/render value (fn [v] (dispatcher [:row :change-value] m v)) #(dispatcher [:row :stop-edit] m)]
+    (if (nil? value)
+      ""
+      (if is-atom (str "@atom " value) (str value)))))
+
+(defn- render-value [{:keys [value] :as m} dispatcher]
   (if (container? value)
     (render-value-container m)
-    (if value (if is-atom (str "@atom " value) (str value)) "nil")))
+    (render-value-leaf m dispatcher)))
 
 ;------------
 ; render row
 ;------------
 
+
 (defn- render-key [key-value small]
-  (if (keyword? key-value)
-    (let [key-ns (namespace key-value)
-          key-name (name key-value)]
-      (if key-ns
-        [:div
-         [:span {:style {:color :lightgrey :opacity 0.5}} (if small "::" (str ":" key-ns "/"))] [:span (str key-name)]]
-        [:span (str key-value)]))
-    (if key-value [:span (str key-value)] "nil")))
+  (cond
+    (nil? key-value) "nil"
+    (keyword? key-value) (let [key-ns (namespace key-value)
+                               key-name (name key-value)]
+                           (if key-ns
+                             [:div
+                              [:span {:style {:color :lightgrey :opacity 0.5}} (if small "::" (str ":" key-ns "/"))] [:span (str key-name)]]
+                             [:span (str key-value)]))
+    (symbol? key-value) [:span (str "'" key-value)]
+    (string? key-value) [:span (str "\"" key-value "\"")]
+    :else [:span (str key-value)]))
+
+
+(defn depth-style [path]
+  #_(let [depth (count path)]
+      (cond
+        (= depth 0) {:background "#F3E5F5"}
+        (= depth 1) {:background "#E1BEE7"}
+        (= depth 2) {:background "#CE93D8"}
+        (= depth 3) {:background "#BA68C8"}
+        (= depth 4) {:background "#AB47BC"}
+        (= depth 5) {:background "#9C27B0"})))
+
 
 (defn- render-row [_ _ _]
   (let [focus-state (r/atom false)
@@ -325,6 +410,7 @@
       [:div {:id        (dom-id-model model)
              :tab-index 0
              :style     (merge style {:padding-left (+ 4 (* tab-width (- (count path) 1)))}
+                               (depth-style path)
                                (when @focus-state {:background "rgba(175, 207, 249, 0.7)"
                                                    :color      :white}))
              :onFocus   (fn [_]
@@ -336,10 +422,12 @@
              :onKeyDown (fn [e]
                           (when-not (ut/modifier? e)
                             (cond
+                              (ut/key? :ENTER e) (dispatcher [:row :start-edit] model)
                               (ut/key? :LEFT e) (dispatcher [:row :close] model)
                               (ut/key? :RIGHT e) (dispatcher [:row :open] model)
                               (ut/key? :UP e) (do (.preventDefault e) (dispatcher [:row :move-up] model))
                               (ut/key? :DOWN e) (do (.preventDefault e) (dispatcher [:row :move-down] model)))))}
+
        ;key
        [:div {:style {:min-width key-width :color :white :opacity 1}}
         (render-key (last path) small)]
@@ -348,24 +436,27 @@
                       :white-space   :nowrap
                       :overflow      :hidden
                       :text-overflow :ellipsis}}
-        (render-value model)]])))
+        (render-value model dispatcher)]])))
 
-(defn- info-field [last-focus-atom small]
-  (let [path (:path (:rm @last-focus-atom))]
-    [:div {:style {:background  "rgb(47, 47, 47)"
-                   :display     :flex
-                   :align-items :center
-                   :padding     6
-                   :color       "rgba(175, 207, 249, 0.7)"
-                   :min-height  25
-                   :max-height  25
-                   :width       "100%"}}
 
-     (if path (str (if small (last path) path)) "")]))
+(defn- info-panel [last-focus-atom small]
+  (let [{:keys [path raw-value]} (:rm @last-focus-atom)]
+    [:div {:style {:background      "rgb(47, 47, 47)"
+                   :display         :flex
+                   :align-items     :center
+                   :justify-content :space-between
+                   :padding         6
+                   :color           "rgba(175, 207, 249, 0.7)"
+                   :min-height      25
+                   :max-height      25
+                   :width           "100%"}}
+
+     [:div (if path (str (if small (last path) path)) "")]
+     [:div (some (fn [{:keys [name type?]}] (when (type? raw-value) name)) types)]]))
 
 (defn- render-rows-panel [row-models dispatcher {:keys [small] :as opts}]
   [:div {:id panel-id :style {:overflow :auto :flex-grow 1}}
-   (let [opts (merge opts (when small {:tab-width 10 :key-width 160}))]
+   (let [opts (merge opts (when small {:tab-width 15 :key-width 160}))]
      (map (fn [r] ^{:key (dom-id-model r)} [render-row r dispatcher opts]) row-models))])
 
 
@@ -392,7 +483,8 @@
                                s)
                              x))
                          (:open-rows data))]
-    (assoc data :open-rows (set rows))))
+    (assoc data :open-rows (set rows)
+                :editing-row nil)))
 
 
 (defn- app-key-listeners [dispatcher e]
@@ -411,7 +503,7 @@
         last-focus-atom (r/atom nil)
         state-atom (r/atom (merge default-setup local-storage))
         row-models (reaction (build-row-models state-atom @data-atom))
-        dispatcher (reaction (mk-dispatcher (vec @row-models) state-atom last-focus-atom))]
+        dispatcher (reaction (mk-dispatcher data-atom (vec @row-models) state-atom last-focus-atom))]
 
     (r/create-class
       {:reagent-render         (fn [_ _]
@@ -428,7 +520,7 @@
                                                                                 :key-width   key-width
                                                                                 :tab-width   tab-width}]
 
-                                    [info-field last-focus-atom small]]))
+                                    [info-panel last-focus-atom small]]))
 
        :component-did-mount    (fn [_]
                                  (let [last-id (:last-focus @state-atom)
