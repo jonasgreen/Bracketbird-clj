@@ -1,6 +1,7 @@
 (ns bracketbird.util
   [:require [bracketbird.model.entity :as ie]
             [bracketbird.context :as context]
+            [cljs-uuid-utils.core :as uu]
             [utils.dom :as dom]])
 
 (defn r-key [entity r-form]
@@ -18,6 +19,7 @@
 
 (defn focus-by-ui-ctx [ctx sub-key]
   (-> ctx (dom-id-from-ui-ctx sub-key) dom/focus-by-id))
+
 
 
 ; Uuid
@@ -52,3 +54,7 @@
       (js/parseInt 16)
       (* 1000)))
 
+(defn testit []
+  (println (squuid-time-millis (uu/make-random-squuid)))
+  (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid)))
+  )

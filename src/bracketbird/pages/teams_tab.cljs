@@ -9,6 +9,54 @@
             [reagent.core :as r]
             [bracketbird.model.entity :as e]))
 
+
+(def contexts {:user       {}
+               :tournamens {}
+               :tournament {:id :tournament-id}
+
+               :stages     {:parent :tournament}
+
+               :stage      {:parent :stages
+                            :id     :stage-id}
+
+               :teams      {:parent :tournament}
+               :team       {:parent :teams}})
+
+(def data-context-paths {:team  {:params [:tournament-id :team-id]}
+                                 :fn     (fn [ids] [:tournaments (:tournament-id ids) :teams (:team-id ids)])
+
+                         :teams (fn [ids] [:tournaments (:tournament-id ids) :teams])})
+
+(defn subscribe [a])
+
+(defn do-test []
+  (subscribe :team)
+  )
+
+(def ui-skeleton {:tournaments
+                  [{:teams-page    {:teams      [{:team-name    {}
+                                                  :team-seeding {}}]
+                                    :enter-team {}}
+                    :settings-page {}
+                    :matches-page  {}
+                    :scores-page   {}}
+                   ]})
+
+(def ui-display {:tournaments  {:render nil}
+                 :tournament   nil
+                 :teams-page   {:inherits :page}
+                 :teams        {:subscriptions [:teams]}
+
+                 :team         {:parameters [:team]
+                                :render     []}
+
+                 :team-name    {}
+                 :team-seeding {}
+
+                 }
+
+  )
+
 (defn move-entity-focus-up [entities entity sub-key]
   (-> (e/previous-entity entities entity)
       (ut/focus-by-entity sub-key)))
@@ -62,12 +110,6 @@
                                {:UP    {d/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
                                 :ENTER #(dispatch [:enter-team :create-team] @team-name)})
 
-                :on-key-down (d/handle-key
-                               {:UP    {:predicate d/no-modifiers?
-                                        :action    #(dispatch [:enter-team :up])
-                                        :post      [:stop-event :prevent-event]}
-
-                                :ENTER {:action #(dispatch [:enter-team :create-team] @team-name)}})
 
 
                 :on-change   (context/update-ui-on-input-change! ctx)}]
@@ -132,6 +174,7 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 (defn teams-panel [ctx dispatcher teams]
+  (prn "aaa" teams)
   [:div
    (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) teams)])
 
@@ -140,9 +183,11 @@
         enter-team-ctx (context/sub-ui-ctx ctx [:enter-team])
         dispatcher (component-dispatcher ctx enter-team-ctx)]
 
-    (fn [ctx] [:div
-               [teams-panel ctx dispatcher @teams]
-               [enter-team-panel enter-team-ctx dispatcher]])))
+    (fn [ctx]
+      (println "render teams")
+      [:div
+       [teams-panel ctx dispatcher @teams]
+       [enter-team-panel enter-team-ctx dispatcher]])))
 
 (defn render [ctx]
   [tab-content/render ctx [content ctx]])

@@ -7,6 +7,7 @@
                  [reagent "0.6.0"]
                  [cljs-ajax "0.5.4"]
                  [com.andrewmcveigh/cljs-time "0.4.0"]
+                 [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                  [com.cemerick/url "0.1.1"]
                  [reagent-utils "0.1.8"]
                  [cljs-http "0.1.40"]

@@ -26,7 +26,7 @@
             (nt "nil" nil?)
             (nt "String" string?)
             (nt "Number" number?)
-            (nt "Big-number" (fn [v] (instance? js/BigNumber v)))
+            ;(nt "Big-number" (fn [v] (instance? js/BigNumber v)))
             (nt "Boolean" boolean?)
             (nt "Keyword" keyword?)
             (nt "Symbol" symbol?)

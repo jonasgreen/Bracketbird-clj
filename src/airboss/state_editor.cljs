@@ -14,7 +14,7 @@
 
 (def edit-modes [(Edit-mode. "string" string? str)
                  (Edit-mode. "number" number? reader/read-string)
-                 (Edit-mode. "big-number" (fn [v] (instance? js/BigNumber v)) (fn [v] (js/BigNumber. v)))
+                 ;(Edit-mode. "big-number" (fn [v] (instance? js/BigNumber v)) (fn [v] (js/BigNumber. v)))
                  (Edit-mode. "boolean" boolean? reader/read-string)
                  (Edit-mode. ":keyword" keyword? keyword)
                  (Edit-mode. "symbol" symbol? symbol)
