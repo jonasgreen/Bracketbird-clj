@@ -1,26 +1,117 @@
-(ns bracketbird.setup)
+(ns bracketbird.setup
+  (:require-macros [reagent.ratom :refer [reaction]]))
 
 
 
-(def data-structure {:tournaments nil
-                     :tournament  {:parent :tournaments
-                                   :id     :tournament-id}
+(def data-structure2 {:tournaments [{:id           :tournament-id
+                                     :stages       [{:id :stage-id}]
+                                     :stages-order nil
 
-                     :stages      {:parent :tournament}
-                     :stage-order {:parent :tournament}     ;shadow of teams in a vector
-                     :stage       {:parent :stages
-                                   :id     :stage-id}
+                                     :teams        [{:id :team-id}]
+                                     :teams-order  nil
+                                     }]})
 
-                     :teams       {:parent :tournament}
-                     :teams-order {:parent :tournament}     ;shadow of teams in a vector
-                     :team        {:parent :teams
-                                   :id     :team-id}})
 
-(def data-context-paths {:team  {:params [:tournament-id :team-id]}
-                         :fn    (fn [{:keys [data-ctx]}] [:tournaments (:tournament-id data-ctx) :teams (:team-id data-ctx)])
+(def data-structure {:tournaments {:ctx         :tournament-id
+                                   :stages      {:ctx     :stage-id
+                                                 :matches {:ctx    :match-id
+                                                           :result {}}
+                                                 :teams   nil}
+                                   :stage-order nil         ;shadow of teams in a vector
+
+                                   :teams       {:ctx :team-id}
+                                   :teams-order nil         ;shadow of teams in a vector
+                                   }})
+
+
+
+
+
+(def data-structure {:tournaments   nil
+                     :tournament    {:parent :tournaments
+                                     :ctx    :tournament-id}
+
+                     :stages        {:parent :tournament}
+                     :stage-order   {:parent :tournament}   ;shadow of teams in a vector
+                     :stage         {:parent :stages
+                                     :ctx    :stage-id}
+
+                     :matches       {:parent :stage}
+                     :matches-order {:parent :stage}
+                     :match         {:parent :matches
+                                     :ctx    :match-id}
+
+                     :result        {:parent :match
+                                     :ctx    :result-id}
+
+                     :teams         {:parent :tournament}
+                     :teams-order   {:parent :tournament}   ;shadow of teams in a vector
+                     :team          {:parent :teams
+                                     :ctx    :team-id}})
+
+
+
+
+
+
+(def pages {:front-page  {:tabbed-panel {:teams    {:team {}}
+                                         :settings {}}}
+
+            :tournaments {:ctx             :tournament-id
+                          :tournament-page {:tabbed-panel {:teams-tab    {:team {:ctx :team-id}}
+                                                           :settings-tab {}}}}
+
+            })
+
+(def ui-structure {:front-page      {:type :page}
+
+                   :tournament-page {:type     :page
+                                     :children {:tabs {:type :tabbed-panel
+
+                                                       }}
+
+                                     }
+                   })
+
+
+(def data-context-paths {:team  {:params [:tournament-id :team-id]
+                                 :fn     (fn [{:keys [data-ctx]}] [:tournaments (:tournament-id data-ctx) :teams (:team-id data-ctx)])}
 
                          :teams (fn [ids] [:tournaments (:tournament-id ids) :teams])})
 
+
+
+
+
+(defn subscribe [ctx k]
+
+  ;validate relevant context values are present
+
+  ;build path
+
+
+  ;reaction
+  (reaction (get-in [:tournaments 1 :teams 23] {})))
+
+
+(defn dispatch [ctx k v])
+
+
+(defn add-ctx [ctx k v])
+
+
+(defn render-team [{:keys [tournament-id team-id] :as ctx}]
+  (let [team (subscribe ctx :team)]
+    (fn [ctx]
+      [:div {:on-click #(dispatch ctx :delete-team team)}])
+    )
+
+  )
+
+(defn render-teams [{:keys [tournament-id] :as ctx}]
+  (let [teams (subscribe ctx :teams-order)]
+    (fn [ctx]
+      (map (fn [t] (-> ctx (add-ctx :team t) render-team) teams)))))
 
 (defn paths {:team "[*team-id*]"})
 
@@ -32,23 +123,16 @@
           {:keys [parent id]} (get m k)]
       (if-not parent
         (str retval)
-        (recur (conj retval (if id (str "*"id"*") kkey)) parent)
+        (recur (conj retval (if id (str "*" id "*") kkey)) parent)
 
         )
-
-
 
       )
     )
 
-
-
   )
 
 (def data-context-paths
-
-
-
 
   )
 
