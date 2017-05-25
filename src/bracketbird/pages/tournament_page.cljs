@@ -13,10 +13,10 @@
 ; menu-items
 ;------------
 
-(def m-teams {:name "TEAMS" :render (fn [ctx] [teams/render ctx])})
-(def m-settings {:name "SETTINGS" :render (fn [ctx] [settings/render ctx])})
-(def m-matches {:name "MATCHES" :render (fn [ctx] [matches/render ctx])})
-(def m-scores {:name "SCORES" :render (fn [ctx] [scores/render ctx])})
+(def m-teams {:name "TEAMS" :render (fn [old-ctx ctx] [teams/render old-ctx ctx])})
+(def m-settings {:name "SETTINGS" :render (fn [old-ctx ctx] [settings/render old-ctx])})
+(def m-matches {:name "MATCHES" :render (fn [old-ctx ctx] [matches/render old-ctx])})
+(def m-scores {:name "SCORES" :render (fn [old-ctx ctx] [scores/render old-ctx])})
 
 (def m-items [m-teams m-settings m-matches m-scores])
 
@@ -47,15 +47,16 @@
 ; page-render
 ;--------------
 
-(defn render [ctx]
-  (let [selector (sel/subscribe-single-selection ctx)]
+(defn render [old-ctx ctx]
+  (let [selector (sel/subscribe-single-selection old-ctx)]
 
     ;hack to create tournament when reloading page - for development
-    (when-not (context/data ctx) (bracketbird.tournament-controller/create-tournament ctx))
+    (when-not (context/data old-ctx) (bracketbird.tournament-controller/create-tournament old-ctx))
 
-    (fn [ctx]
+    (fn [old-ctx ctx]
+      (println "old " old-ctx)
       [:div {:style s/tournament-page-style}
        [menu-panel m-items selector]
        ;content
        (when-let [{:keys [render name]} (sel/selected selector)]
-         [render (context/sub-ui-ctx ctx [(keyword (str (clojure.string/lower-case name) "-tab"))])])])))
+         [render (context/sub-ui-ctx old-ctx [(keyword (str (clojure.string/lower-case name) "-tab"))]) ctx])])))

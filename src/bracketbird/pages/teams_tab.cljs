@@ -10,53 +10,6 @@
             [bracketbird.model.entity :as e]))
 
 
-(def contexts {:user       {}
-               :tournamens {}
-               :tournament {:id :tournament-id}
-
-               :stages     {:parent :tournament}
-
-               :stage      {:parent :stages
-                            :id     :stage-id}
-
-               :teams      {:parent :tournament}
-               :team       {:parent :teams}})
-
-(def data-context-paths {:team  {:params [:tournament-id :team-id]}
-                                 :fn     (fn [ids] [:tournaments (:tournament-id ids) :teams (:team-id ids)])
-
-                         :teams (fn [ids] [:tournaments (:tournament-id ids) :teams])})
-
-(defn subscribe [a])
-
-(defn do-test []
-  (subscribe :team)
-  )
-
-(def ui-skeleton {:tournaments
-                  [{:teams-page    {:teams      [{:team-name    {}
-                                                  :team-seeding {}}]
-                                    :enter-team {}}
-                    :settings-page {}
-                    :matches-page  {}
-                    :scores-page   {}}
-                   ]})
-
-(def ui-display {:tournaments  {:render nil}
-                 :tournament   nil
-                 :teams-page   {:inherits :page}
-                 :teams        {:subscriptions [:teams]}
-
-                 :team         {:parameters [:team]
-                                :render     []}
-
-                 :team-name    {}
-                 :team-seeding {}
-
-                 }
-
-  )
-
 (defn move-entity-focus-up [entities entity sub-key]
   (-> (e/previous-entity entities entity)
       (ut/focus-by-entity sub-key)))
@@ -174,20 +127,19 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 (defn teams-panel [ctx dispatcher teams]
-  (prn "aaa" teams)
   [:div
    (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) teams)])
 
-(defn content [ctx]
-  (let [teams (t-ctrl/subscribe-teams ctx)
-        enter-team-ctx (context/sub-ui-ctx ctx [:enter-team])
-        dispatcher (component-dispatcher ctx enter-team-ctx)]
+(defn content [old-ctx ctx]
+  (let [teams (context/subscribe ctx :teams)
+        enter-team-ctx (context/sub-ui-ctx old-ctx [:enter-team])
+        dispatcher (component-dispatcher old-ctx enter-team-ctx)]
 
-    (fn [ctx]
-      (println "render teams")
+    (fn [old-ctx ctx]
+      (println "render teams" teams)
       [:div
-       [teams-panel ctx dispatcher @teams]
+       [teams-panel old-ctx dispatcher @teams]
        [enter-team-panel enter-team-ctx dispatcher]])))
 
-(defn render [ctx]
-  [tab-content/render ctx [content ctx]])
+(defn render [old-ctx ctx]
+  [tab-content/render old-ctx [content old-ctx ctx]])

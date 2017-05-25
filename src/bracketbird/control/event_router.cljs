@@ -13,9 +13,6 @@
 (defn- send [state event bumb-level?])
 
 (defn dispatch [ctx api-event]
-  (println "dispatchevent" api-event)
-  (println "dispatchctx" ctx)
-
   (t-api/execute-api-event ctx api-event))
 
 (defn create-router [id subscriber]

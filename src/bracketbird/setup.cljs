@@ -27,27 +27,7 @@
 
 
 
-(def data-structure {:tournaments   nil
-                     :tournament    {:parent :tournaments
-                                     :ctx    :tournament-id}
 
-                     :stages        {:parent :tournament}
-                     :stage-order   {:parent :tournament}   ;shadow of teams in a vector
-                     :stage         {:parent :stages
-                                     :ctx    :stage-id}
-
-                     :matches       {:parent :stage}
-                     :matches-order {:parent :stage}
-                     :match         {:parent :matches
-                                     :ctx    :match-id}
-
-                     :result        {:parent :match
-                                     :ctx    :result-id}
-
-                     :teams         {:parent :tournament}
-                     :teams-order   {:parent :tournament}   ;shadow of teams in a vector
-                     :team          {:parent :teams
-                                     :ctx    :team-id}})
 
 
 
@@ -113,7 +93,7 @@
     (fn [ctx]
       (map (fn [t] (-> ctx (add-ctx :team t) render-team) teams)))))
 
-(defn paths {:team "[*team-id*]"})
+(defn paths [] {:team "[*team-id*]"})
 
 (defn- doku-ctx-paths [k m]
   (loop [value (seq [])
@@ -132,9 +112,6 @@
 
   )
 
-(def data-context-paths
-
-  )
 
 (defn build []
   (fn [ops]

@@ -53,8 +53,3 @@
       (.slice 0 8)
       (js/parseInt 16)
       (* 1000)))
-
-(defn testit []
-  (println (squuid-time-millis (uu/make-random-squuid)))
-  (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid))) (println (squuid-time-millis (uu/make-random-squuid)))
-  )

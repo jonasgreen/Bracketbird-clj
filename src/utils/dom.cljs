@@ -203,7 +203,6 @@
   (fn [e]
     (when-let [value (->> (get codes-to-keys (.-keyCode e) :ELSE)
                           (get m))]
-      (println "value" value)
       (when-let [fkv (if (map? value)
                        (->> (keys value)
                             (filter (fn [p] (p e)))
@@ -212,7 +211,6 @@
                             (get value))
                        value)]
 
-        (println "FKV" fkv)
         (doseq [fkv-item (if (seq? fkv) fkv [fkv])]
           (cond
             (fn? fkv-item) (fkv-item e)

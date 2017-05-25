@@ -4,6 +4,7 @@
             [bracketbird.application-state :as app-state]
             [bracketbird.application-controller :as app-ctrl]
             [bracketbird.pages.error-page :as error-page]
+            [bracketbird.context :as context]
             [bracketbird.pages.tournament-page :as tournament-page]
             [bracketbird.pages.front-page :as front-page]))
 
@@ -15,7 +16,7 @@
     [:div
      (condp = page
        :front-page [front-page/render ctx]
-       :tournament-page [tournament-page/render ctx]
+       :tournament-page [tournament-page/render ctx (context/add-context {} :tournament-id (:ctx-id ctx))]
        [error-page/render ctx])]))
 
 (defn main []
