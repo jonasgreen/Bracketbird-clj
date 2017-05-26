@@ -51,9 +51,9 @@
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
 
-(defn enter-team-input [{:keys [tournament-id] :as ctx}]
-  (let [*ui-state (context/subscribe ctx :ui-enter-team)
-        dom-id (context/dom-id ctx :ui-enter-team)
+(defn enter-team-input [ctx]
+  (let [*ui-state (context/subscribe ctx :enter-team-input)
+        dom-id (context/dom-id ctx :enter-team-input)
 
         key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
         on-change-handler (fn [e] (context/update! ctx :ui-enter-team (fn [m] (println m))))]
