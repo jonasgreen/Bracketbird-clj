@@ -6,7 +6,7 @@
             [bracketbird.event-router :as router]
             [bracketbird.model.team :as team-m]
             [bracketbird.util :as ut]
-            [bracketbird.tournament-api :as api]
+            [bracketbird.tournament-api_old :as api]
             [bracketbird.application-state :as app-state]))
 
 
@@ -47,29 +47,29 @@
 
 (defn create-tournament [ctx]
   (->> (api/create-tournament-event (:id ctx))
-       (router/dispatch ctx)))
+       (router/dispatch-old ctx)))
 
 (defn insert-team [ctx name index]
   (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
     (->> (api/insert-team-event name index)
-         (router/dispatch ctx))))
+         (router/dispatch-old ctx))))
 
 
 (defn add-team [ctx name]
   (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
     (->> (api/add-team-event name)
-         (router/dispatch ctx))))
+         (router/dispatch-old ctx))))
 
 (defn update-team-name [ctx team-id name]
   (->> (api/update-team-name-event team-id name)
-       (router/dispatch ctx)))
+       (router/dispatch-old ctx)))
 
 (defn delete-team [ctx team]
   (if (-> ctx context/data t-state/started?)
     (println "warning - tournament already started")
-    (router/dispatch ctx (api/delete-team-event (team-m/team-id team)))))
+    (router/dispatch-old ctx (api/delete-team-event (team-m/team-id team)))))
 
 
 

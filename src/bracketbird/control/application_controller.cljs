@@ -1,7 +1,7 @@
 (ns bracketbird.application-controller
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [bracketbird.application-state :as app-state]
-            [bracketbird.api.application-api :as app-api]
+            [bracketbird.api.application-api_old :as app-api]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.history :as history]))
 

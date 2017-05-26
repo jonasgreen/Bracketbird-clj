@@ -39,9 +39,9 @@
 (defn set-teams [t teams]
   (assoc t :teams (vec teams)))
 
-(defn add-team [t t-id t-name]
+(defn add-team [t {:keys [team-id team-name]}]
   (-> t
-      (update :teams conj (team/mk-team t-id t-name))
+      (update :teams conj (team/mk-team team-id team-name))
       (dirtify)))
 
 (defn insert-team [t t-id t-name index]

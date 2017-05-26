@@ -1,6 +1,9 @@
 (ns bracketbird.pages.teams-tab
   (:require [bracketbird.ui.styles :as s]
             [bracketbird.context :as context]
+            [bracketbird.new-context :as new-context]
+            [bracketbird.event-router :as event-router]
+            [bracketbird.control.tournament-api :as tournament-api]
             [bracketbird.model.team :as t]
             [bracketbird.util :as ut]
             [utils.dom :as d]
@@ -49,23 +52,17 @@
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
 
-(defn enter-team-panel [ctx _]
-  (let [team-name (context/subscribe-ui ctx)]
-    (fn [ctx dispatch]
+(defn enter-team-component [ui-ctx {:keys [tournament-id] :as ctx}]
+  (let [*ui-state (new-context/subscriber-ui ctx ui-ctx :enter-team-component)]
+    (fn [old-ctx ctx]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
-                :id          (ut/dom-id-from-ui-ctx ctx :enter-team)
+                :id          (new-context/dom-id ctx ui-ctx :enter-team-component)
                 :type        :text
                 :style       s/input-text-field
-                :value       @team-name
-
-                :on-key-down (d/handle-key
-                               {:UP    {d/no-modifiers? [#(dispatch [:enter-team :up]) :stop-event]}
-                                :ENTER #(dispatch [:enter-team :create-team] @team-name)})
-
-
-
-                :on-change   (context/update-ui-on-input-change! ctx)}]
+                :value       (:team-name @*ui-state)
+                :on-key-down (d/handle-key {:ENTER #(tournament-api/create-team ctx (:team-name @*ui-state))})
+                :on-change   (new-context/update-ui ctx ui-ctx :enter-team-component (fn[m] (println m)))}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
@@ -130,16 +127,14 @@
   [:div
    (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) teams)])
 
-(defn content [old-ctx ctx]
-  (let [teams (context/subscribe ctx :teams)
-        enter-team-ctx (context/sub-ui-ctx old-ctx [:enter-team])
-        dispatcher (component-dispatcher old-ctx enter-team-ctx)]
+(defn content [ui-ctx {:keys [tournament-id] :as model-ctx}]
+  (let [teams (new-context/subscribe model-ctx :teams)]
 
     (fn [old-ctx ctx]
       (println "render teams" teams)
       [:div
-       [teams-panel old-ctx dispatcher @teams]
-       [enter-team-panel enter-team-ctx dispatcher]])))
+       ;[teams-panel old-ctx dispatcher @teams]
+       [enter-team-component ui-ctx ctx]])))
 
-(defn render [old-ctx ctx]
-  [tab-content/render old-ctx [content old-ctx ctx]])
+(defn render [old-ctx ui-ctx ctx]
+  [tab-content/render old-ctx [content ui-ctx ctx]])
