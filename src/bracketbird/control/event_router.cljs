@@ -1,7 +1,7 @@
 (ns bracketbird.event-router
   (:require [reagent.ratom :as ratom]
             [bracketbird.tournament-api_old :as t-api]
-            [bracketbird.application-state :as application-state]
+            [bracketbird.state :as state]
             [bracketbird.util :as ut]
 
             [bracketbird.model.tournament :as tournament]
@@ -9,20 +9,32 @@
 
 
 (defn- tournament-path [ctx]
-  (context-util/build-ctx-path context-levels ctx :tournament))
+  (context-util/build-ctx-path state/context-levels ctx :tournament))
 
 
-(def api {:create-team      {:ctx-level :tournament
-                             :params    [:team-name :team-id]
-                             :validate  (fn [ctx values state] true) ;todo
-                             :execute   (fn [ctx values state]
-                                          (update-in state (tournament-path ctx) #(tournament/add-team % values)))}
+(def api {:create-tournament {:ctx-level :tournaments
+                              :params    [:tournament-id]
+                              :validate  (fn [state ctx values] true) ;todo
+                              :execute   (fn [state ctx {:keys [tournament-id]}]
+                                           (let [{:keys [path]} (context-util/build-ctx-path state/context-levels {} :tournaments)]
+                                             (println "path" path)
+                                             (update-in state path
+                                                        (fn [m]
+                                                          (println "m" m)
+                                                          (assoc (or m {}) tournament-id {})))))}
 
-          :update-team-name {:ctx-level :team
-                             :type      :update
-                             :params    [:team-name]
-                             :fn        (fn [ctx-root-model])
-                             }
+
+          :create-team       {:ctx-level :tournament
+                              :params    [:team-name :team-id]
+                              :validate  (fn [state ctx values] true) ;todo
+                              :execute   (fn [state ctx values]
+                                           (update-in state (tournament-path ctx) #(tournament/add-team % values)))}
+
+          :update-team-name  {:ctx-level :team
+                              :type      :update
+                              :params    [:team-name]
+                              :fn        (fn [ctx-root-model])
+                              }
           })
 
 
@@ -49,9 +61,9 @@
                :values values}])
 
   ;short-cutted directly to api, when there is no server when there is no server
-  (let [{:keys [execute] :as api} (get context/api api-key)
-        new-state (execute @application-state/state ctx values)]
-    (reset! application-state/state new-state)))
+  (let [{:keys [execute] :as api} (get api api-key)
+        new-state (execute @state/state ctx values)]
+    (reset! state/state new-state)))
 
 
 

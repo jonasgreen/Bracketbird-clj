@@ -1,9 +1,11 @@
-(ns bracketbird.context
+(ns bracketbird.state
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [bracketbird.application-state :as app-state]
-            [bracketbird.context-util :as context-util]
-            [bracketbird.util :as ut]))
+  (:require [reagent.core :as r]
+            [bracketbird.context-util :as context-util]))
 
+
+(defonce state (r/atom {:tournaments {}
+                        :pages {:page :front-page}}))
 
 
 (def context-levels {:tournaments      {:parent nil}
@@ -47,8 +49,17 @@
     ;build path
 
     ;reaction
-    (reaction (get-in app-state/state path))))
+    (reaction (get-in @state path))))
 
+(defn query [ctx k]
+  (let [{:keys [path used-ids] :as path-m} (context-util/build-ctx-path context-levels ctx k)]
+
+    ;validate relevant context values are present
+
+    ;build path
+
+    ;reaction
+    (get-in @state path)))
 
 (defn update! [ctx k fn])
 
@@ -56,7 +67,7 @@
 
 ; ABOVE IS NEW
 
-(defn add [ctx k v]
+(defn add-ctx [ctx k v]
   ;validate new context is legal
   (assoc ctx k v))
 

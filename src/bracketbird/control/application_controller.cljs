@@ -1,7 +1,8 @@
 (ns bracketbird.application-controller
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [bracketbird.application-state :as app-state]
+  (:require [bracketbird.state :as state]
             [bracketbird.api.application-api_old :as app-api]
+            [bracketbird.control.tournament-api :as tournament-api]
             [bracketbird.tournament-controller :as t-ctrl]
             [bracketbird.history :as history]))
 
@@ -32,24 +33,23 @@
   (history/enable on-navigation-changed))
 
 (defn create-tournament []
-  (let [t-id (-> (t-ctrl/count-tournaments) inc str)
-        t-ctx (t-ctrl/mk-ctx t-id)
-        t-page-ctx (tournament-page-ctx t-ctx)]
+  (let [t-id (str (tournament-api/create-tournament))
+        ctx (state/add-ctx {} :tournament-id t-id)]
 
     (history/set-token t-id)
-    (t-ctrl/create-tournament t-ctx)
-    (app-api/update-page-context t-page-ctx)))
+    (state/update! {} :pages (fn [m] (assoc m :page :tournament-page
+                                              :ctx ctx)))))
 
 (defn trigger-ui-reload []
   (app-api/reload-ui))
 
 (defn get-state-atom []
-  app-state/state)
+  state/state)
 
 ;---------------
 ; subscriptions
 ;---------------
 
 (defn subscribe-page-context []
-  (reaction (get @app-state/state :page-context)))
+  (reaction (get @state/state :page-context)))
 

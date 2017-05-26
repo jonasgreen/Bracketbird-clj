@@ -74,7 +74,7 @@
 
 ;add
 (defmethod execute [:team :add] [{:keys [team-id name]} t]
-  (tournament/add-team t team-id name))
+  #_(tournament/add-team t team-id name))
 
 (defmethod execute [:team :insert] [{:keys [team-id name index]} t]
   (tournament/insert-team t team-id name index))

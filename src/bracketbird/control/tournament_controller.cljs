@@ -7,7 +7,7 @@
             [bracketbird.model.team :as team-m]
             [bracketbird.util :as ut]
             [bracketbird.tournament-api_old :as api]
-            [bracketbird.application-state :as app-state]))
+            [bracketbird.state :as app-state]))
 
 
 (defn mk-ctx [tournament-id]

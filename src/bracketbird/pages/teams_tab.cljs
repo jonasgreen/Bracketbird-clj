@@ -1,13 +1,11 @@
 (ns bracketbird.pages.teams-tab
   (:require [bracketbird.ui.styles :as s]
-            [bracketbird.old-context :as old-context]
-            [bracketbird.context :as context]
+            [bracketbird.state :as state]
             [bracketbird.control.tournament-api :as tournament-api]
             [bracketbird.model.team :as t]
             [bracketbird.util :as ut]
             [utils.dom :as d]
             [bracketbird.tournament-controller :as t-ctrl]
-            [bracketbird.pages.tournament-tab-content :as tab-content]
             [reagent.core :as r]
             [bracketbird.model.entity :as e]))
 
@@ -43,7 +41,7 @@
 
                              :create-team (fn [team-name]
                                             (t-ctrl/add-team ctx team-name)
-                                            (old-context/update-ui! enter-team-ctx ""))}}]
+                                            #_(old-context/update-ui! enter-team-ctx ""))}}]
 
     (fn [path & args]
       (if-let [f (get-in config path)]
@@ -52,11 +50,11 @@
 
 
 (defn enter-team-input [ctx]
-  (let [*ui-state (context/subscribe ctx :enter-team-input)
-        dom-id (context/dom-id ctx :enter-team-input)
+  (let [*ui-state (state/subscribe ctx :enter-team-input)
+        dom-id (state/dom-id ctx :enter-team-input)
 
         key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
-        on-change-handler (fn [e] (context/update! ctx :ui-enter-team (fn [m] (println m))))]
+        on-change-handler (fn [e] (state/update! ctx :ui-enter-team (fn [m] (println m))))]
 
     (fn [_]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
@@ -128,12 +126,12 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 (defn teams-table [ctx]
-  (let [*team-ids (context/subscribe ctx :team-ids)]
+  (let [*team-ids (state/subscribe ctx :team-ids)]
     (fn [ctx]
       [:div
-       (map (fn [id] ^{:key id} [team-row (context/add ctx :team-id id)]) @*team-ids)])))
+       (map (fn [id] ^{:key id} [team-row (state/add-ctx ctx :team-id id)]) @*team-ids)])))
 
-(defn render [_ ctx]
+(defn render [ctx]
   [:div
    [teams-table ctx]
    [enter-team-input ctx]])

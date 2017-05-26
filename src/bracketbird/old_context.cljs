@@ -1,6 +1,6 @@
 (ns bracketbird.old-context
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [bracketbird.application-state :as app-state]
+  (:require [bracketbird.state :as app-state]
             [bracketbird.context-util :as context-util]))
 
 
