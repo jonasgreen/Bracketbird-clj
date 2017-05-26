@@ -52,17 +52,17 @@
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
 
-(defn enter-team-component [ui-ctx {:keys [tournament-id] :as ctx}]
-  (let [*ui-state (new-context/subscriber-ui ctx ui-ctx :enter-team-component)]
+(defn enter-team-component [{:keys [tournament-id] :as ctx}]
+  (let [*ui-state (new-context/subscribe-ui ctx :enter-team-component)]
     (fn [old-ctx ctx]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
-                :id          (new-context/dom-id ctx ui-ctx :enter-team-component)
+                :id          (new-context/dom-id ctx :enter-team-component)
                 :type        :text
                 :style       s/input-text-field
                 :value       (:team-name @*ui-state)
                 :on-key-down (d/handle-key {:ENTER #(tournament-api/create-team ctx (:team-name @*ui-state))})
-                :on-change   (new-context/update-ui ctx ui-ctx :enter-team-component (fn[m] (println m)))}]
+                :on-change   (new-context/update-ui ctx :enter-team-component (fn[m] (println m)))}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
@@ -127,14 +127,14 @@
   [:div
    (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) teams)])
 
-(defn content [ui-ctx {:keys [tournament-id] :as model-ctx}]
+(defn content [{:keys [tournament-id] :as model-ctx}]
   (let [teams (new-context/subscribe model-ctx :teams)]
 
     (fn [old-ctx ctx]
       (println "render teams" teams)
       [:div
        ;[teams-panel old-ctx dispatcher @teams]
-       [enter-team-component ui-ctx ctx]])))
+       [enter-team-component ctx]])))
 
-(defn render [old-ctx ui-ctx ctx]
-  [tab-content/render old-ctx [content ui-ctx ctx]])
+(defn render [old-ctx ctx]
+  [tab-content/render old-ctx [content ctx]])

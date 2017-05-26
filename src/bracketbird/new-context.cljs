@@ -56,11 +56,11 @@
     (reaction (get-in app-state/state path))))
 
 
-(defn subscriber-ui [ctx ui-ctx k])
+(defn subscribe-ui [ctx k])
 
-(defn update-ui [ctx ui-ctx k fn])
+(defn update-ui [ctx k fn])
 
-(defn dom-id [ctx ui-ctx k])
+(defn dom-id [ctx k])
 
 ; ABOVE IS NEW
 
