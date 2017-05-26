@@ -1,6 +1,7 @@
 (ns bracketbird.context
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [bracketbird.application-state :as app-state]))
+  (:require [bracketbird.application-state :as app-state]
+            [bracketbird.context-util :as context-util]))
 
 
 
@@ -27,22 +28,25 @@
                                         :id     :team-id}})
 
 
-(defn- build-state-path [ctx c-key]
-  (loop [k c-key
-         path []
-         used-ids #{}]
+(def api {:create-team      {:ctx      :tournament
+                             :params   [:team-name :team-id]
+                             :validate (fn [state ctx values])
+                             :execute  (fn [state ctx {:keys [team-name]}]
+                                         (update-in state (context-util/build-ctx-path context-structure ctx :tournament)))
 
-    (let [{:keys [parent id]} (get context-structure k)]
-      (if-not parent
-        {:path (vec (cons k path)) :used-ids used-ids}
-        (recur parent
-               (cons (if id (get ctx id) k) path)
-               (if id (conj used-ids id) used-ids))))))
+                             }
+
+          :update-team-name {:ctx    :team
+                             :type   :update
+                             :params [:team-name]
+                             :fn     (fn [ctx-root-model])
+                             }
+          })
 
 
 (defn subscribe [ctx k]
   (println "ctx" ctx)
-  (let [{:keys [path used-ids] :as path-m} (build-state-path ctx k)]
+  (let [{:keys [path used-ids] :as path-m} (context-util/build-ctx-path context-structure ctx k)]
 
     (prn "subscribe" path-m)
 
