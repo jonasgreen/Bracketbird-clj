@@ -1,5 +1,5 @@
 (ns bracketbird.ui.ui-scroller
-  (:require [bracketbird.context :as context]))
+  (:require [bracketbird.old-context :as context]))
 
 (defn scroll-fn [ctx]
   (fn [position]

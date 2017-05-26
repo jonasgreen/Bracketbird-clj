@@ -1,6 +1,6 @@
 (ns bracketbird.util
   [:require [bracketbird.model.entity :as ie]
-            [bracketbird.context :as context]
+            [bracketbird.old-context :as context]
             [cljs-uuid-utils.core :as uu]
             [utils.dom :as dom]])
 

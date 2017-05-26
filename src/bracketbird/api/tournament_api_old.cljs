@@ -2,7 +2,7 @@
   "Defines the api to the tournament in form of events.
   Takes one or more tournament events and executes them blindly on the tournament, ie. updates the tournament."
   (:require [bracketbird.model.tournament :as tournament]
-            [bracketbird.context :as ctx]
+            [bracketbird.old-context :as ctx]
             [bracketbird.util :as ut]))
 
 

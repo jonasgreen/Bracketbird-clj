@@ -1,8 +1,7 @@
 (ns bracketbird.pages.teams-tab
   (:require [bracketbird.ui.styles :as s]
+            [bracketbird.old-context :as old-context]
             [bracketbird.context :as context]
-            [bracketbird.new-context :as new-context]
-            [bracketbird.event-router :as event-router]
             [bracketbird.control.tournament-api :as tournament-api]
             [bracketbird.model.team :as t]
             [bracketbird.util :as ut]
@@ -44,7 +43,7 @@
 
                              :create-team (fn [team-name]
                                             (t-ctrl/add-team ctx team-name)
-                                            (context/update-ui! enter-team-ctx ""))}}]
+                                            (old-context/update-ui! enter-team-ctx ""))}}]
 
     (fn [path & args]
       (if-let [f (get-in config path)]
@@ -52,22 +51,27 @@
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
 
-(defn enter-team-component [{:keys [tournament-id] :as ctx}]
-  (let [*ui-state (new-context/subscribe-ui ctx :enter-team-component)]
-    (fn [old-ctx ctx]
+(defn enter-team-input [{:keys [tournament-id] :as ctx}]
+  (let [*ui-state (context/subscribe ctx :ui-enter-team)
+        dom-id (context/dom-id ctx :ui-enter-team)
+
+        key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
+        on-change-handler (fn [e] (context/update! ctx :ui-enter-team (fn [m] (println m))))]
+
+    (fn [_]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
        [:input {:placeholder "Enter team"
-                :id          (new-context/dom-id ctx :enter-team-component)
+                :id          dom-id
                 :type        :text
                 :style       s/input-text-field
-                :value       (:team-name @*ui-state)
-                :on-key-down (d/handle-key {:ENTER #(tournament-api/create-team ctx (:team-name @*ui-state))})
-                :on-change   (new-context/update-ui ctx :enter-team-component (fn[m] (println m)))}]
+                :value       (:value @*ui-state)
+                :on-key-down key-down-handler
+                :on-change   on-change-handler}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
 
-(defn team-panel [position team _]
+(defn team-row [position team _]
   (let [team-name-state (r/atom (t/team-name team))
         delete-by-backspace (atom (clojure.string/blank? (t/team-name team)))]
     (fn [position team dispatcher]
@@ -123,18 +127,13 @@
 
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
-(defn teams-panel [ctx dispatcher teams]
-  [:div
-   (map-indexed (fn [i t] (ut/r-key t [team-panel i t dispatcher])) teams)])
-
-(defn content [{:keys [tournament-id] :as model-ctx}]
-  (let [teams (new-context/subscribe model-ctx :teams)]
-
-    (fn [old-ctx ctx]
-      (println "render teams" teams)
+(defn teams-table [ctx]
+  (let [*team-ids (context/subscribe ctx :team-ids)]
+    (fn [ctx]
       [:div
-       ;[teams-panel old-ctx dispatcher @teams]
-       [enter-team-component ctx]])))
+       (map (fn [id] ^{:key id} [team-row (context/add ctx :team-id id)]) @*team-ids)])))
 
-(defn render [old-ctx ctx]
-  [tab-content/render old-ctx [content ctx]])
+(defn render [_ ctx]
+  [:div
+   [teams-table ctx]
+   [enter-team-input ctx]])
