@@ -54,7 +54,7 @@
         dom-id (state/dom-id ctx :enter-team-input)
 
         key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
-        on-change-handler (fn [e] (state/update! ctx :ui-enter-team (fn [m] (println m))))]
+        on-change-handler (fn [e] (state/update! ctx :enter-team-input (fn [m] (assoc m :value (.. e -target -value)))))]
 
     (fn [_]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}

@@ -13,10 +13,10 @@
 (defn render [_]
   (let [pages (state/subscribe {} :pages)]
     (fn [_]
-      (let [{:keys [page ctx]} @pages]
-        (println "REnder pages" @state/state)
+      (let [{:keys [active-page ctx]} @pages]
+        (println "RENDER CORE")
         [:div
-         (condp = page
+         (condp = active-page
            :front-page [front-page/render ctx]
            :tournament-page [tournament-page/render ctx]
            [error-page/render ctx])]))))

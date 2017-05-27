@@ -4,11 +4,13 @@
             [bracketbird.context-util :as context-util]))
 
 
+
 (defonce state (r/atom {:tournaments {}
-                        :pages {:page :front-page}}))
+                        :pages       {:values {:active-page :front-page}}}))
 
 
-(def context-levels {:tournaments      {:parent nil}
+(def context-levels {:tournaments      {:parent   nil
+                                        :ctx-type :model}
                      :tournament       {:parent :tournaments
                                         :id     :tournament-id}
                      :stages           {:parent :tournament}
@@ -16,7 +18,7 @@
                      :stage            {:parent :stages
                                         :id     :stage-id}
                      :matches          {:parent :stage}
-                     :matches-ids      {:parent :stage}
+                     :match-ids        {:parent :stage}
                      :match            {:parent :matches
                                         :id     :match-id}
                      :result           {:parent :match
@@ -26,7 +28,8 @@
                      :team             {:parent :teams
                                         :id     :team-id}
                      ; UI
-                     :pages            {:parent nil}
+                     :pages            {:parent   nil
+                                        :ctx-type :ui}
                      :front-page       {:parent :pages}
                      :tournament-page  {:parent :pages}
                      ;tabs
@@ -36,13 +39,16 @@
                                         :id     :team-id}
                      :enter-team-input {:parent :teams-tab}})
 
+(def context-levels-local-state)
 
+
+(def ui-data {:pages2 (r/atom {:tournament-page (r/atom {:scroll    23
+                                                         :teams-tab (r/atom {:teams-table (r/atom {})
+                                                                             :enter-team  (r/atom {})})})})})
 
 (defn subscribe [ctx k]
-  (println "ctx" ctx)
-  (let [{:keys [path used-ids] :as path-m} (context-util/build-ctx-path context-levels ctx k)]
-
-    (prn "subscribe" path-m)
+  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
+        path (if (= ctx-type :ui) (conj path :values) path)]
 
     ;validate relevant context values are present
 
@@ -51,17 +57,23 @@
     ;reaction
     (reaction (get-in @state path))))
 
+
 (defn query [ctx k]
-  (let [{:keys [path used-ids] :as path-m} (context-util/build-ctx-path context-levels ctx k)]
+  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
+        path (if (= ctx-type :ui) (conj path :values) path)]
 
     ;validate relevant context values are present
 
     ;build path
 
-    ;reaction
     (get-in @state path)))
 
-(defn update! [ctx k fn])
+(defn update! [ctx k fn]
+  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
+        path (if (= ctx-type :ui) (conj path :values) path)]
+
+    (println "update" path)
+    (swap! state update-in path fn)))
 
 (defn dom-id [ctx k])
 

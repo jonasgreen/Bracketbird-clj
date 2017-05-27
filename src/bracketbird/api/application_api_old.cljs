@@ -7,5 +7,6 @@
   (swap! app-state/state assoc :page-context ctx))
 
 
+
 (defn reload-ui []
-  (swap! app-state/state update-in [:system :figwheel-reloads] inc))
+  (swap! app-state/state update-in [:_system :figwheel-reloads] inc))

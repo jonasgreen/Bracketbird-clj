@@ -9,18 +9,16 @@
 
 
 (defn- tournament-path [ctx]
-  (context-util/build-ctx-path state/context-levels ctx :tournament))
+  (context-util/path state/context-levels ctx :tournament))
 
 
 (def api {:create-tournament {:ctx-level :tournaments
                               :params    [:tournament-id]
                               :validate  (fn [state ctx values] true) ;todo
                               :execute   (fn [state ctx {:keys [tournament-id]}]
-                                           (let [{:keys [path]} (context-util/build-ctx-path state/context-levels {} :tournaments)]
-                                             (println "path" path)
+                                           (let [path (context-util/path state/context-levels {} :tournaments)]
                                              (update-in state path
                                                         (fn [m]
-                                                          (println "m" m)
                                                           (assoc (or m {}) tournament-id {})))))}
 
 

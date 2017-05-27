@@ -37,7 +37,7 @@
         ctx (state/add-ctx {} :tournament-id t-id)]
 
     (history/set-token t-id)
-    (state/update! {} :pages (fn [m] (assoc m :page :tournament-page
+    (state/update! {} :pages (fn [m] (assoc m :active-page :tournament-page
                                               :ctx ctx)))))
 
 (defn trigger-ui-reload []

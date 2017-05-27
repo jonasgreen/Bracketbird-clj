@@ -7,7 +7,6 @@
    [:span {:style {:color "#C9C9C9"}} "BIRD"]])
 
 (defn render [ctx]
-  (println "render-front-page")
   [:div
    [:div {:style {:display         :flex
                   :justify-content :center
