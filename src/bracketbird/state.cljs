@@ -4,7 +4,6 @@
             [bracketbird.context-util :as context-util]))
 
 
-
 (defonce state (r/atom {:tournaments {}
                         :pages       {:values {:active-page :front-page}}}))
 
@@ -46,9 +45,11 @@
                                                          :teams-tab (r/atom {:teams-table (r/atom {})
                                                                              :enter-team  (r/atom {})})})})})
 
-(defn subscribe [ctx k]
+(defn subscribe [k ctx]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
         path (if (= ctx-type :ui) (conj path :values) path)]
+
+    (println "subscribe" path)
 
     ;validate relevant context values are present
 
@@ -58,7 +59,7 @@
     (reaction (get-in @state path))))
 
 
-(defn query [ctx k]
+(defn query [k ctx]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
         path (if (= ctx-type :ui) (conj path :values) path)]
 
@@ -68,11 +69,15 @@
 
     (get-in @state path)))
 
-(defn update! [ctx k fn]
+(defn update! [k ctx fn]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
-        path (if (= ctx-type :ui) (conj path :values) path)]
+        path (if (= ctx-type :ui) (conj path :values) path)
+        start-time (.getTime (js/Date.))]
 
-    (println "update" path)
+    (println "start time" start-time)
+    (r/next-tick #(println "next-tick" (.getTime (js/Date.))))
+
+    (r/after-render #(println "******* RENDER TIME *****" (- (.getTime (js/Date.)) start-time)))
     (swap! state update-in path fn)))
 
 (defn dom-id [ctx k])

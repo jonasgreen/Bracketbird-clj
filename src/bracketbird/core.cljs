@@ -5,13 +5,14 @@
             [bracketbird.application-controller :as app-ctrl]
             [bracketbird.pages.error-page :as error-page]
             [bracketbird.pages.tournament-page :as tournament-page]
-            [bracketbird.pages.front-page :as front-page]))
+            [bracketbird.pages.front-page :as front-page]
+            [bracketbird.state :as app-state]))
 
 (defn on-js-reload []
-  (app-ctrl/trigger-ui-reload))
+  (swap! app-state/state update-in [:pages :values :figwheel-reloads] inc))
 
 (defn render [_]
-  (let [pages (state/subscribe {} :pages)]
+  (let [pages (state/subscribe :pages {})]
     (fn [_]
       (let [{:keys [active-page ctx]} @pages]
         (println "RENDER CORE")

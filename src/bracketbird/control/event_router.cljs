@@ -12,14 +12,19 @@
   (context-util/path state/context-levels ctx :tournament))
 
 
+(defn build-teams []
+  (mapv (fn[i] {:team-id (str "team" i)}) (range 1000)))
+
+
 (def api {:create-tournament {:ctx-level :tournaments
                               :params    [:tournament-id]
                               :validate  (fn [state ctx values] true) ;todo
                               :execute   (fn [state ctx {:keys [tournament-id]}]
                                            (let [path (context-util/path state/context-levels {} :tournaments)]
-                                             (update-in state path
-                                                        (fn [m]
-                                                          (assoc (or m {}) tournament-id {})))))}
+                                             (state/update! :tournaments ctx (fn [m]
+                                                                               (println "type t-id" tournament-id)
+                                                                               (assoc (or m {}) (str tournament-id) {:teams (build-teams)})))
+                                             ))}
 
 
           :create-team       {:ctx-level :tournament

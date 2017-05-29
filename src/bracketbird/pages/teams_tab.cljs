@@ -50,11 +50,11 @@
 
 
 (defn enter-team-input [ctx]
-  (let [*ui-state (state/subscribe ctx :enter-team-input)
+  (let [*ui-state (state/subscribe :enter-team-input ctx)
         dom-id (state/dom-id ctx :enter-team-input)
 
         key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
-        on-change-handler (fn [e] (state/update! ctx :enter-team-input (fn [m] (assoc m :value (.. e -target -value)))))]
+        on-change-handler (fn [e] (state/update! :enter-team-input ctx (fn [m] (assoc m :value (.. e -target -value)))))]
 
     (fn [_]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
@@ -69,7 +69,7 @@
        [:button {:class "primaryButton"} "Add Team"]])))
 
 
-(defn team-row [position team _]
+(defn team-row_old [position team _]
   (let [team-name-state (r/atom (t/team-name team))
         delete-by-backspace (atom (clojure.string/blank? (t/team-name team)))]
     (fn [position team dispatcher]
@@ -125,11 +125,15 @@
 
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
+
+(defn team-row [ctx {:keys [team-id]}]
+  [:div team-id])
+
 (defn teams-table [ctx]
-  (let [*team-ids (state/subscribe ctx :team-ids)]
+  (let [*teams (state/subscribe :teams ctx)]
     (fn [ctx]
-      [:div
-       (map (fn [id] ^{:key id} [team-row (state/add-ctx ctx :team-id id)]) @*team-ids)])))
+      [:div {:style {:height 300 :overflow-y :auto :padding-left 10}}
+       (map (fn [id] ^{:key id} [team-row ctx id]) @*teams)])))
 
 (defn render [ctx]
   [:div
