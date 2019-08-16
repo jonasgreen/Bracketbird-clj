@@ -5,7 +5,7 @@
             [bracketbird.model.team :as t]
             [bracketbird.util :as ut]
             [utils.dom :as d]
-            [bracketbird.tournament-controller :as t-ctrl]
+            [bracketbird.control.tournament-controller :as t-ctrl]
             [reagent.core :as r]
             [bracketbird.model.entity :as e]))
 

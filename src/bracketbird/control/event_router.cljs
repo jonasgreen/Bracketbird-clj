@@ -1,11 +1,11 @@
-(ns bracketbird.event-router
+(ns bracketbird.control.event-router
   (:require [reagent.ratom :as ratom]
-            [bracketbird.tournament-api_old :as t-api]
+            [bracketbird.api.tournament-api_old :as t-api]
             [bracketbird.state :as state]
             [bracketbird.util :as ut]
 
             [bracketbird.model.tournament :as tournament]
-            [bracketbird.context-util :as context-util]))
+            [bracketbird.context_util :as context-util]))
 
 
 (defn- tournament-path [ctx]

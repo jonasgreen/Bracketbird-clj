@@ -1,12 +1,11 @@
-(ns bracketbird.tournament-controller
+(ns bracketbird.control.tournament-controller
   (:require [bracketbird.old-context :as context]
             [bracketbird.model.tournament-state :as t-state]
             [bracketbird.model.tournament :as t]
             [bracketbird.model.entity :as e]
-            [bracketbird.event-router :as router]
+            [bracketbird.control.event-router :as router]
             [bracketbird.model.team :as team-m]
-            [bracketbird.util :as ut]
-            [bracketbird.tournament-api_old :as api]
+            [bracketbird.api.tournament-api_old :as api]
             [bracketbird.state :as app-state]))
 
 

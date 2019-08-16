@@ -1,4 +1,4 @@
-(ns bracketbird.tournament-api_old
+(ns bracketbird.api.tournament-api_old
   "Defines the api to the tournament in form of events.
   Takes one or more tournament events and executes them blindly on the tournament, ie. updates the tournament."
   (:require [bracketbird.model.tournament :as tournament]

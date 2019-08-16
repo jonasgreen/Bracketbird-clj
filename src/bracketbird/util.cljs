@@ -1,7 +1,6 @@
 (ns bracketbird.util
   [:require [bracketbird.model.entity :as ie]
             [bracketbird.old-context :as context]
-            [cljs-uuid-utils.core :as uu]
             [utils.dom :as dom]])
 
 (defn r-key [entity r-form]

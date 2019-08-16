@@ -1,9 +1,9 @@
-(ns bracketbird.application-controller
+(ns bracketbird.control.application-controller
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [bracketbird.state :as state]
             [bracketbird.api.application-api_old :as app-api]
             [bracketbird.control.tournament-api :as tournament-api]
-            [bracketbird.tournament-controller :as t-ctrl]
+            [bracketbird.control.tournament-controller :as t-ctrl]
             [bracketbird.history :as history]))
 
 (defn- front-page-ctx []

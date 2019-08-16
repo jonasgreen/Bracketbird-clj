@@ -1,7 +1,7 @@
 (ns bracketbird.state
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [reagent.core :as r]
-            [bracketbird.context-util :as context-util]))
+            [bracketbird.context_util :as context-util]))
 
 
 (defonce state (r/atom {:tournaments {}

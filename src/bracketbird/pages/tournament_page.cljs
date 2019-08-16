@@ -5,7 +5,6 @@
             [bracketbird.pages.matches-tab :as matches]
             [bracketbird.ui.ui-selector :as sel]
             [bracketbird.ui.styles :as s]
-            [bracketbird.old-context :as context]
             [reagent.core :as r]
             [bracketbird.ui.panels :as p]))
 

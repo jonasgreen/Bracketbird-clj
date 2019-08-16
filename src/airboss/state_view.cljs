@@ -107,7 +107,7 @@
   (satisfies? IAtom x))
 
 (defn- container? [x]
-  (seqable? (if (atom? x) @x x)))
+  (coll? x))
 
 (defn- get-keys [value]
   (cond
@@ -336,6 +336,7 @@
 ;--------------
 
 (defn- render-value-empty-container [{:keys [value]}]
+  (print "pp" value)
   (cond
     (map? value) "{ }"
     (list? value) "( )"

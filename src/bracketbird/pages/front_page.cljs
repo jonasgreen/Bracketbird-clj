@@ -1,5 +1,5 @@
 (ns bracketbird.pages.front-page
-  (:require [bracketbird.application-controller :as app-ctrl]))
+  (:require [bracketbird.control.application-controller :as app-ctrl]))
 
 (defn logo []
   [:div {:style {:letter-spacing 0.8 :font-size 22}}

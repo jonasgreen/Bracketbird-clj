@@ -1,5 +1,5 @@
 (ns bracketbird.control.tournament-api
-  (:require [bracketbird.event-router :as event-router]
+  (:require [bracketbird.control.event-router :as event-router]
             [bracketbird.util :as ut]))
 
 

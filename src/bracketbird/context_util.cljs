@@ -1,4 +1,4 @@
-(ns bracketbird.context-util)
+(ns bracketbird.context_util)
 
 
 (defn- build-ctx-info [context-structure ctx c-key]
