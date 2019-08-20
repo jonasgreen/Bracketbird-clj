@@ -18,15 +18,17 @@
   (swap! app-state/state update-in [:pages :values :figwheel-reloads] inc))
 
 (defn render [_]
-  (let [pages (state/subscribe :pages {})]
+  (println "Start Application")
+
+  (let [app (state/subscribe [:application])]
     (fn [_]
-      (let [{:keys [active-page ctx]} @pages]
-        (println "RENDER CORE" + "asdf")
+      (let [{:keys [active-page]} @app]
+        (println "Render application" @app)
         [:div
          (condp = active-page
-           :front-page [front-page/render ctx]
-           :tournament-page [tournament-page/render ctx]
-           [error-page/render ctx])]))))
+           :front-page [front-page/render]
+           :tournament-page [tournament-page/render {:tournament-id (get-in @state/state [:tournament :tournament-id])}]
+           [error-page/render])]))))
 
 (defn main []
   (enable-console-print!)

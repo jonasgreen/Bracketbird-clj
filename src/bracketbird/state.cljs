@@ -4,8 +4,55 @@
             [bracketbird.context_util :as context-util]))
 
 
-(defonce state (r/atom {:tournaments {}
-                        :pages       {:values {:active-page :front-page}}}))
+(defonce state (r/atom {:application {:active-page :front-page}
+                        :ui          {}
+                        :tournament  {}
+                        :tournaments {}
+                        :pages       {:values {:active-page :front-page}}
+                        :system      {}
+                        }))
+
+
+
+
+(def context-structure {:tournaments {
+                                      :tournament {
+                                                   :id           :tournament-id
+                                                   :stages       {:stage {:id      :stage-id
+                                                                          :matches {:match {:id :match-id}}}}
+                                                   :stages-order nil
+                                                   :teams        {:team {:id :team-id}}
+                                                   :teams-order  nil}}})
+
+
+(def context-paths {:tournament    [:tournaments :tournament-id]
+
+                    :teams         [:tournaments :tournament-id :teams]
+                    :team          [:tournaments :tournament-id :teams :teams-id]
+
+                    :stages        [:tournaments :tournament-id :stages]
+                    :stages-order  [:tournaments :tournament-id :stages-order]
+                    :stage         [:tournaments :tournament-id :stages :stage-id]
+
+                    ;notice these are matches in a given stage
+                    :matches       [:tournaments :tournament-id :stages :stage-id :matches]
+                    :matches-order [:tournaments :tournament-id :stages :stage-id :matches :matches-order]
+                    :match         [:tournaments :tournament-id :stages :stage-id :matches :match-id]
+
+                    })
+
+(def ui-context-paths {:front-page      [:ui :pages :front-page]
+                       :tournament-page [:ui :pages :tournament-page :tournament-id]
+
+                       :teams-tab       [:ui :pages :tournament-page :tournament-id :tabs :teams-tab]
+                       :stages-tab      [:ui :pages :tournament-page :tournament-id :tabs :stages-tab]
+                       :matches-tab     [:ui :pages :tournament-page :tournament-id :tabs :matches-tab]
+                       :ranking-tab     [:ui :pages :tournament-page :tournament-id :tabs :ranking-tab]
+
+                       :stage-component [:ui :tournaments :tournament-id :pages :stages-page :stage-id :stage-component]
+
+                       })
+
 
 
 (def context-levels {:tournaments      {:parent   nil
@@ -14,8 +61,11 @@
                                         :id     :tournament-id}
                      :stages           {:parent :tournament}
                      :stage-ids        {:parent :tournament}
+
+
                      :stage            {:parent :stages
                                         :id     :stage-id}
+
                      :matches          {:parent :stage}
                      :match-ids        {:parent :stage}
                      :match            {:parent :matches
@@ -45,7 +95,10 @@
                                                          :teams-tab (r/atom {:teams-table (r/atom {})
                                                                              :enter-team  (r/atom {})})})})})
 
-(defn subscribe [k ctx]
+
+(defn subscribe [path] (reaction (get-in @state path)))
+
+(defn old-subscribe [k ctx]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
         path (if (= ctx-type :ui) (conj path :values) path)]
 
@@ -83,8 +136,4 @@
 (defn dom-id [ctx k])
 
 ; ABOVE IS NEW
-
-(defn add-ctx [ctx k v]
-  ;validate new context is legal
-  (assoc ctx k v))
 

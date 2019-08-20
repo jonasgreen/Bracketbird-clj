@@ -6,7 +6,7 @@
    [:span {:style {:color "lightblue"}} "BRACKET"]
    [:span {:style {:color "#C9C9C9"}} "BIRD"]])
 
-(defn render [ctx]
+(defn render []
   [:div
    [:div {:style {:display         :flex
                   :justify-content :center

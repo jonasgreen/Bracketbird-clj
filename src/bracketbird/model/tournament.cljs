@@ -2,6 +2,35 @@
   (:require [bracketbird.model.entity :as e]
             [bracketbird.model.team :as team]))
 
+
+
+
+(def states {[:tournament :not-ready] {}
+              [:tournament :ready] {}
+              [:tournament :in-progress] {}
+              [:tournament :done-playing] {}
+              [:tournament :finished] {}
+              ;-----
+              [:stage :not-ready] {}
+              [:stage :ready] {}
+              [:stage :in-progress] {}
+              [:stage :done-playing] {}
+              [:stage :finished] {}
+              ;-----
+              [:group :not-ready] {}
+              [:group :ready] {}
+              [:group :in-progress] {}
+              [:group :done-playing] {}
+              [:group :finished] {}
+              ;-----
+              [:match :not-ready] {}
+              [:match :ready] {}
+              [:match :in-progress] {}
+              [:match :done-playing] {}
+              [:match :finished] {}
+              })
+
+
 (defn mk [tournament-id]
   {:tournament-id tournament-id
    :teams         []
@@ -38,6 +67,9 @@
 
 (defn set-teams [t teams]
   (assoc t :teams (vec teams)))
+
+
+(defn create-team[t ctx m])
 
 (defn add-team [t {:keys [team-id team-name]}]
   (-> t

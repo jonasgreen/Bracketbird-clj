@@ -1,7 +1,7 @@
 (ns bracketbird.context_util)
 
 
-(defn- build-ctx-info [context-structure ctx c-key]
+(defn build-ctx-info [context-structure ctx c-key]
   (loop [k c-key
          path []
          used-ids #{}]

@@ -7,6 +7,7 @@
             [utils.dom :as d]
             [bracketbird.control.tournament-controller :as t-ctrl]
             [reagent.core :as r]
+            [bracketbird.ui-services :as ui-service]
             [bracketbird.model.entity :as e]))
 
 
@@ -50,10 +51,10 @@
 
 
 (defn enter-team-input [ctx]
-  (let [*ui-state (state/subscribe :enter-team-input ctx)
+  (let [*ui-state (state/old-subscribe :enter-team-input ctx)
         dom-id (state/dom-id ctx :enter-team-input)
 
-        key-down-handler (d/handle-key {:ENTER #(tournament-api/create-team ctx (:value @*ui-state))})
+        key-down-handler (d/handle-key {:ENTER #(ui-service/dispatch [:team :create] ctx {:team-name (:value @*ui-state)})})
         on-change-handler (fn [e] (state/update! :enter-team-input ctx (fn [m] (assoc m :value (.. e -target -value)))))]
 
     (fn [_]
@@ -126,14 +127,15 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [ctx {:keys [team-id]}]
+(defn team-row [{:keys [team-id]}]
+  (println "team-row" team-id)
   [:div team-id])
 
-(defn teams-table [ctx]
-  (let [*teams (state/subscribe :teams ctx)]
+(defn teams-table [{:keys [tournament-id]}]
+  (let [*teams (state/subscribe [:tournaments tournament-id :teams]) ]
     (fn [ctx]
       [:div {:style {:height 300 :overflow-y :auto :padding-left 10}}
-       (map (fn [id] ^{:key id} [team-row ctx id]) @*teams)])))
+       (map (fn [id] ^{:key id} [team-row (assoc ctx :team-id id)]) @*teams)])))
 
 (defn render [ctx]
   [:div

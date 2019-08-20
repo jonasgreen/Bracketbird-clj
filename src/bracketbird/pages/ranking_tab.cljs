@@ -1,4 +1,4 @@
-(ns bracketbird.pages.scores-tab
+(ns bracketbird.pages.ranking-tab
   (:require [bracketbird.ui.styles :as s]
             [bracketbird.pages.tournament-tab-content :as tab-content]))
 
