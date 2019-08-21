@@ -38,14 +38,6 @@
   (mapv (fn[i] {:team-id (str "team" i)}) (range 100)))
 
 
-(defn create-tournament []
-  (let [t-id (str (tournament-api/create-tournament))
-        ctx (state/add-ctx {} :tournament-id t-id)]
-
-    (history/set-token t-id)
-    (state/update! :pages {} (fn [m] (assoc m :active-page :tournament-page
-                                              :ctx ctx)))))
-
 (defn trigger-ui-reload []
   (app-api/reload-ui))
 

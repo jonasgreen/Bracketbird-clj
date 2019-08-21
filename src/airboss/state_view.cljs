@@ -34,6 +34,7 @@
             (nt "RAtom (reagent)" (fn [v] (instance? r-atom/RAtom v)))
             (nt "RCursor (reagent)" (fn [v] (instance? r-atom/RCursor v)))
             (nt "Atom" (fn [v] (instance? Atom v)))
+            (nt "Function" fn?)
             (nt "JavaScript-Object" (fn [v] (instance? js/Object v)))
             (nt "Unknown" (fn [_] true))])
 
@@ -367,7 +368,11 @@
     [editor/render value (fn [v] (dispatcher [:row :change-value] m v)) #(dispatcher [:row :stop-edit] m)]
     (if (nil? value)
       ""
-      (if is-atom (str "@atom " value) (str value)))))
+      (if is-atom
+        (str "@atom " value)
+        (if (fn? value)
+          "#(...)"
+          (str value))))))
 
 (defn- render-value [{:keys [value] :as m} dispatcher]
   (if (container? value)

@@ -6,7 +6,8 @@
             [bracketbird.pages.error-page :as error-page]
             [bracketbird.pages.tournament-page :as tournament-page]
             [bracketbird.pages.front-page :as front-page]
-            [bracketbird.state :as app-state]))
+            [bracketbird.state :as app-state]
+            [clojure.string :as string]))
 
 
 ;; and this is what figwheel calls after each save
@@ -15,7 +16,7 @@
  ; )
 
 (defn ^:after-load on-js-reload []
-  (swap! app-state/state update-in [:pages :values :figwheel-reloads] inc))
+  (swap! app-state/state update-in [:application :figwheel-reloads] inc))
 
 (defn render [_]
   (println "Start Application")
@@ -33,9 +34,12 @@
 (defn main []
   (enable-console-print!)
   (app-ctrl/enable-history)
+
+  (swap! state/state assoc-in [:application :test] (string/includes? (.. js/window -location -host) "localhost"))
+
   (r/render [render] (js/document.getElementById "application"))
+
+
 
   (airboss/load-state-viewer state/state)
   (airboss/load-design-viewer))
-
-(println "læasjdfælaksj")

@@ -6,7 +6,7 @@
             [bracketbird.ui.ui-selector :as sel]
             [bracketbird.ui.styles :as s]
             [reagent.core :as r]
-            [bracketbird.ui.panels :as p]))
+            ))
 
 ;------------
 ; menu-items
@@ -56,7 +56,7 @@
 ;--------------
 
 (defn render [ctx]
-  (let [selector (sel/subscribe-single-selection old-ctx)]
+  (let [selector (sel/subscribe-single-selection ctx)]
 
     ;hack to create tournament when reloading page - for development
     ;(when-not (context/data old-ctx) (bracketbird.tournament-controller/create-tournament old-ctx))

@@ -54,7 +54,7 @@
   (let [*ui-state (state/old-subscribe :enter-team-input ctx)
         dom-id (state/dom-id ctx :enter-team-input)
 
-        key-down-handler (d/handle-key {:ENTER #(ui-service/dispatch [:team :create] ctx {:team-name (:value @*ui-state)})})
+        key-down-handler (d/handle-key {:ENTER #(ui-service/create-team ctx (:value @*ui-state))})
         on-change-handler (fn [e] (state/update! :enter-team-input ctx (fn [m] (assoc m :value (.. e -target -value)))))]
 
     (fn [_]

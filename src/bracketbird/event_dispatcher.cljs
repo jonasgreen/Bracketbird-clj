@@ -1,40 +1,30 @@
 (ns bracketbird.event-dispatcher
-  (:require [bracketbird.util :as ut]
-            [bracketbird.model.tournament :as tournament-api]
-            ))
+  (:require [bracketbird.state :as state]))
 
 
-(def events {[:tournament :create] {:input-validation (fn [ctx m]())
-                                    :state-validation (fn [ctx m] ())
-                                    :mk-event (fn [ctx m] {:tournament-id (ut/squuid)})
-                                    :target tournament-api/mk
-                                    }
+(defn- execute-events [state events events-spec {:keys [post-execution events-path aggregate-path]}]
+  (let [execute-event (fn [agg {:keys [event-type] :as e}]
+                        (-> events-spec
+                            (get event-type)
+                            :execute-event
+                            (apply (seq [agg e]))))
+        aggregate (-> (reduce execute-event (get-in aggregate-path state {}) events)
+                      (post-execution))]
+    (-> state
+        (assoc-in aggregate-path aggregate)
+        (update-in events-path (fnil into []) (vec events)))))
 
 
-             [:team :create]       {:validate-input (fn [ctx m] ())
-                                    :validate-state (fn [ctx m] ())
-                                    :mk-event (fn[{:keys [tournament-id]} m] {:tournament-id })
-                                    :target tournament-api/
-                                    }})
+(defn dispatch-client-event [{:keys [event events-spec events-execution-spec post-update] :as m}]
+  (let [new-state (-> @state/state
+                      (execute-events [event] events-spec events-execution-spec)
+                      (post-update))]
+
+    (reset! state/state new-state)))
 
 
+(defn dispatch-server-event [])
 
-
-
-(defn- dispatch-client-event [event]
-
-  )
-
-(defn- dispatch-server-event [event])
-
-
-
-
-
-(defn dispatch [{:keys [seq-no] :as event}]
-  (if seq-no
-    (dispatch-server-event event)
-    (dispatch-client-event event)))
 
 
 

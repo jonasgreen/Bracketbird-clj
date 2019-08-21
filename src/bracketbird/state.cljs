@@ -7,9 +7,7 @@
 (defonce state (r/atom {:application {:active-page :front-page}
                         :ui          {}
                         :tournament  {}
-                        :tournaments {}
                         :pages       {:values {:active-page :front-page}}
-                        :system      {}
                         }))
 
 

@@ -1,5 +1,5 @@
 (ns bracketbird.pages.front-page
-  (:require [bracketbird.control.application-controller :as app-ctrl]))
+  (:require [bracketbird.ui-services :as ui-services]))
 
 (defn logo []
   [:div {:style {:letter-spacing 0.8 :font-size 22}}
@@ -20,5 +20,5 @@
     [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
      "Instant tournaments"]
     [:button {:class    "largeButton primaryButton"
-              :on-click #(app-ctrl/create-tournament)} "Create a tournament"]
+              :on-click #(ui-services/create-tournament)} "Create a tournament"]
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
