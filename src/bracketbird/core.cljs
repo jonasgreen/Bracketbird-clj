@@ -2,44 +2,41 @@
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
             [bracketbird.state :as state]
-            [bracketbird.control.application-controller :as app-ctrl]
             [bracketbird.pages.error-page :as error-page]
             [bracketbird.pages.tournament-page :as tournament-page]
             [bracketbird.pages.front-page :as front-page]
-            [bracketbird.state :as app-state]
-            [clojure.string :as string]))
+            [bracketbird.system :as system]))
 
 
-;; and this is what figwheel calls after each save
-;(defn ^:after-load re-render []
-  ;  (mount)
- ; )
+(defn render-application [ctx]
+  (let [application (state/subscribe :application ctx)]
+    (fn [_])
+    [:div {:class :application} (condp = (:active-page @application)
+       :front-page [front-page/render ctx]
+       :tournament-page [tournament-page/render (->> ctx (state/query :tournament)
+                                                     (select-keys [:tournament-id])
+                                                     (merge ctx))]
+       [error-page/render])]))
 
-(defn ^:after-load on-js-reload []
-  (swap! app-state/state update-in [:application :figwheel-reloads] inc))
-
-(defn render [_]
-  (println "Start Application")
-
-  (let [app (state/subscribe [:application])]
+(defn render-system [_]
+  (println "start system")
+  (let [system (state/subscribe [:system])
+        applications (state/subscribe [:applications])]
+    (println "applications" @applications)
     (fn [_]
-      (let [{:keys [active-page]} @app]
-        (println "Render application" @app)
-        [:div
-         (condp = active-page
-           :front-page [front-page/render]
-           :tournament-page [tournament-page/render {:tournament-id (get-in @state/state [:tournament :tournament-id])}]
-           [error-page/render])]))))
+      [:div {:class :system}
+       (map (fn [id] ^{:key id} [render-application {:application-id id}]) (keys @applications))])))
+
+(defn mount-reagent []
+  (r/render [render-system] (js/document.getElementById "system")))
 
 (defn main []
   (enable-console-print!)
-  (app-ctrl/enable-history)
-
-  (swap! state/state assoc-in [:application :test] (string/includes? (.. js/window -location -host) "localhost"))
-
-  (r/render [render] (js/document.getElementById "application"))
-
-
-
+  (system/initialize!)
+  (mount-reagent)
   (airboss/load-state-viewer state/state)
   (airboss/load-design-viewer))
+
+
+(defn ^:after-load on-js-reload []
+  (mount-reagent))

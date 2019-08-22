@@ -4,38 +4,24 @@
             [bracketbird.context_util :as context-util]))
 
 
-(defonce state (r/atom {:application {:active-page :front-page}
-                        :ui          {}
-                        :tournament  {}
-                        :pages       {:values {:active-page :front-page}}
-                        }))
+(defonce state (r/atom {:system       {}
+                        :applications {}
+                        :ui           {}}))
 
+(def context-paths {:application         [:applications :application-id]
+                    :tournament          [:applications :application-id :tournament]
 
+                    :teams               [:applications :application-id :tournament :teams]
+                    :team                [:applications :application-id :tournament :teams :teams-id]
 
-
-(def context-structure {:tournaments {
-                                      :tournament {
-                                                   :id           :tournament-id
-                                                   :stages       {:stage {:id      :stage-id
-                                                                          :matches {:match {:id :match-id}}}}
-                                                   :stages-order nil
-                                                   :teams        {:team {:id :team-id}}
-                                                   :teams-order  nil}}})
-
-
-(def context-paths {:tournament    [:tournaments :tournament-id]
-
-                    :teams         [:tournaments :tournament-id :teams]
-                    :team          [:tournaments :tournament-id :teams :teams-id]
-
-                    :stages        [:tournaments :tournament-id :stages]
-                    :stages-order  [:tournaments :tournament-id :stages-order]
-                    :stage         [:tournaments :tournament-id :stages :stage-id]
+                    :stages              [:applications :application-id :tournament :stages]
+                    :stages-order        [:applications :application-id :tournament :stages-order]
+                    :stage               [:applications :application-id :tournament :stages :stage-id]
 
                     ;notice these are matches in a given stage
-                    :matches       [:tournaments :tournament-id :stages :stage-id :matches]
-                    :matches-order [:tournaments :tournament-id :stages :stage-id :matches :matches-order]
-                    :match         [:tournaments :tournament-id :stages :stage-id :matches :match-id]
+                    :stage-matches       [:applications :application-id :tournament :stages :stage-id :matches]
+                    :stage-matches-order [:applications :application-id :tournament :stages :stage-id :matches :matches-order]
+                    :stage-match         [:applications :application-id :tournament :stages :stage-id :matches :match-id]
 
                     })
 
@@ -94,7 +80,31 @@
                                                                              :enter-team  (r/atom {})})})})})
 
 
-(defn subscribe [path] (reaction (get-in @state path)))
+(defn mk-path [k ctx]
+  (println "k" k)
+  (let [unresolved-path (get context-paths k)]
+    (println "unresolved path" unresolved-path)
+    (if (nil? unresolved-path)
+      (throw (js/Error. (str "Unable to find mapping for " k " in unresolved context paths: " context-paths)))
+      (->> unresolved-path
+           (map (fn [k] (get ctx k k)))
+           (vec)))))
+
+(defn subscribe
+  ([path]
+   (println "subscribe" path)
+   (reaction (get-in @state path)))
+  ([k ctx] (-> (mk-path k ctx)
+               (subscribe))))
+
+(defn query
+  ([path]
+   (println "query" path)
+   (get-in @state path))
+  ([k ctx] (-> (mk-path k ctx)
+               (query))))
+
+
 
 (defn old-subscribe [k ctx]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
@@ -110,15 +120,7 @@
     (reaction (get-in @state path))))
 
 
-(defn query [k ctx]
-  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
-        path (if (= ctx-type :ui) (conj path :values) path)]
 
-    ;validate relevant context values are present
-
-    ;build path
-
-    (get-in @state path)))
 
 (defn update! [k ctx fn]
   (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)

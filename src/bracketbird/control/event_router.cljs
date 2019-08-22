@@ -22,7 +22,6 @@
                               :execute   (fn [state ctx {:keys [tournament-id]}]
                                            (let [path (context-util/path state/context-levels {} :tournaments)]
                                              (state/update! :tournaments ctx (fn [m]
-                                                                               (println "type t-id" tournament-id)
                                                                                (assoc (or m {}) (str tournament-id) {:teams (build-teams)})))
                                              ))}
 

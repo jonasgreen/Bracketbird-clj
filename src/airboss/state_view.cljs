@@ -337,7 +337,6 @@
 ;--------------
 
 (defn- render-value-empty-container [{:keys [value]}]
-  (print "pp" value)
   (cond
     (map? value) "{ }"
     (list? value) "( )"

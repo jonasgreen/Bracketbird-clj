@@ -1,7 +1,5 @@
 (ns bracketbird.control.tournament-api
-  (:require [bracketbird.control.event-router :as event-router]
-            [bracketbird.application :as app]
-            ))
+  (:require [bracketbird.system :as system]))
 
 
 (defn mk-tournament [id]
@@ -23,27 +21,23 @@
 
 (def events-spec {[:tournament :create] {:validate-input (fn [ctx m] ())
                                          :validate-state (fn [ctx m] ())
-                                         :mk-event       (fn [ctx m] {:tournament-id (app/unique-id :tournament-id)})
+                                         ;:event-input    {}
+                                         :mk-event       (fn [ctx m] {:tournament-id (system/unique-id :tournament)})
                                          :execute-event  (fn [t e]
-                                                           (println "exe" t e)
                                                            (mk-tournament (:tournament-id e)))}
 
 
                   [:team :create]       {:validate-input (fn [ctx m] ())
                                          :validate-state (fn [ctx m] ())
+                                         ;:event-input    {:name :string}
                                          :mk-event       (fn [{:keys [tournament-id] :as ctx}
                                                               {:keys [team-name] :as m}]
 
                                                            {:tournament-id tournament-id
-                                                            :team-id       (app/unique-id :team-id)
+                                                            :team-id       (system/unique-id :team)
                                                             :team-name     team-name})
 
                                          :execute-event  (fn [t {:keys [team-id team-name]}]
                                                            (-> t
                                                                (update :teams conj (mk-team team-id team-name))
                                                                (assoc :dirty true)))}})
-
-
-(def events-execution-spec {:post-execution update-state
-                            :events-path    [:tournament-events]
-                            :aggregate-path [:tournament]})

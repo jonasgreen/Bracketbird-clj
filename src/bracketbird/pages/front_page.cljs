@@ -6,7 +6,7 @@
    [:span {:style {:color "lightblue"}} "BRACKET"]
    [:span {:style {:color "#C9C9C9"}} "BIRD"]])
 
-(defn render []
+(defn render [ctx]
   [:div
    [:div {:style {:display         :flex
                   :justify-content :center
@@ -20,5 +20,5 @@
     [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
      "Instant tournaments"]
     [:button {:class    "largeButton primaryButton"
-              :on-click #(ui-services/create-tournament)} "Create a tournament"]
+              :on-click #(ui-services/create-tournament ctx)} "Create a tournament"]
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])

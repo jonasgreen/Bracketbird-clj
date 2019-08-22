@@ -37,17 +37,3 @@
 (defn build-teams []
   (mapv (fn[i] {:team-id (str "team" i)}) (range 100)))
 
-
-(defn trigger-ui-reload []
-  (app-api/reload-ui))
-
-(defn get-state-atom []
-  state/state)
-
-;---------------
-; subscriptions
-;---------------
-
-(defn subscribe-page-context []
-  (reaction (get @state/state :page-context)))
-

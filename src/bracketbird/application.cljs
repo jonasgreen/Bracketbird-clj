@@ -3,14 +3,8 @@
             [bracketbird.util :as ut]))
 
 
-(defonce test-ids {})
-
-
-(defn test? [] (get-in @state/state [:application :test]))
-
-(defn unique-id [k]
-  (if (test?)
-    (-> test-ids
-        (update k inc)
-        (get k))
-    (ut/squuid)))
+(defn mk-application [id]
+  {:application-id id
+   :active-page    :front-page
+   :tournament     {}
+   :tournament-events []})
