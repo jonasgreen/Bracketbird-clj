@@ -25,11 +25,19 @@
                                            reverse
                                            (string/join " "))))
 
-         events-path (-> (state/mk-path :tournament ctx)
+         events-path (-> (state/mk-path :application ctx)
                          (conj :tournament-events))
 
+
          aggregate-path (state/mk-path :tournament ctx)
-         execute-event (get tournament-api/events-spec event-type)]
+         execute-event (-> tournament-api/events-spec
+                           (get event-type)
+                           :execute-event)
+
+         _ (println "events path" events-path (str execute-event))
+
+         ]
+
 
      ;(validate-input ctx m)
      ;(validate-state ctx m)

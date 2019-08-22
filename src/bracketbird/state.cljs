@@ -81,9 +81,7 @@
 
 
 (defn mk-path [k ctx]
-  (println "k" k)
   (let [unresolved-path (get context-paths k)]
-    (println "unresolved path" unresolved-path)
     (if (nil? unresolved-path)
       (throw (js/Error. (str "Unable to find mapping for " k " in unresolved context paths: " context-paths)))
       (->> unresolved-path
@@ -92,14 +90,12 @@
 
 (defn subscribe
   ([path]
-   (println "subscribe" path)
    (reaction (get-in @state path)))
   ([k ctx] (-> (mk-path k ctx)
                (subscribe))))
 
 (defn query
   ([path]
-   (println "query" path)
    (get-in @state path))
   ([k ctx] (-> (mk-path k ctx)
                (query))))

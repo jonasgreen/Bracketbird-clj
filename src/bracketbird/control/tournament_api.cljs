@@ -24,6 +24,7 @@
                                          ;:event-input    {}
                                          :mk-event       (fn [ctx m] {:tournament-id (system/unique-id :tournament)})
                                          :execute-event  (fn [t e]
+                                                           (println "execute event" t e)
                                                            (mk-tournament (:tournament-id e)))}
 
 
