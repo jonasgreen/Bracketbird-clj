@@ -7,7 +7,8 @@
             [goog.dom :as dom-helper]
             [goog.events :as events]
             [airboss.state-editor :as editor]
-            [clojure.walk :as w])
+            [clojure.walk :as w]
+            [clojure.string :as string])
 
   (:import [goog]))
 
@@ -349,7 +350,10 @@
   (let [s (cond
             (map? value) (str "{+} " (count value))
             (list? value) (str "(+) " (count value))
-            (vector? value) (str "[+] " (count value))
+            (vector? value) (if (some coll? value)
+                              (str "[+] " (count value))
+                              (str "[" (->> value (map str) (string/join " ")) "]")
+                              )
             (set? value) (str "#{+} " (count value))
             (= LazySeq (type value)) (str "(+) " (count value) " Lazy seq")
             :default "[[[+]]]")]

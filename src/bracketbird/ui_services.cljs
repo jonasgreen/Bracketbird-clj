@@ -17,13 +17,11 @@
    ;else create event and execute it
    ;return handle to ui to see state of event - or let state be reflected in data model entity
 
+   (println "Ui-services ctx : " ctx " m: " m)
+
    (let [{:keys [validate-input validate-state mk-event]} (get tournament-api/events-spec event-type)
          event (-> (mk-event ctx m)
-                   (assoc :event-type event-type)
-                   (assoc :event-name (->> event-type
-                                           (map name)
-                                           reverse
-                                           (string/join " "))))
+                   (assoc :event-type event-type))
 
          events-path (-> (state/mk-path :application ctx)
                          (conj :tournament-events))
@@ -33,9 +31,6 @@
          execute-event (-> tournament-api/events-spec
                            (get event-type)
                            :execute-event)
-
-         _ (println "events path" events-path (str execute-event))
-
          ]
 
 

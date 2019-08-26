@@ -10,13 +10,13 @@
 
 (defn render-application [ctx]
   (let [application (state/subscribe :application ctx)]
-    (fn [_])
-    [:div {:class :application} (condp = (:active-page @application)
-       :front-page [front-page/render ctx]
-       :tournament-page [tournament-page/render (->> ctx (state/query :tournament)
-                                                     (select-keys [:tournament-id])
-                                                     (merge ctx))]
-       [error-page/render])]))
+    (fn [_]
+      [:div {:class :application} (condp = (:active-page @application)
+                                    :front-page [front-page/render ctx]
+                                    :tournament-page [tournament-page/render (-> (state/query :tournament ctx)
+                                                                                 (select-keys [:tournament-id])
+                                                                                 (merge ctx))]
+                                    [error-page/render])])))
 
 (defn render-system [_]
   (println "start system")

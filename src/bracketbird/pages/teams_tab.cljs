@@ -51,11 +51,9 @@
 
 
 (defn enter-team-input [ctx]
-  (let [*ui-state (state/old-subscribe :enter-team-input ctx)
+  (let [team-name (r/atom "")
         dom-id (state/dom-id ctx :enter-team-input)
-
-        key-down-handler (d/handle-key {:ENTER #(ui-service/create-team ctx (:value @*ui-state))})
-        on-change-handler (fn [e] (state/update! :enter-team-input ctx (fn [m] (assoc m :value (.. e -target -value)))))]
+        key-down-handler (d/handle-key {:ENTER #(ui-service/create-team ctx @team-name)})]
 
     (fn [_]
       [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
@@ -63,9 +61,9 @@
                 :id          dom-id
                 :type        :text
                 :style       s/input-text-field
-                :value       (:value @*ui-state)
+                :value       @team-name
                 :on-key-down key-down-handler
-                :on-change   on-change-handler}]
+                :on-change   (fn[e] (reset! team-name (.. e -target -value)))}]
 
        [:button {:class "primaryButton"} "Add Team"]])))
 
@@ -127,15 +125,15 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [{:keys [team-id]}]
-  (println "team-row" team-id)
-  [:div team-id])
+(defn team-row [ctx team]
+  (println "team-row" team)
+  [:div (:team-name team)])
 
-(defn teams-table [{:keys [tournament-id]}]
-  (let [*teams (state/subscribe [:tournaments tournament-id :teams]) ]
-    (fn [ctx]
+(defn teams-table [ctx]
+  (let [teams (state/subscribe :teams ctx) ]
+    (fn [_]
       [:div {:style {:height 300 :overflow-y :auto :padding-left 10}}
-       (map (fn [id] ^{:key id} [team-row (assoc ctx :team-id id)]) @*teams)])))
+       (map (fn [t] ^{:key (:team-id t)} [team-row (assoc ctx :team-id (:team-id t)) t]) @teams)])))
 
 (defn render [ctx]
   [:div

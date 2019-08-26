@@ -8,6 +8,9 @@
                         :applications {}
                         :ui           {}}))
 
+
+
+
 (def context-paths {:application         [:applications :application-id]
                     :tournament          [:applications :application-id :tournament]
 
@@ -22,8 +25,15 @@
                     :stage-matches       [:applications :application-id :tournament :stages :stage-id :matches]
                     :stage-matches-order [:applications :application-id :tournament :stages :stage-id :matches :matches-order]
                     :stage-match         [:applications :application-id :tournament :stages :stage-id :matches :match-id]
-
                     })
+
+(def context-ids {:application         :application-id
+                  :tournament          :tournament-id
+                  :team                :teams-id
+                  :stage               :stage-id
+                  :stage-match         [:applications :application-id :tournament :stages :stage-id :matches :match-id]
+                  })
+
 
 (def ui-context-paths {:front-page      [:ui :pages :front-page]
                        :tournament-page [:ui :pages :tournament-page :tournament-id]
@@ -85,7 +95,7 @@
     (if (nil? unresolved-path)
       (throw (js/Error. (str "Unable to find mapping for " k " in unresolved context paths: " context-paths)))
       (->> unresolved-path
-           (map (fn [k] (get ctx k k)))
+           (map (fn [p] (get ctx p p)))
            (vec)))))
 
 (defn subscribe

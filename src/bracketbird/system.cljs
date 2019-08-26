@@ -4,7 +4,7 @@
             [bracketbird.application :as application]
             ))
 
-(defonce test-ids {})
+(defonce test-ids (atom {}))
 
 
 (defn test? [] (get-in @state/state [:system :test]))
@@ -12,7 +12,7 @@
 (defn unique-id [k]
   (if (test?)
     (-> test-ids
-        (update k inc)
+        (swap! update k inc)
         (get k))
     (ut/squuid)))
 
@@ -20,6 +20,7 @@
 (defn initialize! []
   (swap! state/state assoc :system {:active-application nil
                                     :figwheel-reloads   0
+                                    :context-keys       state/context-paths
                                     :test               (or
                                                           (= (.. js/window -location -hostname) "localhost")
                                                           (= (.. js/window -location -hash) "#test"))})

@@ -24,7 +24,6 @@
                                          ;:event-input    {}
                                          :mk-event       (fn [ctx m] {:tournament-id (system/unique-id :tournament)})
                                          :execute-event  (fn [t e]
-                                                           (println "execute event" t e)
                                                            (mk-tournament (:tournament-id e)))}
 
 
@@ -39,6 +38,7 @@
                                                             :team-name     team-name})
 
                                          :execute-event  (fn [t {:keys [team-id team-name]}]
+                                                           (println "t " t)
                                                            (-> t
                                                                (update :teams conj (mk-team team-id team-name))
                                                                (assoc :dirty true)))}})
