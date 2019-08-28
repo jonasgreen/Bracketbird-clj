@@ -27,27 +27,6 @@
                     :stage-match         [:applications :application-id :tournament :stages :stage-id :matches :match-id]
                     })
 
-(def context-ids {:application         :application-id
-                  :tournament          :tournament-id
-                  :team                :teams-id
-                  :stage               :stage-id
-                  :stage-match         [:applications :application-id :tournament :stages :stage-id :matches :match-id]
-                  })
-
-
-(def ui-context-paths {:front-page      [:ui :pages :front-page]
-                       :tournament-page [:ui :pages :tournament-page :tournament-id]
-
-                       :teams-tab       [:ui :pages :tournament-page :tournament-id :tabs :teams-tab]
-                       :stages-tab      [:ui :pages :tournament-page :tournament-id :tabs :stages-tab]
-                       :matches-tab     [:ui :pages :tournament-page :tournament-id :tabs :matches-tab]
-                       :ranking-tab     [:ui :pages :tournament-page :tournament-id :tabs :ranking-tab]
-
-                       :stage-component [:ui :tournaments :tournament-id :pages :stages-page :stage-id :stage-component]
-
-                       })
-
-
 
 (def context-levels {:tournaments      {:parent   nil
                                         :ctx-type :model}
@@ -82,13 +61,6 @@
                                         :id     :team-id}
                      :enter-team-input {:parent :teams-tab}})
 
-(def context-levels-local-state)
-
-
-(def ui-data {:pages2 (r/atom {:tournament-page (r/atom {:scroll    23
-                                                         :teams-tab (r/atom {:teams-table (r/atom {})
-                                                                             :enter-team  (r/atom {})})})})})
-
 
 (defn mk-path [k ctx]
   (let [unresolved-path (get context-paths k)]
@@ -104,40 +76,19 @@
   ([k ctx] (-> (mk-path k ctx)
                (subscribe))))
 
+(defn subscribe-ui-values
+  ([path] (subscribe-ui-values path {}) )
+  ([path not-found] (reaction (get-in @state (conj path :values) not-found))))
+
+(defn update-ui-values! [path values]
+  (swap! state assoc-in (conj path :values) values))
+
+
 (defn query
   ([path]
    (get-in @state path))
   ([k ctx] (-> (mk-path k ctx)
                (query))))
-
-
-
-(defn old-subscribe [k ctx]
-  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
-        path (if (= ctx-type :ui) (conj path :values) path)]
-
-    (println "subscribe" path)
-
-    ;validate relevant context values are present
-
-    ;build path
-
-    ;reaction
-    (reaction (get-in @state path))))
-
-
-
-
-(defn update! [k ctx fn]
-  (let [{:keys [path used-ids ctx-type] :as path-m} (context-util/build-ctx-info context-levels ctx k)
-        path (if (= ctx-type :ui) (conj path :values) path)
-        start-time (.getTime (js/Date.))]
-
-    (println "start time" start-time)
-    (r/next-tick #(println "next-tick" (.getTime (js/Date.))))
-
-    (r/after-render #(println "******* RENDER TIME *****" (- (.getTime (js/Date.)) start-time)))
-    (swap! state update-in path fn)))
 
 (defn dom-id [ctx k])
 

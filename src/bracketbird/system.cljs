@@ -1,8 +1,10 @@
 (ns bracketbird.system
-  (:require [bracketbird.state :as state]
+  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require [cljs.core.async :refer [put! chan <!]]
+            [bracketbird.state :as state]
             [bracketbird.util :as ut]
             [bracketbird.application :as application]
-            ))
+            [bracketbird.event-dispatcher :as event-dispatcher]))
 
 (defonce test-ids (atom {}))
 
@@ -23,7 +25,10 @@
                                     :context-keys       state/context-paths
                                     :test               (or
                                                           (= (.. js/window -location -hostname) "localhost")
-                                                          (= (.. js/window -location -hash) "#test"))})
+                                                          (= (.. js/window -location -hash) "#test"))
+                                    :in                 (event-dispatcher/init-in-channel)
+                                    :out                (event-dispatcher/init-out-channel)})
+
 
   ;has to be done after test is set
   (let [app-id (unique-id :application)]

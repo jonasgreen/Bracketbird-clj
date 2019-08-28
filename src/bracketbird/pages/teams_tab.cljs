@@ -50,22 +50,29 @@
         (.warn js/console "Unable to dispatch " path " with " args)))))
 
 
+
 (defn enter-team-input [ctx]
   (let [team-name (r/atom "")
         dom-id (state/dom-id ctx :enter-team-input)
-        key-down-handler (d/handle-key {:ENTER #(ui-service/create-team ctx @team-name)})]
+        create-team (fn []
+                      (ui-service/dispatch-event [:team :create] ctx {:team-name @team-name})
+                      (reset! team-name ""))
+
+        key-down-handler (d/handle-key {:ENTER create-team})]
 
     (fn [_]
-      [:div {:style {:display :flex :margin-top 30 :padding-left 30 :align-items :center}}
+      [:div {:style {:display :flex :margin-top 30 :align-items :center}}
        [:input {:placeholder "Enter team"
                 :id          dom-id
                 :type        :text
                 :style       s/input-text-field
                 :value       @team-name
                 :on-key-down key-down-handler
-                :on-change   (fn[e] (reset! team-name (.. e -target -value)))}]
+                :on-change   (fn [e] (reset! team-name (.. e -target -value)))}]
 
-       [:button {:class "primaryButton"} "Add Team"]])))
+       [:button {:class    "primaryButton"
+                 :on-click create-team
+                 } "Add Team"]])))
 
 
 (defn team-row_old [position team _]
@@ -75,7 +82,9 @@
 
       [:div {:style {:display     :flex
                      :align-items :center
-                     :min-height  30}}
+                     :min-height  30}
+
+             }
        [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
        [:input {:id          (ut/dom-id-from-entity team :team-name)
                 :style       (merge s/input-text-field {:min-width 200})
@@ -126,16 +135,17 @@
 
 
 (defn team-row [ctx team]
-  (println "team-row" team)
   [:div (:team-name team)])
 
 (defn teams-table [ctx]
-  (let [teams (state/subscribe :teams ctx) ]
+  (let [teams (state/subscribe :teams ctx)]
     (fn [_]
-      [:div {:style {:height 300 :overflow-y :auto :padding-left 10}}
+      [:div {:style {:height 300 :overflow-y :auto}}
        (map (fn [t] ^{:key (:team-id t)} [team-row (assoc ctx :team-id (:team-id t)) t]) @teams)])))
 
-(defn render [ctx]
-  [:div
-   [teams-table ctx]
-   [enter-team-input ctx]])
+(defn render [ctx ui-path]
+  (fn [ctx ui-path]
+    (println "render teams tab")
+    [:div {:style {:padding-left 120 :padding-top 40}}
+     [teams-table ctx]
+     [enter-team-input ctx]]))

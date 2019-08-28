@@ -38,7 +38,6 @@
                                                             :team-name     team-name})
 
                                          :execute-event  (fn [t {:keys [team-id team-name]}]
-                                                           (println "t " t)
                                                            (-> t
                                                                (update :teams conj (mk-team team-id team-name))
                                                                (assoc :dirty true)))}})

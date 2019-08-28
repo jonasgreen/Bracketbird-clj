@@ -4,6 +4,7 @@
   :dependencies [[org.clojure/clojure "1.10.0"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.516"]
+                                  [org.clojure/core.async "0.4.500"]
                                   [com.bhauman/figwheel-main "0.2.3"]
                                   ;; optional but recommended
                                   [com.bhauman/rebel-readline-cljs "0.1.4"]

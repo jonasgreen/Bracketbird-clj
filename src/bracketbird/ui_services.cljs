@@ -1,14 +1,12 @@
 (ns bracketbird.ui-services
   (:require [bracketbird.control.tournament-api :as tournament-api]
-            [bracketbird.util :as ut]
             [bracketbird.event-dispatcher :as event-dispatcher]
-            [clojure.string :as string]
             [bracketbird.state :as state]))
 
 
-(defn- execute
-  ([event-type ctx m] (execute event-type ctx m identity))
-  ([event-type ctx m update-fn]
+(defn dispatch-event
+  ([event-type ctx m] (dispatch-event event-type ctx m {}))
+  ([event-type ctx m {:keys [state-coeffect post-render]}]
 
    ;validate input - rough validation (spec)
    ;check if to warn about tournament state
@@ -20,6 +18,10 @@
    (println "Ui-services ctx : " ctx " m: " m)
 
    (let [{:keys [validate-input validate-state mk-event]} (get tournament-api/events-spec event-type)
+
+         ;(validate-input ctx m)
+         ;(validate-state ctx m)
+
          event (-> (mk-event ctx m)
                    (assoc :event-type event-type))
 
@@ -30,12 +32,7 @@
          aggregate-path (state/mk-path :tournament ctx)
          execute-event (-> tournament-api/events-spec
                            (get event-type)
-                           :execute-event)
-         ]
-
-
-     ;(validate-input ctx m)
-     ;(validate-state ctx m)
+                           :execute-event)]
 
      (event-dispatcher/dispatch-client-event {:event              event
                                               :execute-event      execute-event
@@ -43,26 +40,5 @@
                                               :aggregate-path     aggregate-path
 
                                               :aggregate-coeffect tournament-api/update-state
-                                              :state-coeffect     update-fn}))))
-
-
-
-(defn create-tournament [ctx]
-  (let [app-path (state/mk-path :application ctx)]
-    (execute [:tournament :create]
-             ctx
-             {}
-             (fn [state] (assoc-in state (conj app-path :active-page) :tournament-page)))))
-
-(defn create-team [ctx team-name]
-  (execute [:team :create]
-           ctx
-           {:team-name team-name}))
-
-
-
-
-
-
-
-
+                                              :state-coeffect     (if state-coeffect state-coeffect identity)
+                                              :post-render        (if post-render post-render identity)}))))

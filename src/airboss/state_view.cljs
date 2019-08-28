@@ -17,6 +17,10 @@
 (def panel-id "airbus-state_viewer_panel")
 
 
+(defn channel?
+  [x]
+  (satisfies? cljs.core.async.impl.protocols/Channel x))
+
 (defn nt [n t]
   {:name n :type? t})
 
@@ -36,6 +40,7 @@
             (nt "RCursor (reagent)" (fn [v] (instance? r-atom/RCursor v)))
             (nt "Atom" (fn [v] (instance? Atom v)))
             (nt "Function" fn?)
+            (nt "Channel" channel?)
             (nt "JavaScript-Object" (fn [v] (instance? js/Object v)))
             (nt "Unknown" (fn [_] true))])
 
@@ -375,7 +380,9 @@
         (str "@atom " value)
         (if (fn? value)
           "#(...)"
-          (str value))))))
+          (if (channel? value)
+            "Channel"
+            (str value)))))))
 
 (defn- render-value [{:keys [value] :as m} dispatcher]
   (if (container? value)

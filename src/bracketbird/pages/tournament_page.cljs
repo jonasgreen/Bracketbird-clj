@@ -3,68 +3,38 @@
             [bracketbird.pages.settings-tab :as settings]
             [bracketbird.pages.ranking-tab :as scores]
             [bracketbird.pages.matches-tab :as matches]
-            [bracketbird.ui.ui-selector :as sel]
             [bracketbird.ui.styles :as s]
-            [reagent.core :as r]
-            ))
-
-;------------
-; menu-items
-;------------
+            [bracketbird.ui :as ui]
+            [bracketbird.state :as state]))
 
 
-(def ui {:pages {:teams    {:name "TEAMS" :render (fn [ctx] [teams/render ctx])}
-                 :settings {:name "SETTINGS" :render (fn [ctx] [settings/render ctx])}
-                 :matches  {:name "MATCHES" :render (fn [ctx] [matches/render ctx])}
-                 :ranking  {:name "SCORES" :render (fn [ctx] [scores/render ctx])}}
+(defn menu-panel [{:keys [on-selection selected order items]}]
+  [:div {:style s/menu-panel-style}
+   (map (fn [k]
+          (let [selected? (= selected k)]
+            ^{:key k} [:span {:on-click #(on-selection k)
+                              :style    (merge s/menu-item-style (when selected? {:opacity 1 :cursor :auto}))}
+                       (get-in items [k :header])])) order)])
 
-         :active-page ""
-         })
+(defn render [_ ui-path]
+  (let [initial-values {:items             {:teams    {:header "TEAMS" :content teams/render}
+                                            :settings {:header "SETTINGS" :content settings/render}
+                                            :matches  {:header "MATCHES" :content matches/render}
+                                            :ranking  {:header "SCORES" :content scores/render}}
 
+                        :order             [:teams :settings :matches :ranking]
+                        :selection-type    :single
+                        :selected          :teams
+                        :previous-selected :teams}
 
-(def m-teams {:name "TEAMS" :render (fn [ctx] [teams/render ctx])})
-(def m-settings {:name "SETTINGS" :render (fn [ctx] [settings/render ctx])})
-(def m-matches {:name "MATCHES" :render (fn [ctx] [matches/render ctx])})
-(def m-scores {:name "RANKING" :render (fn [ctx] [scores/render ctx])})
+        values (state/subscribe-ui-values ui-path initial-values)
+        on-selection (fn [tab] (state/update-ui-values! ui-path (ui/select @values tab)))]
 
-(def m-items [m-teams m-settings m-matches m-scores])
-
-(defn- menu-item [item selected select]
-  [:span {:on-click (fn [e] (when-not selected (select item)))
-          :style    (merge s/menu-item-style (when selected {:opacity 1 :cursor :auto}))}
-   (:name item)])
-
-;------------
-; menu-panel
-;------------
-
-(defn menu-panel [items selector]
-  (r/create-class
-    {:reagent-render
-     (fn [items selector]
-       (let [selected-name (:name (sel/selected selector))
-             item-selector (sel/item-selector selector)]
-         [:div {:style s/menu-panel-style}
-          (map (fn [item] ^{:key (:name item)} [menu-item item (= (:name item) selected-name) item-selector]) items)]))
-
-     :component-did-mount
-     (fn [_]
-       (sel/initial-select selector items))}))
-
-;--------------
-; page-render
-;--------------
-
-(defn render [ctx]
-  (let [selector (sel/subscribe-single-selection ctx)]
-
-    ;hack to create tournament when reloading page - for development
-    ;(when-not (context/data old-ctx) (bracketbird.tournament-controller/create-tournament old-ctx))
-
-    (fn [ctx]
+    (fn [ctx ui-path]
+      (println "render tournament page ")
       [:div {:style s/tournament-page-style}
-       [menu-panel m-items selector]
+       [menu-panel (assoc @values :on-selection on-selection)]
        ;content
-       [teams/render ctx]
-       #_(when-let [{:keys [render name]} (sel/selected selector)]
-           [render (context/sub-ui-ctx old-ctx [(keyword (str (clojure.string/lower-case name) "-tab"))]) ctx])])))
+       (let [selected (:selected @values)]
+         (println "selected " (:selected @values))
+         [(get-in @values [:items selected :content]) ctx (conj ui-path selected)])])))

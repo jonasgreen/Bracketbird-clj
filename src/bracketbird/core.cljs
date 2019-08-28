@@ -8,24 +8,28 @@
             [bracketbird.system :as system]))
 
 
-(defn render-application [ctx]
+(defn render-application [ctx ui-path]
   (let [application (state/subscribe :application ctx)]
-    (fn [_]
+    (fn [_ _]
+      (println "render application")
       [:div {:class :application} (condp = (:active-page @application)
-                                    :front-page [front-page/render ctx]
+                                    :front-page [front-page/render ctx (conj ui-path :front-page)]
                                     :tournament-page [tournament-page/render (-> (state/query :tournament ctx)
                                                                                  (select-keys [:tournament-id])
-                                                                                 (merge ctx))]
+                                                                                 (merge ctx)) (conj ui-path :tournament-page)]
                                     [error-page/render])])))
 
 (defn render-system [_]
   (println "start system")
   (let [system (state/subscribe [:system])
-        applications (state/subscribe [:applications])]
+        applications (state/subscribe [:applications])
+        ui-system (state/subscribe [:ui :system])]
+
     (println "applications" @applications)
     (fn [_]
+      (println "render system")
       [:div {:class :system}
-       (map (fn [id] ^{:key id} [render-application {:application-id id}]) (keys @applications))])))
+       (map (fn [id] ^{:key id} [render-application {:application-id id} [:ui :applications id]]) (keys @applications))])))
 
 (defn mount-reagent []
   (r/render [render-system] (js/document.getElementById "system")))
