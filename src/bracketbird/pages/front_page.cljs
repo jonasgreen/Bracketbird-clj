@@ -7,7 +7,7 @@
    [:span {:style {:color "lightblue"}} "BRACKET"]
    [:span {:style {:color "#C9C9C9"}} "BIRD"]])
 
-(defn render [ctx ui-path]
+(defn render [ctx]
   [:div
    [:div {:style {:display         :flex
                   :justify-content :center
@@ -22,7 +22,7 @@
      "Instant tournaments"]
     [:button {:class    "largeButton primaryButton"
               :on-click (fn [_]
-                          (let [app-path (state/mk-path :application ctx)
+                          (let [app-path (state/hook-path :application ctx)
                                 show-tournament-page (fn [state] (assoc-in state (conj app-path :active-page) :tournament-page))]
                             (ui-services/dispatch-event [:tournament :create] ctx {} {:state-coeffect show-tournament-page})))}
 

@@ -1,5 +1,5 @@
 (ns bracketbird.ui-services
-  (:require [bracketbird.control.tournament-api :as tournament-api]
+  (:require [bracketbird.tournament-api :as tournament-api]
             [bracketbird.event-dispatcher :as event-dispatcher]
             [bracketbird.state :as state]))
 
@@ -25,11 +25,11 @@
          event (-> (mk-event ctx m)
                    (assoc :event-type event-type))
 
-         events-path (-> (state/mk-path :application ctx)
+         events-path (-> (state/hook-path :application ctx)
                          (conj :tournament-events))
 
 
-         aggregate-path (state/mk-path :tournament ctx)
+         aggregate-path (state/hook-path :tournament ctx)
          execute-event (-> tournament-api/events-spec
                            (get event-type)
                            :execute-event)]

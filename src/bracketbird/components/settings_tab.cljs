@@ -1,9 +1,11 @@
-(ns bracketbird.pages.settings-tab
-  (:require [bracketbird.pages.tournament-tab-content :as tab-content]))
+(ns bracketbird.components.settings-tab
+  (:require [bracketbird.components.tournament-tab-content :as tab-content]
+            [bracketbird.state :as state]
+            [bracketbird.styles :as s]))
 
 
 (defn content [ctx]
-  [:div
+  [:div {:style s/tournamet-tab-content-style}
    [:div "settings-ssss"]
    [:div "settings-ssss"]
    [:div "settings-ssss"]
@@ -49,4 +51,4 @@
    ])
 
 (defn render [ctx]
-  [tab-content/render ctx [content ctx]])
+  [content ctx])

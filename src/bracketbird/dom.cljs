@@ -1,4 +1,4 @@
-(ns utils.dom
+(ns bracketbird.dom
   (:require [clojure.set :as s]
             [goog.dom :as dom-helper]
             [bedrock.util :as ut])

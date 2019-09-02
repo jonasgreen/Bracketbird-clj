@@ -5,37 +5,35 @@
             [bracketbird.pages.error-page :as error-page]
             [bracketbird.pages.tournament-page :as tournament-page]
             [bracketbird.pages.front-page :as front-page]
-            [bracketbird.system :as system]))
+            [bracketbird.system :as system]
+            [bracketbird.ui :as ui]))
 
 
-(defn render-application [ctx ui-path]
-  (let [application (state/subscribe :application ctx)]
+(defn render-application [ctx]
+  (let [application (state/hook :application ctx)]
     (fn [_ _]
-      (println "render application")
       [:div {:class :application} (condp = (:active-page @application)
-                                    :front-page [front-page/render ctx (conj ui-path :front-page)]
-                                    :tournament-page [tournament-page/render (-> (state/query :tournament ctx)
+                                    :front-page [front-page/render ctx]
+                                    :tournament-page [tournament-page/render (-> (:tournament @application)
                                                                                  (select-keys [:tournament-id])
-                                                                                 (merge ctx)) (conj ui-path :tournament-page)]
+                                                                                 (merge ctx))]
                                     [error-page/render])])))
 
 (defn render-system [_]
-  (println "start system")
-  (let [system (state/subscribe [:system])
-        applications (state/subscribe [:applications])
-        ui-system (state/subscribe [:ui :system])]
-
-    (println "applications" @applications)
+  (let [system (state/hook :system {})]
     (fn [_]
-      (println "render system")
       [:div {:class :system}
-       (map (fn [id] ^{:key id} [render-application {:application-id id} [:ui :applications id]]) (keys @applications))])))
+       (when-let [id (:active-application @system)]
+         [render-application {:application-id id}])])))
 
 (defn mount-reagent []
   (r/render [render-system] (js/document.getElementById "system")))
 
 (defn main []
   (enable-console-print!)
+
+  (swap! state/state assoc :hooks state/hooks-spc)
+
   (system/initialize!)
   (mount-reagent)
   (airboss/load-state-viewer state/state)

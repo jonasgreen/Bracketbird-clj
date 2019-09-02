@@ -1,6 +1,30 @@
-(ns bracketbird.control.tournament-api
+(ns bracketbird.tournament-api
   (:require [bracketbird.system :as system]))
 
+
+(def states {[:tournament :not-ready] {}
+             [:tournament :ready] {}
+             [:tournament :in-progress] {}
+             [:tournament :done-playing] {}
+             [:tournament :finished] {}
+             ;-----
+             [:stage :not-ready] {}
+             [:stage :ready] {}
+             [:stage :in-progress] {}
+             [:stage :done-playing] {}
+             [:stage :finished] {}
+             ;-----
+             [:group :not-ready] {}
+             [:group :ready] {}
+             [:group :in-progress] {}
+             [:group :done-playing] {}
+             [:group :finished] {}
+             ;-----
+             [:match :not-ready] {}
+             [:match :ready] {}
+             [:match :in-progress] {}
+             [:match :done-playing] {}
+             [:match :finished] {}})
 
 (defn mk-tournament [id]
   {:tournament-id id

@@ -1,4 +1,4 @@
-(ns bracketbird.ui.styles)
+(ns bracketbird.styles)
 
 
 (def row-height 30)
