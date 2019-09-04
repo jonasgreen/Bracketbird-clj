@@ -25,11 +25,11 @@
          event (-> (mk-event ctx m)
                    (assoc :event-type event-type))
 
-         events-path (-> (state/hook-path :application ctx)
+         events-path (-> (state/hook-path :hooks/application ctx)
                          (conj :tournament-events))
 
 
-         aggregate-path (state/hook-path :tournament ctx)
+         aggregate-path (state/hook-path :hooks/tournament ctx)
          execute-event (-> tournament-api/events-spec
                            (get event-type)
                            :execute-event)]

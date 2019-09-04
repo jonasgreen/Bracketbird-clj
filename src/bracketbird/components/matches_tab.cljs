@@ -1,10 +1,10 @@
 (ns bracketbird.components.matches-tab
-  (:require [bracketbird.components.tournament-tab-content :as tab-content]))
+  (:require [bracketbird.styles :as s]))
 
 
 
 
 
 
-(defn render [ctx ui-path]
-  [:div "matches-tab"])
+(defn render [ctx]
+  [:div {:style s/tournamet-tab-content-style} "matches-tab"])

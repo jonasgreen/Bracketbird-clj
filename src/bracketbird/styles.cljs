@@ -34,7 +34,9 @@
                             :flex-direction :column})
 
 (def tournamet-tab-content-style {:padding-bottom page-bottom-space
-                                  :overflow-y     :scroll
+                                  :border-top "1px solid rgba(255,255,255,0)"
+                                  :height         :100%
+                                  :overflow-y     :auto
                                   :padding-left   page-side-space
                                   :padding-right  page-side-space
                                   :padding-top    page-top-space})

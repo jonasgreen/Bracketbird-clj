@@ -357,7 +357,7 @@
             (list? value) (str "(+) " (count value))
             (vector? value) (if (some coll? value)
                               (str "[+] " (count value))
-                              (str "[" (->> value (map str) (string/join " ")) "]")
+                              (str "[" (->> value (map (fn[v] (if (symbol? v) (str "'" v) v)) ) (string/join " ")) "]")
                               )
             (set? value) (str "#{+} " (count value))
             (= LazySeq (type value)) (str "(+) " (count value) " Lazy seq")

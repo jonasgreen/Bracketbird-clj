@@ -39,16 +39,6 @@
    :tournament        {}
    :tournament-events []})
 
-(defn initialize! []
-  (swap! state/state assoc :system {:active-application nil
-                                    :test               (or
-                                                          (= (.. js/window -location -hostname) "localhost")
-                                                          (= (.. js/window -location -hash) "#test"))})
-
-  ;has to be done after test is set
-  (let [app-id (unique-id :application)]
-    (swap! state/state assoc-in [:system :active-application] app-id)
-    (swap! state/state assoc-in [:applications app-id] (mk-application app-id))))
 
 
 

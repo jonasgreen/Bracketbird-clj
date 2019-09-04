@@ -1,11 +1,14 @@
 (ns bracketbird.components.settings-tab
-  (:require [bracketbird.components.tournament-tab-content :as tab-content]
-            [bracketbird.state :as state]
+  (:require [bracketbird.state :as state]
             [bracketbird.styles :as s]))
 
 
-(defn content [ctx]
-  [:div {:style s/tournamet-tab-content-style}
+(defn render [ctx {:keys [values] :as opts}]
+  [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 (:scroll-top values)) {:border-top "1px solid rgba(241,241,241,1)"}))
+         :on-scroll (fn [e] (state/put! values :scroll-top (.-scrollTop (.-target e))))}
+   [:div "asasfdss"]
+   [:div "settings-ssss"]
+   [:div "setings-ssss"]
    [:div "settings-ssss"]
    [:div "settings-ssss"]
    [:div "settings-ssss"]
@@ -44,11 +47,5 @@
    [:div "settings-ssss"]
    [:div "settings-ssss"]
    [:div "settings-ssss"]
-   [:div "settings-ssss"]
-   [:div "settings-ssss"]
-   [:div "settings-ssss"]
    [:div "xxxx"]
    ])
-
-(defn render [ctx]
-  [content ctx])

@@ -3,13 +3,18 @@
 
 
 
+(defn gui [hook ctx]
+  (let [r (state/subscribe [:renders hook])
+        reactions (reduce (fn [m h] (assoc m h (state/hook h ctx))) {:values (state/hook hook ctx (:values @r))} (:reactions @r))]
+
+    (fn [hook ctx]
+      (println "render " hook)
+      (let [{:keys [render]} @r]
+        (if render
+          [(render) ctx (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions)]
+          [:div (str "No render: " hook ctx)])))))
 
 
-
-(defn select [m tab]
-  (-> m
-      (assoc :previous-selected (:selected m)
-             :selected tab)))
 
 
 

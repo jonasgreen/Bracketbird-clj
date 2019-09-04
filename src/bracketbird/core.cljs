@@ -1,43 +1,50 @@
 (ns ^:figwheel-hooks bracketbird.core
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
+            [goog.events :as events]
             [bracketbird.state :as state]
-            [bracketbird.pages.error-page :as error-page]
-            [bracketbird.pages.tournament-page :as tournament-page]
-            [bracketbird.pages.front-page :as front-page]
-            [bracketbird.system :as system]
-            [bracketbird.ui :as ui]))
+            [bracketbird.ui :as ui]
+            [bracketbird.specification :as specification]
+            [bracketbird.system :as system]))
 
-
-(defn render-application [ctx]
-  (let [application (state/hook :application ctx)]
-    (fn [_ _]
-      [:div {:class :application} (condp = (:active-page @application)
-                                    :front-page [front-page/render ctx]
-                                    :tournament-page [tournament-page/render (-> (:tournament @application)
-                                                                                 (select-keys [:tournament-id])
-                                                                                 (merge ctx))]
-                                    [error-page/render])])))
-
-(defn render-system [_]
-  (let [system (state/hook :system {})]
-    (fn [_]
-      [:div {:class :system}
-       (when-let [id (:active-application @system)]
-         [render-application {:application-id id}])])))
 
 (defn mount-reagent []
-  (r/render [render-system] (js/document.getElementById "system")))
+  (r/render [ui/gui :hooks/ui-system-page {}] (js/document.getElementById "system")))
+
 
 (defn main []
   (enable-console-print!)
 
-  (swap! state/state assoc :hooks state/hooks-spc)
+  (swap! state/state assoc :system {:active-application nil
+                                    :test               (or
+                                                          (= (.. js/window -location -hostname) "localhost")
+                                                          (= (.. js/window -location -hash) "#test"))})
 
-  (system/initialize!)
+  (swap! state/state assoc :hooks specification/hooks)
+  (swap! state/state assoc :renders specification/renders)
+
+
+  (let [app-id (system/unique-id :application)]
+    (swap! state/state assoc-in [:system :active-application] app-id)
+    (swap! state/state assoc-in [:applications app-id] (system/mk-application app-id)))
+
+
   (mount-reagent)
   (airboss/load-state-viewer state/state)
-  (airboss/load-design-viewer))
+  (airboss/load-design-viewer)
+
+
+  (swap! state/state update :system assoc
+         :window-height (.-innerHeight js/window)
+         :window-width (.-innerWidth js/window))
+
+  (events/listen js/window "resize" (fn [e] (swap! state/state update :system assoc
+                                                   :window-height (.-innerHeight (.-target e))
+                                                   :window-width (.-innerWidth (.-target e)))))
+
+  )
+
+
 
 
 (defn ^:after-load on-js-reload []

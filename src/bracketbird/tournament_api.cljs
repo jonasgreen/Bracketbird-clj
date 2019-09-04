@@ -2,34 +2,38 @@
   (:require [bracketbird.system :as system]))
 
 
-(def states {[:tournament :not-ready] {}
-             [:tournament :ready] {}
-             [:tournament :in-progress] {}
+(def states {[:tournament :not-ready]    {}
+             [:tournament :ready]        {}
+             [:tournament :in-progress]  {}
              [:tournament :done-playing] {}
-             [:tournament :finished] {}
+             [:tournament :finished]     {}
              ;-----
-             [:stage :not-ready] {}
-             [:stage :ready] {}
-             [:stage :in-progress] {}
-             [:stage :done-playing] {}
-             [:stage :finished] {}
+             [:stage :not-ready]         {}
+             [:stage :ready]             {}
+             [:stage :in-progress]       {}
+             [:stage :done-playing]      {}
+             [:stage :finished]          {}
              ;-----
-             [:group :not-ready] {}
-             [:group :ready] {}
-             [:group :in-progress] {}
-             [:group :done-playing] {}
-             [:group :finished] {}
+             [:group :not-ready]         {}
+             [:group :ready]             {}
+             [:group :in-progress]       {}
+             [:group :done-playing]      {}
+             [:group :finished]          {}
              ;-----
-             [:match :not-ready] {}
-             [:match :ready] {}
-             [:match :in-progress] {}
-             [:match :done-playing] {}
-             [:match :finished] {}})
+             [:match :not-ready]         {}
+             [:match :ready]             {}
+             [:match :in-progress]       {}
+             [:match :done-playing]      {}
+             [:match :finished]          {}})
 
 (defn mk-tournament [id]
   {:tournament-id id
-   :teams         []
-   :stages        []
+   :teams         {}
+   :teams-order   []
+
+   :stages        {}
+   :stages-order  []
+
    :state         :not-ready
    :dirty         false
    :final-ranking []})
@@ -62,6 +66,8 @@
                                                             :team-name     team-name})
 
                                          :execute-event  (fn [t {:keys [team-id team-name]}]
-                                                           (-> t
-                                                               (update :teams conj (mk-team team-id team-name))
-                                                               (assoc :dirty true)))}})
+                                                           (let [team (mk-team team-id team-name)]
+                                                             (-> t
+                                                                 (update :teams assoc (:team-id team) team)
+                                                                 (update :teams-order conj (:team-id team))
+                                                                 (assoc :dirty true))))}})
