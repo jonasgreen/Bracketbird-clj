@@ -77,8 +77,7 @@
 
               :hooks/ui-teams-tab        {:render    teams-tab/render
                                           :reactions [:hooks/teams-order]
-                                          :values    {:dom-id        (str (gensym))
-                                                      :scroll-top    0
+                                          :values    {:scroll-top    0
                                                       :client-height 0
                                                       :scroll-height 0}}
 

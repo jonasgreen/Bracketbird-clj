@@ -76,6 +76,41 @@ input:focus, select:focus, textarea:focus, button:focus {
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
+
+.debugButton, .debugButton:link {
+    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    background: #00796B;
+    color: white;
+    display: inline-block;
+    font-size: 10px;
+    padding-top: 0px;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-bottom: 0px;
+    margin: 2px;
+    font-family: 'Roboto Mono', monospace;
+    border: 1px solid #00695C;
+    border-radius: 2px;
+    white-space: nowrap;
+    z-index: 20;
+}
+
+.debugButton:hover, .debugButton:visited {
+    cursor: pointer;
+    -webkit-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+    -moz-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+.debugButton:active {
+    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+
 .largeButton, .largeButton:link {
     font-size: 24px;
     padding-top: 10px;

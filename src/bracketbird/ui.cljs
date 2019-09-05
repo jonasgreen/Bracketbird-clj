@@ -1,6 +1,7 @@
 (ns bracketbird.ui
   (:require [bracketbird.state :as state]
-            [bracketbird.util :as ut]))
+            [bracketbird.util :as ut]
+            [bedrock.util :as b-ut]))
 
 
 
@@ -10,18 +11,28 @@
 (defn modify-element-options [elem-opts options debug?]
   (let [m (-> elem-opts (assoc :id (:dom-id (:values options))))]
     (if debug?
-      (update m :style assoc :border "1px solid black")
+      (update m :style assoc :border "1px solid #00796B")
       m)))
 
-(defn modify-reagent-result [result hook debug?]
+(defn modify-reagent-result [ctx options result hook debug?]
   (if debug?
     (let [[start end] (split-at 2 result)
-          debug-element [:div {:style {:font-size 10
-                                       :position :relative
-                                       :background :yellow
+          debug-element [:div {:style {:position   :relative
                                        :align-self :flex-start
-                                       :display :table-cell}}
-                         hook]]
+                                       :display    :table-cell}}
+                         [:button {:class    "debugButton"
+                                   :on-click (fn [e]
+                                               (let [ui-hooks (filter ut/ui-hook? (keys options))
+                                                     data-hooks (filter (comp not ut/ui-hook?) (keys (dissoc options :values)))]
+
+                                                 (println "\n-----------------------")
+                                                 (println (str "\nHOOK\n" hook))
+                                                 (println "CTX\n" (b-ut/pp-str ctx))
+                                                 (println "OPTIONS - ui-hooks" (into [(str hook "(:values)")] (vec (sort ui-hooks))) " data-hooks" (vec (sort data-hooks)) "\n"
+                                                          (b-ut/pp-str options)))
+                                               )
+                                   }
+                          hook]]]
       (vec (concat start [debug-element] end)))
     result))
 
@@ -66,7 +77,7 @@
                                     (into [elm (modify-element-options elm-opts options debug?)] remaining)
                                     (into [elm (modify-element-options {} options debug?) elm-opts] remaining))
 
-                result (modify-reagent-result modified-elm-opts hook debug?)]
+                result (modify-reagent-result ctx options modified-elm-opts hook debug?)]
 
             (when debug?
               (println "RENDERED" rendered)
