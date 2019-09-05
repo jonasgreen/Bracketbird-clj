@@ -5,24 +5,30 @@
             [bracketbird.state :as state]
             [bracketbird.ui :as ui]
             [bracketbird.specification :as specification]
-            [bracketbird.system :as system]))
+            [bracketbird.dom :as dom]
+            [bracketbird.system :as system]
+            [bracketbird.dom :as d]))
 
 
 (defn mount-reagent []
   (r/render [ui/gui :hooks/ui-system-page {}] (js/document.getElementById "system")))
 
 
+(defn load-specifications []
+  (println "loading specifications")
+  (swap! state/state assoc :hooks specification/hooks)
+  (swap! state/state assoc :renders specification/renders))
+
 (defn main []
   (enable-console-print!)
 
-  (swap! state/state assoc :system {:active-application nil
+  (swap! state/state assoc :system {:debug?             false
+                                    :active-application nil
                                     :test               (or
                                                           (= (.. js/window -location -hostname) "localhost")
                                                           (= (.. js/window -location -hash) "#test"))})
 
-  (swap! state/state assoc :hooks specification/hooks)
-  (swap! state/state assoc :renders specification/renders)
-
+  (load-specifications)
 
   (let [app-id (system/unique-id :application)]
     (swap! state/state assoc-in [:system :active-application] app-id)
@@ -42,10 +48,17 @@
                                                    :window-height (.-innerHeight (.-target e))
                                                    :window-width (.-innerWidth (.-target e)))))
 
+
+  (println d/key-to-codes)
+  (events/listen js/window "keydown" (fn [e] (when (d/key-and-modifier? :D d/alt-modifier? e)
+                                               (.stopPropagation e)
+                                               (.preventDefault e)
+                                               (swap! state/state update-in [:system :debug?] not))))
   )
 
 
 
 
 (defn ^:after-load on-js-reload []
+  (load-specifications)
   (mount-reagent))

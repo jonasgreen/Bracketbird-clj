@@ -3,10 +3,7 @@
   (:require [reagent.core :as r]))
 
 
-(defonce state (r/atom {:hooks        {}
-                        :system       {}
-                        :applications {}
-                        :ui           {}}))
+(defonce state (r/atom {}))
 
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}

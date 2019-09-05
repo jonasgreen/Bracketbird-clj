@@ -6,7 +6,7 @@
 (defn render [ctx {:keys [values] :as opts}]
   [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 (:scroll-top values)) {:border-top "1px solid rgba(241,241,241,1)"}))
          :on-scroll (fn [e] (state/put! values :scroll-top (.-scrollTop (.-target e))))}
-   [:div "asasfdss"]
+   [:div "as"]
    [:div "settings-ssss"]
    [:div "setings-ssss"]
    [:div "settings-ssss"]
