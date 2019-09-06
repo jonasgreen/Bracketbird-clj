@@ -1,10 +1,9 @@
 (ns bracketbird.components.teams-tab
   (:require [bracketbird.styles :as s]
-            [bracketbird.state :as state]
             [bracketbird.ui-services :as ui-service]
             [bracketbird.dom :as d]
-            [goog.dom :as dom]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [bracketbird.ui :as ui]))
 
 
 #_(defn move-entity-focus-up [entities entity sub-key]
@@ -49,7 +48,7 @@
 
 (defn enter-team-input [ctx]
   (let [team-name (r/atom "")
-        dom-id (state/dom-id ctx :enter-team-input)
+        dom-id nil #_(state/dom-id ctx :enter-team-input)
         create-team (fn []
                       (ui-service/dispatch-event [:team :create] ctx {:team-name @team-name})
                       (reset! team-name ""))
@@ -74,7 +73,7 @@
 
 
 (defn team-row_old [position ctx]
-  (let [team (state/hook :hooks/team ctx)
+  (let [team (ui/hook :hooks/team ctx)
         team-name-state (r/atom (:team-name team))
         delete-by-backspace (atom (clojure.string/blank? (:team-name team)))]
     (fn [position _]
@@ -83,7 +82,7 @@
                      :align-items :center
                      :min-height  30}}
        [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
-       [:input {:id          (hash (conj (state/hook-path :hooks/teams-tab ctx) :input))
+       [:input {:id          (hash (conj (ui/hook-path :hooks/teams-tab ctx) :input))
                 :style       (merge s/input-text-field {:min-width 200})
                 :value       @team-name-state
 
@@ -133,40 +132,40 @@
 
 (defn team-row [ctx]
   (fn [_]
-    (let [team (state/hook :hooks/team ctx)]
+    (let [team (ui/hook :hooks/team ctx)]
       [:div (:team-name @team)])))
 
 
-(defn render [ctx {:keys [values] :as opts}]
-  (let [teams-order (:hooks/teams-order opts)]
+(defn render [values]
+  (let [{:keys [ctx
+                dom-id
+                hooks/teams-order
+                scroll-top
+                scroll-height
+                client-height]} values]
     [:div {:style    (merge
                        {:display        :flex
                         :flex-direction :column
-                        :height         :100%
-                        ;:background     :red
-                        }
-                       (when (< 0 (:scroll-top values)) {:border-top "1px solid rgba(241,241,241,1)"}))
-
+                        :height         :100%}
+                       (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
            :on-click (fn [e] ())}
 
-
      ; teams table
-     [:div {:id        (:dom-id values)
+     [:div {:id        dom-id
             :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
                                :min-height     :200px
                                :padding-bottom 40
-                               :overflow-y     :auto
-                               ;:background   :yellow
-                               } (when (not= (+ (:scroll-top values) (:client-height values))
-                                             (:scroll-height values)) {:border-bottom "1px solid rgba(241,241,241,1)"}))
+                               :overflow-y     :auto}
+                              (when (not= (+ scroll-top client-height)
+                                          scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
             :on-scroll (fn [e]
                          (let [target (.-target e)]
-                           (state/put! values
-                                       :scroll-top (.-scrollTop target)
-                                       :scroll-height (.-scrollHeight target)
-                                       :client-height (.-clientHeight target))))}
+                           (ui/put! values
+                                    :scroll-top (.-scrollTop target)
+                                    :scroll-height (.-scrollHeight target)
+                                    :client-height (.-clientHeight target))))}
       (map (fn [team-id]
              ^{:key team-id} [team-row (assoc ctx :team-id team-id)]) teams-order)]
 

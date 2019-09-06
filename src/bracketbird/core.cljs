@@ -2,10 +2,10 @@
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
             [goog.events :as events]
+
             [bracketbird.state :as state]
             [bracketbird.ui :as ui]
             [bracketbird.specification :as specification]
-            [bracketbird.dom :as dom]
             [bracketbird.system :as system]
             [bracketbird.dom :as d]))
 
@@ -49,7 +49,6 @@
                                                    :window-width (.-innerWidth (.-target e)))))
 
 
-  (println d/key-to-codes)
   (events/listen js/window "keydown" (fn [e] (when (d/key-and-modifier? :D d/alt-modifier? e)
                                                (.stopPropagation e)
                                                (.preventDefault e)

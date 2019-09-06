@@ -4,5 +4,5 @@
 
 
 
-(defn render [ctx opts]
+(defn render [values]
   [:div {:style s/tournamet-tab-content-style} "scores-tab"])

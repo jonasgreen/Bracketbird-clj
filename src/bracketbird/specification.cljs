@@ -3,7 +3,8 @@
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
             [bracketbird.components.matches-tab :as matches-tab]
-            [bracketbird.pages :as pages]))
+            [bracketbird.pages :as pages]
+            [bracketbird.ui-services :as ui-services]))
 
 
 
@@ -50,10 +51,6 @@
 
 
 
-
-
-
-
 (def renders {:hooks/ui-system-page      {:render    pages/system
                                           :reactions [:hooks/system]}
 
@@ -62,7 +59,15 @@
                                           :reactions [:hooks/application]}
 
               :hooks/ui-front-page       {:render pages/front
-                                          :values {}}
+                                          :values {}
+
+                                          :fns    {:create-tournament (fn [{:keys [ctx] :as values}]
+                                                                        (ui-services/dispatch-event
+                                                                          [:tournament :create]
+                                                                          ctx
+                                                                          {}
+                                                                          {:state-coeffect (ui-services/change-application-page values :hooks/ui-front-page)}))}
+                                          }
 
               :hooks/ui-tournament-page  {:render pages/tournament
                                           :values {:items             {:teams    {:header "TEAMS" :content :hooks/ui-teams-tab}
