@@ -5,36 +5,34 @@
 
 
 
+(defn insert-debug-info [result hook ctx options]
+  (let [[start end] (split-at 2 result)
+        debug-element [:div {:style {:position   :relative
+                                     :align-self :flex-start
+                                     :display    :table-cell}}
+                       [:button {:class    "debugButton"
+                                 :on-click (fn [e]
+                                             (let [ui-hooks (filter ut/ui-hook? (keys options))
+                                                   data-hooks (filter (comp not ut/ui-hook?) (keys (dissoc options :values)))]
+
+                                               (println "\n-----------------------")
+                                               (println (str "\nHOOK\n" hook))
+                                               (println "CTX\n" (b-ut/pp-str ctx))
+                                               (println "OPTIONS - ui-hooks" (into [(str hook "(:values)")] (vec (sort ui-hooks))) " data-hooks" (vec (sort data-hooks)) "\n"
+                                                        (b-ut/pp-str options)))
+                                             )
+                                 }
+                        hook]]]
+    (-> (concat start [debug-element] end)
+        vec
+        (update-in [1 :style] assoc :border "1px solid #00796B"))))
+
+
 (defn resolve-initial-ui-values [ctx ui-hook values]
   (assoc values :dom-id (hash (state/hook-path ui-hook ctx))))
 
-(defn modify-element-options [elem-opts options debug?]
-  (let [m (-> elem-opts (assoc :id (:dom-id (:values options))))]
-    (if debug?
-      (update m :style assoc :border "1px solid #00796B")
-      m)))
-
-(defn modify-reagent-result [ctx options result hook debug?]
-  (if debug?
-    (let [[start end] (split-at 2 result)
-          debug-element [:div {:style {:position   :relative
-                                       :align-self :flex-start
-                                       :display    :table-cell}}
-                         [:button {:class    "debugButton"
-                                   :on-click (fn [e]
-                                               (let [ui-hooks (filter ut/ui-hook? (keys options))
-                                                     data-hooks (filter (comp not ut/ui-hook?) (keys (dissoc options :values)))]
-
-                                                 (println "\n-----------------------")
-                                                 (println (str "\nHOOK\n" hook))
-                                                 (println "CTX\n" (b-ut/pp-str ctx))
-                                                 (println "OPTIONS - ui-hooks" (into [(str hook "(:values)")] (vec (sort ui-hooks))) " data-hooks" (vec (sort data-hooks)) "\n"
-                                                          (b-ut/pp-str options)))
-                                               )
-                                   }
-                          hook]]]
-      (vec (concat start [debug-element] end)))
-    result))
+(defn modify-element-options [elem-opts options]
+  (-> elem-opts (assoc :id (:dom-id (:values options)))))
 
 (defn resolve-options [hook initial-ui-values reactions]
   (let [options (reduce-kv (fn [m k r]
@@ -73,18 +71,15 @@
 
           (let [rendered (render ctx options)               ;instead of reagent calling render function - we do it
                 [elm elm-opts & remaining] rendered
-                modified-elm-opts (if (map? elm-opts)
-                                    (into [elm (modify-element-options elm-opts options debug?)] remaining)
-                                    (into [elm (modify-element-options {} options debug?) elm-opts] remaining))
-
-                result (modify-reagent-result ctx options modified-elm-opts hook debug?)]
-
-            (when debug?
-              (println "RENDERED" rendered)
-              (println "ELM" elm)
-              (println "ELM-OPTS" elm-opts)
-              (println "REMAINING" remaining)
-              (println "MODIFIED-ELM-OPTS" modified-elm-opts)
-              (println "RESULT" result))
-
-            result))))))
+                result (if (map? elm-opts)
+                         (into [elm (modify-element-options elm-opts options)] remaining)
+                         (into [elm (modify-element-options {} options) elm-opts] remaining))]
+            (if debug?
+              (do (println "RENDERED" rendered)
+                  (println "ELM" elm)
+                  (println "ELM-OPTS" elm-opts)
+                  (println "REMAINING" remaining)
+                  (println "MODIFIED-ELM-OPTS" result)
+                  (println "RESULT" result)
+                  (insert-debug-info result hook ctx options))
+              result)))))))
