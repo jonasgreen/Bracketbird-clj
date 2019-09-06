@@ -35,73 +35,63 @@
             :hooks/group-match         [:hooks/group :matches :match-id]
 
             ;; UI
+            :hooks/ui                  {:path [:ui]}
 
-            :hooks/ui                  [:ui]
-            :hooks/ui-system-page      [:ui :system]
-            :hooks/ui-application-page [:ui :applications :application-id]
+            :hooks/ui-system-page      {:path      [:ui :system]
+                                        :render    pages/system
+                                        :reactions [:hooks/system]}
 
-            :hooks/ui-front-page       [:hooks/ui-application-page :front-page]
-            :hooks/ui-tournament-page  [:hooks/ui-application-page :tournament-page]
+            :hooks/ui-application-page {:path      [:ui :applications :application-id]
+                                        :render    pages/application
+                                        :reactions [:hooks/application]}
 
-            :hooks/ui-teams-tab        [:hooks/ui-tournament-page :teams-tab]
-            :hooks/ui-teams-row        [:hooks/ui-teams-tab :team-id]
+            :hooks/ui-front-page       {:path   [:hooks/ui-application-page :front-page]
+                                        :render pages/front
+                                        :values {}
 
+                                        :fns    {:create-tournament (fn [{:keys [ctx] :as values}]
+                                                                      (ui-services/dispatch-event
+                                                                        [:tournament :create]
+                                                                        ctx
+                                                                        {}
+                                                                        {:state-coeffect (ui-services/change-application-page values :hooks/ui-front-page)}))}}
 
-            :hooks/ui-settings-tab     [:hooks/ui-tournament-page :settings-tab]
-            :hooks/ui-matches-tab      [:hooks/ui-tournament-page :matches-tab]
-            :hooks/ui-ranking-tab      [:hooks/ui-tournament-page :ranking-tab]
-            })
+            :hooks/ui-tournament-page  {:path   [:hooks/ui-application-page :tournament-page]
+                                        :render pages/tournament
+                                        :values {:items             {:teams    {:header "TEAMS" :content :hooks/ui-teams-tab}
+                                                                     :settings {:header "SETTINGS" :content :hooks/ui-settings-tab}
+                                                                     :matches  {:header "MATCHES" :content :hooks/ui-matches-tab}
+                                                                     :ranking  {:header "SCORES" :content :hooks/ui-ranking-tab}}
 
+                                                 :order             [:teams :settings :matches :ranking]
+                                                 :selection-type    :single
+                                                 :selected          :teams
+                                                 :previous-selected :teams}}
 
+            :hooks/ui-teams-tab        {:path      [:hooks/ui-tournament-page :teams-tab]
+                                        :render    teams-tab/render
+                                        :reactions [:hooks/teams-order]
+                                        :values    {:scroll-top    0
+                                                    :client-height 0
+                                                    :scroll-height 0}}
 
-(def renders {:hooks/ui-system-page      {:render    pages/system
-                                          :reactions [:hooks/system]}
+            :hooks/ui-teams-row        {:path      [:hooks/ui-teams-tab :team-id]
+                                        :render    teams-tab/team-row
+                                        :reactions [:hooks/team]}
 
-              :hooks/ui-application-page {
-                                          :render    pages/application
-                                          :reactions [:hooks/application]}
-
-              :hooks/ui-front-page       {:render pages/front
-                                          :values {}
-
-                                          :fns    {:create-tournament (fn [{:keys [ctx] :as values}]
-                                                                        (ui-services/dispatch-event
-                                                                          [:tournament :create]
-                                                                          ctx
-                                                                          {}
-                                                                          {:state-coeffect (ui-services/change-application-page values :hooks/ui-front-page)}))}
-                                          }
-
-              :hooks/ui-tournament-page  {:render pages/tournament
-                                          :values {:items             {:teams    {:header "TEAMS" :content :hooks/ui-teams-tab}
-                                                                       :settings {:header "SETTINGS" :content :hooks/ui-settings-tab}
-                                                                       :matches  {:header "MATCHES" :content :hooks/ui-matches-tab}
-                                                                       :ranking  {:header "SCORES" :content :hooks/ui-ranking-tab}}
-
-                                                   :order             [:teams :settings :matches :ranking]
-                                                   :selection-type    :single
-                                                   :selected          :teams
-                                                   :previous-selected :teams}}
-
-              :hooks/ui-teams-tab        {:render    teams-tab/render
-                                          :reactions [:hooks/teams-order]
-                                          :values    {:scroll-top    0
-                                                      :client-height 0
-                                                      :scroll-height 0}}
-
-              :hooks/ui-teams-row        {:render    teams-tab/team-row
-                                          :reactions [:hooks/team]}
-
-              :hooks/ui-settings-tab     {:render settings-tab/render
-                                          :values {:scroll-top 0}}
-              :hooks/ui-matches-tab      {:render matches-tab/render}
-              :hooks/ui-ranking-tab      {:render ranking-tab/render}
-
-              })
+            :hooks/ui-enter-team-input {:path      [:hooks/ui-teams-tab :enter-team-input]
+                                        :render    teams-tab/enter-team-input}
 
 
+            :hooks/ui-settings-tab     {:path   [:hooks/ui-tournament-page :settings-tab]
+                                        :render settings-tab/render
+                                        :values {:scroll-top 0}}
 
+            :hooks/ui-matches-tab      {:path   [:hooks/ui-tournament-page :matches-tab]
+                                        :render matches-tab/render}
 
+            :hooks/ui-ranking-tab      {:path   [:hooks/ui-tournament-page :ranking-tab]
+                                        :render ranking-tab/render}})
 
 
 

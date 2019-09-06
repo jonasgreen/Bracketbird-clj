@@ -16,8 +16,7 @@
 
 (defn load-specifications []
   (println "loading specifications")
-  (swap! state/state assoc :hooks specification/hooks)
-  (swap! state/state assoc :renders specification/renders))
+  (swap! state/state assoc :hooks specification/hooks))
 
 (defn main []
   (enable-console-print!)

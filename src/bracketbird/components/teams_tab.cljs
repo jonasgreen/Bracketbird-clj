@@ -46,34 +46,32 @@
 
 
 
-(defn enter-team-input [ctx]
-  (let [team-name (r/atom "")
-        dom-id nil #_(state/dom-id ctx :enter-team-input)
-        create-team (fn []
-                      (ui-service/dispatch-event [:team :create] ctx {:team-name @team-name})
-                      (reset! team-name ""))
+(defn enter-team-input [{:keys [ctx dom-id team-name] :as values}]
+  (let [create-team (fn []
+                      (ui-service/dispatch-event [:team :create] ctx {:team-name team-name})
+                      (ui/remove! values :team-name))
 
         key-down-handler (d/handle-key {:ENTER create-team})]
 
-    (fn [_]
-      [:div {:style {:display     :flex
-                     :margin-top  30
-                     :align-items :center}}
-       [:input {:placeholder "Enter team"
-                :id          dom-id
-                :type        :text
-                :style       s/input-text-field
-                :value       @team-name
-                :on-key-down key-down-handler
-                :on-change   (fn [e] (reset! team-name (.. e -target -value)))}]
 
-       [:button {:class    "primaryButton"
-                 :on-click create-team
-                 } "Add Team"]])))
+    [:div {:style {:display     :flex
+                   :margin-top  30
+                   :align-items :center}}
+     [:input {:placeholder "Enter team"
+              :id          dom-id
+              :type        :text
+              :style       s/input-text-field
+              :value       team-name
+              :on-key-down key-down-handler
+              :on-change   (fn [e] (ui/put! values :team-name (.. e -target -value)))}]
+
+     [:button {:class    "primaryButton"
+               :on-click create-team
+               } "Add Team"]]))
 
 
 (defn team-row_old [position ctx]
-  (let [team (ui/hook :hooks/team ctx)
+  (let [team nil #_(ui/hook :hooks/team ctx)
         team-name-state (r/atom (:team-name team))
         delete-by-backspace (atom (clojure.string/blank? (:team-name team)))]
     (fn [position _]
@@ -170,4 +168,4 @@
      ; input field
      [:div {:style {:padding-left   120
                     :padding-bottom 20}}
-      [enter-team-input ctx]]]))
+      [ui/gui :hooks/ui-enter-team-input ctx]]]))

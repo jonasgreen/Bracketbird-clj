@@ -4,12 +4,13 @@
             [bedrock.util :as b-ut]))
 
 (defn init [ui-hook]
-  (get-in @state/state [:renders ui-hook :values]))
+  (get-in @state/state [:hooks ui-hook :values]))
 
 
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}
-  (let [p (get hooks h)]
+  (let [hv (get hooks h)
+        p (if (ut/ui-hook? h) (:path hv) hv)]
     (when (nil? p)
       (throw (js/Error. (str "Unable to find mapping for hook " h " in hooks map: " hooks))))
 
@@ -60,7 +61,7 @@
 
 (defn gui [hook ctx]
   (let [system (state/subscribe [:system] ctx)
-        r (get-in @state/state [:renders hook])
+        r (get-in @state/state [:hooks hook])
 
         all-hooks (into [hook] (:reactions r))
         ui-hooks (filter ut/ui-hook? all-hooks)
@@ -75,7 +76,7 @@
                                                            :hook   h
                                                            :path   path
                                                            :dom-id (hash path)}
-                                                          (:fns (get-in @state/state [:renders h]))))))
+                                                          (:fns (get-in @state/state [:hooks h]))))))
                             {}
                             ui-hooks)
 
@@ -84,7 +85,7 @@
         ;should not be reaction dependent
         initial-values (reduce (fn [m h]
                                  (assoc m h (if (ut/ui-hook? h)
-                                              (get-in @state/state [:renders hook :values])
+                                              (get-in @state/state [:hooks hook :values])
                                               {})))
                                {}
                                all-hooks)
@@ -134,10 +135,6 @@
 
     (swap! state/state update-in path (fn [m] (apply assoc (if m m (init hook)) k v kvs)))))
 
-;deprecation
-(defn hook
-  ([h ctx]
-   (hook h ctx nil))
-  ([h ctx not-found]
-   (let [path (hook-path h ctx)]
-     (state/subscribe path not-found))))
+(defn remove! [ui-values k & ks]
+  {:pre [(map? ui-values)]}
+  (swap! state/state update-in (:path ui-values) (fn [m] (apply dissoc m k ks))))
