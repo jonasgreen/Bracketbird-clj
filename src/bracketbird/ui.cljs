@@ -24,24 +24,19 @@
        (vec)))
 
 
-(defn insert-debug-info [result hook ctx options]
+(defn insert-debug-info [result options]
   (let [[start end] (split-at 2 result)
         debug-element [:div {:style {:position   :relative
                                      :align-self :flex-start
                                      :display    :table-cell}}
                        [:button {:class    "debugButton"
                                  :on-click (fn [e]
-                                             (let [ui-hooks (filter ut/ui-hook? (keys options))
-                                                   data-hooks (filter (comp not ut/ui-hook?) (keys (dissoc options :values)))]
-
-                                               (println "\n-----------------------")
-                                               (println (str "\nHOOK\n" hook))
-                                               (println "CTX\n" (b-ut/pp-str ctx))
-                                               (println "OPTIONS - ui-hooks" (into [(str hook "(:values)")] (vec (sort ui-hooks))) " data-hooks" (vec (sort data-hooks)) "\n"
-                                                        (b-ut/pp-str options)))
-                                             )
+                                             (println "\n-----------------------")
+                                             (println (str "\nHOOK\n" (:hook options)))
+                                             (println "CTX\n" (b-ut/pp-str (:ctx options)))
+                                             (println "OPTIONS\n" (b-ut/pp-str options)))
                                  }
-                        hook]]]
+                        (:hook options)]]]
     (-> (concat start [debug-element] end)
         vec
         (update-in [1 :style] assoc :border "1px solid #00796B"))))
@@ -54,7 +49,8 @@
   (let [options (reduce-kv (fn [m h r]
                              (let [v (deref r)
                                    v1 (if v v (hook initial-values))
-                                   value (merge v1 (h decorations))]
+                                   d (h decorations)
+                                   value (if d (merge v1 d) v1)]
                                (assoc m h value)))
                            {} reactions)]
 
@@ -67,26 +63,21 @@
         r (get-in @state/state [:renders hook])
 
         all-hooks (into [hook] (:reactions r))
+        ui-hooks (filter ut/ui-hook? all-hooks)
 
         all-paths (reduce (fn [m h] (let [path (hook-path h ctx)]
                                       (assoc m h (if (ut/ui-hook? h) (conj path :values) path))))
                           {}
                           all-hooks)
 
-
-
         decorations (reduce (fn [m h] (let [path (h all-paths)]
-                                        (assoc m h (if (ut/ui-hook? h)
-                                                     (merge {:ctx    ctx
-                                                             :hook   h
-                                                             :path   path
-                                                             :dom-id (hash path)}
-                                                            (:fns (get-in @state/state [:renders h])))
-                                                     {:ctx  ctx
-                                                      :hook h
-                                                      :path path}))))
+                                        (assoc m h (merge {:ctx    ctx
+                                                           :hook   h
+                                                           :path   path
+                                                           :dom-id (hash path)}
+                                                          (:fns (get-in @state/state [:renders h]))))))
                             {}
-                            all-hooks)
+                            ui-hooks)
 
 
 
@@ -110,7 +101,7 @@
         (if-not render
           [:div (str "No render: " hook ctx)]
 
-          (let [rendered (render options)               ;instead of reagent calling render function - we do it
+          (let [rendered (render options)                   ;instead of reagent calling render function - we do it
                 [elm elm-opts & remaining] rendered
                 result (if (map? elm-opts)
                          (into [elm (modify-element-options elm-opts options)] remaining)
@@ -132,7 +123,7 @@
                 (println "REMAINING" remaining)
                 (println "MODIFIED-ELM-OPTS" result)
                 (println "RESULT" result)
-                (insert-debug-info result hook ctx options))
+                (insert-debug-info result options))
               result)))))))
 
 

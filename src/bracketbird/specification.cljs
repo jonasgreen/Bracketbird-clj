@@ -44,6 +44,9 @@
             :hooks/ui-tournament-page  [:hooks/ui-application-page :tournament-page]
 
             :hooks/ui-teams-tab        [:hooks/ui-tournament-page :teams-tab]
+            :hooks/ui-teams-row        [:hooks/ui-teams-tab :team-id]
+
+
             :hooks/ui-settings-tab     [:hooks/ui-tournament-page :settings-tab]
             :hooks/ui-matches-tab      [:hooks/ui-tournament-page :matches-tab]
             :hooks/ui-ranking-tab      [:hooks/ui-tournament-page :ranking-tab]
@@ -86,10 +89,14 @@
                                                       :client-height 0
                                                       :scroll-height 0}}
 
+              :hooks/ui-teams-row        {:render    teams-tab/team-row
+                                          :reactions [:hooks/team]}
+
               :hooks/ui-settings-tab     {:render settings-tab/render
                                           :values {:scroll-top 0}}
               :hooks/ui-matches-tab      {:render matches-tab/render}
               :hooks/ui-ranking-tab      {:render ranking-tab/render}
+
               })
 
 

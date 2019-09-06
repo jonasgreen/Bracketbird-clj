@@ -130,10 +130,8 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [ctx]
-  (fn [_]
-    (let [team (ui/hook :hooks/team ctx)]
-      [:div (:team-name @team)])))
+(defn team-row [{:keys [hooks/team]}]
+  [:div (:team-name team)])
 
 
 (defn render [values]
@@ -167,11 +165,9 @@
                                     :scroll-height (.-scrollHeight target)
                                     :client-height (.-clientHeight target))))}
       (map (fn [team-id]
-             ^{:key team-id} [team-row (assoc ctx :team-id team-id)]) teams-order)]
+             ^{:key team-id} [ui/gui :hooks/ui-teams-row (assoc ctx :team-id team-id)]) teams-order)]
 
      ; input field
      [:div {:style {:padding-left   120
-                    :padding-bottom 20
-                    ;:background   :orange
-                    }}
+                    :padding-bottom 20}}
       [enter-team-input ctx]]]))
