@@ -5,7 +5,7 @@
 
             [bracketbird.state :as state]
             [bracketbird.ui :as ui]
-            [bracketbird.specification :as specification]
+            [bracketbird.hooks :as specification]
             [bracketbird.system :as system]
             [bracketbird.dom :as d]))
 

@@ -1,11 +1,10 @@
-(ns bracketbird.specification
+(ns bracketbird.hooks
   (:require [bracketbird.components.teams-tab :as teams-tab]
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]))
-
 
 
 (def hooks {:hooks/system              [:system]
