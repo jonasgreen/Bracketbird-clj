@@ -1,11 +1,10 @@
 (ns bracketbird.components.settings-tab
-  (:require [bracketbird.styles :as s]
-            [bracketbird.ui :as ui]))
+  (:require [bracketbird.styles :as s]))
 
 
-(defn render [values]
-  [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 (:scroll-top values)) {:border-top "1px solid rgba(241,241,241,1)"}))
-         :on-scroll (fn [e] (ui/put! values :scroll-top (.-scrollTop (.-target e))))}
+(defn render [{:keys [ui-update scroll-top]}]
+  [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
+         :on-scroll (fn [e] (ui-update assoc :scroll-top (.-scrollTop (.-target e))))}
    [:div "as"]
    [:div "settings-ssss"]
    [:div "setings-ssss"]

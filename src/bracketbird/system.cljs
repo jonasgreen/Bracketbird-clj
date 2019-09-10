@@ -35,7 +35,6 @@
 
 (defn mk-application [id]
   {:application-id    id
-   :active-page       :front-page
    :tournament        {}
    :tournament-events []})
 

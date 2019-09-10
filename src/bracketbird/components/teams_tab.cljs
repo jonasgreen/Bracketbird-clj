@@ -1,9 +1,7 @@
 (ns bracketbird.components.teams-tab
   (:require [bracketbird.styles :as s]
-            [bracketbird.ui-services :as ui-service]
             [bracketbird.dom :as d]
-            [reagent.core :as r]
-            [bracketbird.ui :as ui]))
+            [reagent.core :as r]))
 
 
 #_(defn move-entity-focus-up [entities entity sub-key]
@@ -46,27 +44,23 @@
 
 
 
-(defn enter-team-input [{:keys [ctx dom-id team-name] :as values}]
-  (let [create-team (fn []
-                      (ui-service/dispatch-event [:team :create] ctx {:team-name team-name})
-                      (ui/remove! values :team-name))
-
-        key-down-handler (d/handle-key {:ENTER create-team})]
+(defn enter-team-input [{:keys [ui-build ui-update ui-dom-id ui-dispatch team-name]}]
+  (let [key-down-handler (d/handle-key {:ENTER #(ui-dispatch :create-team)})]
 
 
     [:div {:style {:display     :flex
                    :margin-top  30
                    :align-items :center}}
      [:input {:placeholder "Enter team"
-              :id          dom-id
+              :id          ui-dom-id
               :type        :text
               :style       s/input-text-field
               :value       team-name
               :on-key-down key-down-handler
-              :on-change   (fn [e] (ui/put! values :team-name (.. e -target -value)))}]
+              :on-change   (fn [e] (ui-update assoc :team-name (.. e -target -value)))}]
 
      [:button {:class    "primaryButton"
-               :on-click create-team
+               :on-click #(ui-update :create-team)
                } "Add Team"]]))
 
 
@@ -80,7 +74,7 @@
                      :align-items :center
                      :min-height  30}}
        [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc position)]
-       [:input {:id          (hash (conj (ui/hook-path :hooks/teams-tab ctx) :input))
+       [:input {:id          nil
                 :style       (merge s/input-text-field {:min-width 200})
                 :value       @team-name-state
 
@@ -132,10 +126,8 @@
   [:div (:team-name team)])
 
 
-(defn render [values]
-  (let [{:keys [ctx
-                dom-id
-                hooks/teams-order
+(defn render [{:keys [ui-build ui-update ui-dom-id] :as values}]
+  (let [{:keys [hooks/teams-order
                 scroll-top
                 scroll-height
                 client-height]} values]
@@ -147,7 +139,7 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:id        dom-id
+     [:div {:id        ui-dom-id
             :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
@@ -158,14 +150,14 @@
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
             :on-scroll (fn [e]
                          (let [target (.-target e)]
-                           (ui/put! values
-                                    :scroll-top (.-scrollTop target)
-                                    :scroll-height (.-scrollHeight target)
-                                    :client-height (.-clientHeight target))))}
+                           (ui-update :hooks/ui-application-page assoc
+                               :scroll-top (.-scrollTop target)
+                               :scroll-height (.-scrollHeight target)
+                               :client-height (.-clientHeight target))))}
       (map (fn [team-id]
-             ^{:key team-id} [ui/gui :hooks/ui-teams-row (assoc ctx :team-id team-id)]) teams-order)]
+             ^{:key team-id} [ui-build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 
      ; input field
      [:div {:style {:padding-left   120
                     :padding-bottom 20}}
-      [ui/gui :hooks/ui-enter-team-input ctx]]]))
+      [ui-build :hooks/ui-enter-team-input]]]))

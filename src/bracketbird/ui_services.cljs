@@ -52,15 +52,12 @@
 
 ;----------------------
 
-(defn change-page-event [{:keys [ctx ui-hook] :as values} target page]
+(defn change-page-event [{:keys [ctx hook] :as values} target page]
   {:ctx    ctx
-   :src    ui-hook
+   :src    hook
    :target target
    :page   page
-   :fn     (fn [state _]
+   :fn     (fn [state]
              (let [app-path (ui/hook-path :hooks/application ctx)]
                (fn [state] (assoc-in state (conj app-path :active-page) page))))})
-
-(defn change-application-page [values to-page]
-  (change-page-event values :hooks/application to-page))
 
