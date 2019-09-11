@@ -7,7 +7,7 @@
 (declare gui hook-path ui-update)
 
 
-(defonce state-atom (atom {}))
+(defonce handlers (atom {}))
 
 
 (defn hook? [h]
@@ -106,9 +106,22 @@
 (defn root [hook]
   [ui-build {} hook])
 
+
+(defn handle [id & opts])
+
 (defn gui [ctx hook]
   {:pre [(keyword? hook) (map? ctx)]}
   (let [system (state/subscribe [:system] ctx)
+
+        p (hook-path hook ctx)
+        id (hash p)
+        handler (r/partial handle id)
+
+        (swap! handlers assoc id {:id id
+                                  :path p
+                                  :ctx ctx
+                                  :hook hook})
+
         r (get-in @state/state [:hooks hook])
         all-hooks (into [hook] (:reactions r))
 
