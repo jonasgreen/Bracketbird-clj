@@ -44,15 +44,14 @@
 
 
 
-(defn enter-team-input [{:keys [ui-build ui-update ui-dom-id ui-dispatch team-name]}]
+(defn enter-team-input [{:keys [team-name]} foreign-states {:keys [ui-update dom-id ui-dispatch]}]
   (let [key-down-handler (d/handle-key {:ENTER #(ui-dispatch :create-team)})]
-
 
     [:div {:style {:display     :flex
                    :margin-top  30
                    :align-items :center}}
      [:input {:placeholder "Enter team"
-              :id          ui-dom-id
+              :id          dom-id
               :type        :text
               :style       s/input-text-field
               :value       team-name
@@ -60,7 +59,7 @@
               :on-change   (fn [e] (ui-update assoc :team-name (.. e -target -value)))}]
 
      [:button {:class    "primaryButton"
-               :on-click #(ui-update :create-team)
+               :on-click #(ui-dispatch :create-team)
                } "Add Team"]]))
 
 
@@ -122,15 +121,14 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [{:keys [hooks/team]}]
+(defn team-row [state {:keys [hooks/team]} opts]
   [:div (:team-name team)])
 
 
-(defn render [{:keys [ui-build ui-update ui-dom-id] :as values}]
-  (let [{:keys [hooks/teams-order
-                scroll-top
+(defn render [state {:keys [hooks/teams-order]} {:keys [ui-build ui-update ui-dom-id]}]
+  (let [{:keys [scroll-top
                 scroll-height
-                client-height]} values]
+                client-height]} state]
     [:div {:style    (merge
                        {:display        :flex
                         :flex-direction :column
@@ -150,7 +148,7 @@
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
             :on-scroll (fn [e]
                          (let [target (.-target e)]
-                           (ui-update :hooks/ui-application-page assoc
+                           (ui-update assoc
                                :scroll-top (.-scrollTop target)
                                :scroll-height (.-scrollHeight target)
                                :client-height (.-clientHeight target))))}

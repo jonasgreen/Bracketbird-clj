@@ -2,24 +2,24 @@
   (:require [bracketbird.styles :as s]))
 
 
-(defn ui-root [{:keys [hooks/system ui-build] :as values}]
-  (println "vvv" values)
+(defn ui-root [state {:keys [hooks/system]} {:keys [ui-build dom-id] :as opts}]
+  (println "id:  " dom-id)
   (let [id (:active-application system)]
-    [:div {:class :system}
+    [:div {:class :system :id dom-id}
      (if id
        [ui-build :hooks/ui-application-page {:application-id id}]
        [:div "No application"])]))
 
 
-(defn application [{:keys [active-page ui-build]}]
+(defn application [{:keys [active-page]} foreign-states {:keys [ui-build]}]
   [:div {:class :application} (condp = active-page
                                 :hooks/ui-front-page ^{:key 1} [ui-build :hooks/ui-front-page]
                                 :hooks/ui-tournament-page ^{:key 2} [ui-build :hooks/ui-tournament-page (-> (:tournament application)
-                                                                                                      (select-keys [:tournament-id]))]
+                                                                                                            (select-keys [:tournament-id]))]
                                 [:div "page " (:active-page application) " not supported"])])
 
 
-(defn front [{:keys [ui-update ui-dispatch]}]
+(defn front [state foreign-state {:keys [ui-dispatch]}]
   [:div
    [:div {:style {:display         :flex
                   :justify-content :center
@@ -40,7 +40,7 @@
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
 
-(defn tournament [{:keys [selected order items ui-build ui-update] :as opts}]
+(defn tournament [{:keys [selected order items]} foreign-state {:keys [ui-build ui-update]}]
   ;page
 
   [:div {:style s/tournament-page-style}

@@ -4,8 +4,7 @@
             [bracketbird.components.ranking-tab :as ranking-tab]
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.pages :as pages]
-            [bracketbird.ui-services :as ui-services]
-            [bracketbird.ui-services :as ui-service]))
+            [bracketbird.ui-services :as ui-services]))
 
 
 (def hooks {:hooks/system              [:system]
@@ -47,10 +46,10 @@
                                         :render pages/front
                                         :values {}
 
-                                        :fns    {:create-tournament (fn [{:keys [ui-ctx ui-update] :as opts}]
+                                        :fns    {:create-tournament (fn [state f-state {:keys [ctx ui-update]}]
                                                                       (ui-services/dispatch-event
                                                                         [:tournament :create]
-                                                                        ui-ctx
+                                                                        ctx
                                                                         {}
                                                                         {:state-coeffect (ui-update [:hooks/ui-application-page
                                                                                                      assoc
@@ -83,10 +82,10 @@
 
             :hooks/ui-enter-team-input {:path   [:hooks/ui-teams-tab :enter-team-input]
                                         :render teams-tab/enter-team-input
-                                        :fns    {:create-team (fn [{:keys [ui-ctx ui-update team-name]}]
-                                                                (ui-service/dispatch-event
+                                        :fns    {:create-team (fn [{:keys [team-name]} f-state {:keys [ctx ui-update]}]
+                                                                (ui-services/dispatch-event
                                                                   [:team :create]
-                                                                  ui-ctx
+                                                                  ctx
                                                                   {:team-name team-name}
                                                                   {:state-coeffect (ui-update [dissoc :team-name])}))}}
 

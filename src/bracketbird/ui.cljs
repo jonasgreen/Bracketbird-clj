@@ -7,33 +7,24 @@
 (declare gui hook-path ui-update)
 
 
+(defonce state-atom (atom {}))
+
+
 (defn hook? [h]
   (and (keyword? h) (= "hooks" (namespace h))))
 
 (defn init [ui-hook]
   (get-in @state/state [:hooks ui-hook :values]))
 
-
-(defn resolve-f [r-hook opts f]
-  (cond
-    (fn? f) f
-    (seq? f) (first f)
-    (keyword? f) (let [dispatch-f (f (get-in @state/state [:hooks r-hook :fns]))]
-                   (when-not dispatch-f (throw (js/Error. (str "Dispatch function " f " is not defined in hook " r-hook))))
-                   ;make ui-update available to dispatch functions
-                   (r/partial dispatch-f (assoc opts :ui-update (r/partial ui-update opts))))
-
-    :else (throw (js/Error. (str "Unable to resolve function " f)))))
-
-(defn resolve-args [{:keys [ui-ctx ui-hook ui-path] :as opts} f & args]
+(defn resolve-args [{:keys [ctx hook path]} f & args]
   (if (hook? f)
     {:r-hook f
-     :r-path (hook-path f ui-ctx)
-     :r-f    (resolve-f f opts (first args))
+     :r-path (hook-path f ctx)
+     :r-f    (first args)
      :r-args (rest args)}
-    {:r-hook ui-hook
-     :r-path ui-path
-     :r-f    (resolve-f ui-hook opts f)
+    {:r-hook hook
+     :r-path path
+     :r-f    f
      :r-args args}))
 
 
@@ -47,21 +38,19 @@
 (defn ui-update-swap! [opts f & args]
   (swap! state/state (apply will-update opts f args)))
 
-(defn ui-dispatch [{:keys [ui-hook] :as opts}]
-  (fn [f & args]
-    {:pre [(keyword? f)]}
+(defn ui-dispatch [local-state foreign-states {:keys [hook] :as opts} f & args]
+  {:pre [(keyword? f)]}
+  (let [dispatch-f (f (get-in @state/state [:hooks hook :fns]))]
+    (when-not dispatch-f (throw (js/Error. (str "Dispatch function " f " is not defined in hook " hook))))
+    ;make ui-update available to dispatch functions
+    (apply dispatch-f local-state foreign-states opts args)))
 
-    (let [dispatch-f (f (get-in @state/state [:hooks ui-hook :fns]))]
-      (when-not dispatch-f (throw (js/Error. (str "Dispatch function " f " is not defined in hook " ui-hook))))
-      ;make ui-update available to dispatch functions
-      (apply dispatch-f (dissoc opts :ui-build :ui-dispatch) args))))
 
-(defn ui-update [opts]
-  (fn [f & args]
-    (if (vector? f)
-      (fn [state]
-        (reduce (fn [s v] ((apply will-update opts (first v) (rest v)) s)) state (into [f] args)))
-      (apply ui-update-swap! opts f args))))
+(defn ui-update [opts f & args]
+  (if (vector? f)
+    (fn [state]
+      (reduce (fn [s v] ((apply will-update opts (first v) (rest v)) s)) state (into [f] args)))
+    (apply ui-update-swap! opts f args)))
 
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}
@@ -101,100 +90,126 @@
         (update-in [1 :style] assoc :border "1px solid #00796B"))))
 
 
-(defn modify-element-options [elem-opts options]
-  (-> elem-opts (assoc :id (:dom-id (:values options)))))
+(defn modify-element-options [elem-opts {:keys [dom-id]}]
+  (assoc elem-opts :id dom-id))
 
-(defn resolve-options [hook reactions initial-values decorations]
-  (let [options (reduce-kv (fn [m h r]
-                             (let [v (deref r)
-                                   v1 (if v v (hook initial-values))
-                                   d (h decorations)
-                                   value (if d (merge v1 d) v1)]
-                               (assoc m h value)))
-                           {} reactions)]
 
-    (-> options
-        (merge (hook options))
-        (dissoc hook)
-        )))
-
+(defn resolve-reactions [reactions-map initial-values]
+  (let [initial (fn [v hook] (if v v (hook initial-values)))]
+    (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
+               {} reactions-map)))
 
 (defn ui-build
-  ([hook] [ui-build {} hook])
-  ([ctx hook & next-ctx]
-   (gui (merge ctx (first next-ctx)) hook))
+  [ctx hook & next-ctx]
+  (gui (merge ctx (first next-ctx)) hook))
 
-  )
+(defn root [hook]
+  [ui-build {} hook])
 
 (defn gui [ctx hook]
   {:pre [(keyword? hook) (map? ctx)]}
-  #_(println "GUI" hook)
   (let [system (state/subscribe [:system] ctx)
         r (get-in @state/state [:hooks hook])
-
         all-hooks (into [hook] (:reactions r))
-        ui-hooks (filter ut/ui-hook? all-hooks)
-
-
 
         all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx)))
                           {}
                           all-hooks)
 
-
         ;should not be reaction dependent
         initial-values (reduce (fn [m h]
                                  (assoc m h (if (ut/ui-hook? h)
-                                              (get-in @state/state [:hooks hook :values])
+                                              (get-in @state/state [:hooks hook :values] {})
                                               {})))
                                {}
                                all-hooks)
 
-        static-decorations (reduce (fn [m h] (let [path (h all-paths)]
-                                               (assoc m h (merge {:ui-dom-id (hash path)
-                                                                  :ui-ctx    ctx
-                                                                  :ui-hook   h
-                                                                  :ui-path   path
-                                                                  :ui-build  (r/partial ui-build ctx)}))))
-                                   {}
-                                   ui-hooks)
-
-        reactions (reduce (fn [m h] (assoc m h (state/subscribe (h all-paths)))) {} all-hooks)]
-
+        ; includes state and foreign state
+        reactions-map (reduce (fn [m h] (assoc m h (state/subscribe (h all-paths)))) {} all-hooks)]
 
     (fn [_ _]
-      (println "RENDER" hook "CTX" ctx)
-      (let [{:keys [debug?]} @system
-            options-r (resolve-options hook reactions initial-values static-decorations)
-            options-r1 (assoc options-r :ui-update (r/partial (ui-update options-r)))
-            options (assoc options-r1 :ui-dispatch (r/partial (ui-dispatch options-r1)))
+      (let [{:keys [debug?]} {:debug? false};@system
+
+
+            ;dereferences and initializes
+            state-map (resolve-reactions reactions-map initial-values)
+
+            local-state (get state-map hook)
+            foreign-states (dissoc state-map hook)
+
+            ;options
+            dom-id (hash (get all-paths hook))
+            path (get all-paths hook)
+
+            build-fn (r/partial ui-build ctx)
+            update-fn (r/partial ui-update {:ctx ctx :hook hook :path path})
+
+            dispatch-fn (r/partial ui-dispatch local-state foreign-states {:dom-id    dom-id
+                                                                           :ctx       ctx
+                                                                           :hook      hook
+                                                                           :path      path
+                                                                           :ui-update update-fn})
+
+            options {:dom-id      dom-id
+                     :ctx         ctx
+                     :hook        hook
+                     :path        path
+                     :ui-build    build-fn
+                     :ui-update   update-fn
+                     :ui-dispatch dispatch-fn}
 
             render (:render r)]
 
         (if-not render
           [:div (str "No render: " hook ctx)]
 
-          (let [rendered (render options)                   ;instead of reagent calling render function - we do it
+          (let [rendered (render local-state foreign-states options) ;instead of reagent calling render function - we do it
                 [elm elm-opts & remaining] rendered
+
+                ;insert dom-id
                 result (if (map? elm-opts)
                          (into [elm (modify-element-options elm-opts options)] remaining)
-                         (into [elm (modify-element-options {} options) elm-opts] remaining))]
+                         (into [elm (modify-element-options {} options) elm-opts] remaining))
+
+                ]
+
+            (let [{:keys [old-local-state old-result old-foreign-states old-options]} (get @state-atom hook)]
+              (println "********" hook)
+              (println "equal local state" (= old-local-state local-state))
+              (println "equal foreign states" (= old-foreign-states foreign-states))
+              (println "equal options" (= old-options options))
+              (println "equal result" (= old-result result))
+
+
+              (println "dom-id" (=(:dom-id old-options) (:dom-id options)))
+              (println "ctx" (=(:ctx old-options) (:ctx options)))
+              (println "hook" (=(:hook old-options) (:hook options)))
+              (println "path" (=(:path old-options) (:path options)))
+              (println "ui-build" (=(:ui-build old-options) (:ui-build options)))
+              (println "ui-update" (=(:ui-update old-options) (:ui-update options)))
+              (println "ui-dispatch" (=(:ui-dispatch old-options) (:ui-dispatch options)))
+              (println "old-result" old-result)
+              (println "result" result)
+
+
+              ;(println "equal render-result " (= old-result result))
+              (swap! state-atom update-in [hook] assoc :old-local-state local-state
+                     :old-result result
+                     :old-foreign-states foreign-states
+                     :old-options options)
+              )
+
+
             (if debug?
               (do
                 (println "\n----- " hook)
                 (println "all hooks" all-hooks)
                 (println "all paths" all-paths)
-                (println "static-decorations" static-decorations)
                 (println "initial values" initial-values)
+                (println "local-state" local-state)
+                (println "foreign-states" foreign-states)
                 (println "options" options)
 
-
-
-                (println "RENDERED" rendered)
-                (println "ELM" elm)
-                (println "ELM-OPTS" elm-opts)
-                (println "REMAINING" remaining)
-                (println "MODIFIED-ELM-OPTS" result)
                 (println "RESULT" result)
                 (insert-debug-info result options))
               result)))))))

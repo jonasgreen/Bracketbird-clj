@@ -4,5 +4,5 @@
 
 
 
-(defn render [values]
+(defn render [state foreign-state opts]
   [:div {:style s/tournamet-tab-content-style} "scores-tab"])

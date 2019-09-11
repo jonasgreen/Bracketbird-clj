@@ -2,25 +2,26 @@
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
             [goog.events :as events]
+            [goog.dom :as dom-helper]
 
             [bracketbird.state :as state]
-            [bracketbird.ui :as ui]
-            [bracketbird.hooks :as specification]
             [bracketbird.system :as system]
+
+            [bracketbird.ui :as ui]
+
+            [bracketbird.hooks :as specification]
             [bracketbird.dom :as d]))
 
 
 (defn mount-reagent []
-  (r/render [ui/ui-build :hooks/ui-root] (js/document.getElementById "system")))
+  (r/render [ui/root :hooks/ui-root] (js/document.getElementById "system")))
 
 
 (defn load-specifications []
-  (println "loading specifications")
   (swap! state/state assoc :hooks specification/hooks))
 
 (defn main []
   (enable-console-print!)
-
   (swap! state/state assoc :system {:debug?             false
                                     :active-application nil
                                     :test               (or
@@ -57,6 +58,9 @@
 
 
 
+
 (defn ^:after-load on-js-reload []
+  (r/unmount-component-at-node (dom-helper/getElement "system"))
   (load-specifications)
-  (mount-reagent))
+  (mount-reagent)
+  )
