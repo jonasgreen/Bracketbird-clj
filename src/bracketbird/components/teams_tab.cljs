@@ -44,22 +44,21 @@
 
 
 
-(defn enter-team-input [{:keys [team-name]} foreign-states {:keys [ui-update dom-id ui-dispatch]}]
-  (let [key-down-handler (d/handle-key {:ENTER #(ui-dispatch :create-team)})]
+(defn enter-team-input [{:keys [team-name]} foreign-states f]
+  (let [key-down-handler (d/handle-key {:ENTER #(f :dispatch :create-team)})]
 
     [:div {:style {:display     :flex
                    :margin-top  30
                    :align-items :center}}
      [:input {:placeholder "Enter team"
-              :id          dom-id
               :type        :text
               :style       s/input-text-field
               :value       team-name
               :on-key-down key-down-handler
-              :on-change   (fn [e] (ui-update assoc :team-name (.. e -target -value)))}]
+              :on-change   (fn [e] (f :update assoc :team-name (.. e -target -value)))}]
 
      [:button {:class    "primaryButton"
-               :on-click #(ui-dispatch :create-team)
+               :on-click #(f :dispatch :create-team)
                } "Add Team"]]))
 
 
@@ -121,11 +120,11 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [state {:keys [hooks/team]} opts]
+(defn team-row [state {:keys [hooks/team]} f]
   [:div (:team-name team)])
 
 
-(defn render [state {:keys [hooks/teams-order]} {:keys [ui-build ui-update ui-dom-id]}]
+(defn render [state {:keys [hooks/teams-order]} f]
   (let [{:keys [scroll-top
                 scroll-height
                 client-height]} state]
@@ -137,8 +136,7 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:id        ui-dom-id
-            :style     (merge {:padding-top    40
+     [:div {:style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
                                :min-height     :200px
@@ -148,14 +146,14 @@
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
             :on-scroll (fn [e]
                          (let [target (.-target e)]
-                           (ui-update assoc
-                               :scroll-top (.-scrollTop target)
-                               :scroll-height (.-scrollHeight target)
-                               :client-height (.-clientHeight target))))}
+                           (f :update assoc
+                              :scroll-top (.-scrollTop target)
+                              :scroll-height (.-scrollHeight target)
+                              :client-height (.-clientHeight target))))}
       (map (fn [team-id]
-             ^{:key team-id} [ui-build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
+             ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 
      ; input field
      [:div {:style {:padding-left   120
                     :padding-bottom 20}}
-      [ui-build :hooks/ui-enter-team-input]]]))
+      [f :build :hooks/ui-enter-team-input]]]))

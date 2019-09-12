@@ -2,9 +2,9 @@
   (:require [bracketbird.styles :as s]))
 
 
-(defn render [{:keys[scroll-top]} foreign-state {:keys [ui-update]}]
+(defn render [{:keys[scroll-top]} foreign-state f]
   [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
-         :on-scroll (fn [e] (ui-update assoc :scroll-top (.-scrollTop (.-target e))))}
+         :on-scroll (fn [e] (f :update assoc :scroll-top (.-scrollTop (.-target e))))}
    [:div "assafasdf"]
    [:div "settings-ssss"]
    [:div "setings-ssss"]

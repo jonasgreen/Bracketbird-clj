@@ -46,12 +46,13 @@
                                         :render pages/front
                                         :values {}
 
-                                        :fns    {:create-tournament (fn [state f-state {:keys [ctx ui-update]}]
+                                        :fns    {:create-tournament (fn [state f-state f]
+                                                                      (println "create tournament: " state f-state f)
                                                                       (ui-services/dispatch-event
                                                                         [:tournament :create]
-                                                                        ctx
+                                                                        (f :ctx)
                                                                         {}
-                                                                        {:state-coeffect (ui-update [:hooks/ui-application-page
+                                                                        {:state-coeffect (f :update [:hooks/ui-application-page
                                                                                                      assoc
                                                                                                      :active-page
                                                                                                      :hooks/ui-tournament-page])}))}}
@@ -82,12 +83,12 @@
 
             :hooks/ui-enter-team-input {:path   [:hooks/ui-teams-tab :enter-team-input]
                                         :render teams-tab/enter-team-input
-                                        :fns    {:create-team (fn [{:keys [team-name]} f-state {:keys [ctx ui-update]}]
+                                        :fns    {:create-team (fn [{:keys [team-name]} f-state f]
                                                                 (ui-services/dispatch-event
                                                                   [:team :create]
-                                                                  ctx
+                                                                  (f :ctx)
                                                                   {:team-name team-name}
-                                                                  {:state-coeffect (ui-update [dissoc :team-name])}))}}
+                                                                  {:state-coeffect (f :update [dissoc :team-name])}))}}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path   [:hooks/ui-tournament-page :settings-tab]
