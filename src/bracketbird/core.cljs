@@ -55,10 +55,6 @@
                                                (swap! state/state update-in [:system :debug?] not))))
   )
 
-
-
-
-
 (defn ^:after-load on-js-reload []
   (r/unmount-component-at-node (dom-helper/getElement "system"))
   (load-specifications)

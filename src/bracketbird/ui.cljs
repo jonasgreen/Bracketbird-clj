@@ -2,9 +2,10 @@
   (:require [bracketbird.state :as state]
             [bracketbird.util :as ut]
             [bedrock.util :as b-ut]
+            [goog.dom :as dom]
             [reagent.core :as r]))
 
-(declare gui hook-path ui-update handle)
+(declare gui hook-path ui-update mk-hook-handle)
 
 (defonce component-states (atom {}))
 
@@ -62,7 +63,7 @@
                        (get (first args)))]
     (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
     ;make ui-update available to dispatch functions
-    (apply dispatch-f local-state foreign-states (partial handle opts) (next args))))
+    (apply dispatch-f local-state foreign-states (mk-hook-handle opts) (next args))))
 
 
 (defn ui-update [opts args]
@@ -101,23 +102,26 @@
   ([hook ctx next-ctx] (gui hook (merge ctx next-ctx))))
 
 
-(defn handle [{:keys [id ctx path hook] :as m} & opts]
-  (let [one (first opts)
-        two (first (next opts))
-        third (first (nnext opts))]
+(defn hook-handle [{:keys [id ctx path hook] :as options} & args]
+  (let [one (first args)
+        two (first (next args))
+        third (first (nnext args))]
 
     #_(println "one two three" one two third)
 
     (condp = one
       :build (ui-build two ctx third)
-      :update (ui-update m (rest opts))
-      :dispatch (ui-dispatch m (rest opts))
+      :update (ui-update options (rest args))
+      :dispatch (ui-dispatch options (rest args))
       :ctx ctx
       :path path
       :hook hook
-      :id id
-      :else (throw (js/Error. (str "Handle " (first opts) " not supported"))))))
+      :id (if two (str id two) id)
+      :options options
+      :else (throw (js/Error. (str "Handle " (first args) " not supported"))))))
 
+(defn mk-hook-handle [options]
+  (partial hook-handle options))
 
 (defn gui [hook ctx]
   {:pre [(keyword? hook) (map? ctx)]}
@@ -150,39 +154,68 @@
                                     (dissoc hook)
                                     vals
                                     vec)}
-        f (partial handle options)]
 
-    (fn [_ _]
-      (println "RENDER - " hook)
+        f (mk-hook-handle options)]
 
-      (let [{:keys [debug?]} @system
+    (r/create-class
+      {:component-did-mount (fn [this] (when-let [dm (:did-mount r)]
+                                         (let [{:keys [local-state foreign-states]} (get @component-states id)]
+                                           (dm local-state foreign-states f))))
+       :reagent-render      (fn [this]
+                              (let [{:keys [debug?]} @system
+                                    _ (when debug? (println "RENDER - " hook))
+                                    ;dereferences and initializes
+                                    state-map (resolve-reactions reactions-map initial-values)
 
-            ;dereferences and initializes
-            state-map (resolve-reactions reactions-map initial-values)
+                                    local-state (get state-map hook)
+                                    foreign-states (dissoc state-map hook)
 
-            local-state (get state-map hook)
-            foreign-states (dissoc state-map hook)
+                                    ;options
 
-            ;options
+                                    _ (swap! component-states assoc id {:options        options
+                                                                        :local-state    local-state
+                                                                        :foreign-states foreign-states})
+                                    render (:render r)]
 
-            _ (swap! component-states assoc id {:options        options
-                                                :local-state    local-state
-                                                :foreign-states foreign-states})
-            render (:render r)]
+                                (if-not render
+                                  [:div (str "No render: " hook ctx)]
 
-        (if-not render
-          [:div (str "No render: " hook ctx)]
+                                  (let [rendered (render local-state foreign-states f) ;instead of reagent calling render function - we do it
+                                        [elm elm-opts & remaining] rendered
 
-          (let [rendered (render local-state foreign-states f) ;instead of reagent calling render function - we do it
-                [elm elm-opts & remaining] rendered
-
-                ;insert dom-id
-                result (into (if (map? elm-opts)
-                               [elm (assoc elm-opts :id id)]
-                               [elm {:id id} elm-opts]) remaining)]
+                                        ;insert dom-id
+                                        result (into (if (map? elm-opts)
+                                                       [elm (assoc elm-opts :id id)]
+                                                       [elm {:id id} elm-opts]) remaining)]
 
 
 
-            (if debug?
-              (insert-debug-info result (get @component-states id))
-              result)))))))
+                                    (if debug?
+                                      (insert-debug-info result (get @component-states id))
+                                      result)))))})))
+
+
+;;;; API
+
+(defn id
+  ([h] (h :id))
+  ([h sub-id] (str (h :id) sub-id)))
+
+(defn build
+  ([h hook] (build h hook {}))
+  ([h hook further-ctx] (ui-build hook (:ctx h) further-ctx)))
+
+(defn update! [h & args]
+  (apply ui-update (h :options) args))
+
+(defn get-element
+  ([h] (-> h id dom/getElement))
+  ([h sub-id]
+   (-> h (id sub-id) dom/getElement)))
+
+(defn handle [h foreign-hook]
+  (->> (hook-path foreign-hook (h :ctx))
+       hash
+       (get @component-states)
+       :options
+       mk-hook-handle))

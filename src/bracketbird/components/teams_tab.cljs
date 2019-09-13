@@ -1,7 +1,9 @@
 (ns bracketbird.components.teams-tab
   (:require [bracketbird.styles :as s]
             [bracketbird.dom :as d]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+
+            [bracketbird.util :as ut]))
 
 
 #_(defn move-entity-focus-up [entities entity sub-key]
@@ -136,7 +138,8 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:style     (merge {:padding-top    40
+     [:div {:id (f :id "scroll")
+            :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
                                :min-height     :200px
@@ -144,12 +147,7 @@
                                :overflow-y     :auto}
                               (when (not= (+ scroll-top client-height)
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
-            :on-scroll (fn [e]
-                         (let [target (.-target e)]
-                           (f :update assoc
-                              :scroll-top (.-scrollTop target)
-                              :scroll-height (.-scrollHeight target)
-                              :client-height (.-clientHeight target))))}
+            :on-scroll (ut/scroll f)}
       (map (fn [team-id]
              ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 
