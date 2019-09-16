@@ -14,6 +14,16 @@
   (fn [scroll-event]
     (->> scroll-event .-target scroll-data (f :put! merge))))
 
-(defn scroll-to-end [element]
-  (let [{:keys [scroll-height client-height]} (scroll-data element)]
-    (set! (.-scrollTop element) (- scroll-height client-height))))
+(defn scroll-to-end [scroll-data]
+  (let [{:keys [scroll-height client-height]} scroll-data]
+    (assoc scroll-data :scroll-top (- scroll-height client-height))))
+
+(defn update-scroll! [element scroll-data]
+  (set! (.-scrollTop element) (:scroll-top scroll-data)))
+
+(defn scroll-elm-to-end [elm]
+  (->> elm
+       scroll-data
+       scroll-to-end
+       (update-scroll! elm)))
+

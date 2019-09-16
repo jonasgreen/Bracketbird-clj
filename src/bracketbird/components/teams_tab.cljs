@@ -151,6 +151,5 @@
              ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 
      ; input field
-     [:div {:style {:padding-left   120
-                    :padding-bottom 20}}
+     [:div {:style {:padding-left 120 :padding-bottom 20}}
       [f :build :hooks/ui-enter-team-input]]]))
