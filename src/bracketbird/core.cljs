@@ -14,7 +14,7 @@
 
 
 (defn mount-reagent []
-  (r/render [ui/ui-build :hooks/ui-root] (js/document.getElementById "system")))
+  (r/render [ui/ui-root :hooks/ui-root] (js/document.getElementById "system")))
 
 
 (defn load-specifications []

@@ -1,11 +1,12 @@
 (ns bracketbird.ui
+  (:refer-clojure :exclude [update])
   (:require [bracketbird.state :as state]
             [bracketbird.util :as ut]
             [bedrock.util :as b-ut]
             [goog.dom :as dom]
             [reagent.core :as r]))
 
-(declare gui hook-path ui-update mk-hook-handle)
+(declare gui hook-path ui-update mk-hook-handle local-state get-handle foreign-handle dynamic-api)
 
 (defonce component-states (atom {}))
 
@@ -14,7 +15,6 @@
 
 (defn init [ui-hook]
   (get-in @state/state [:hooks ui-hook :values]))
-
 
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}
@@ -36,26 +36,6 @@
          (vec))))
 
 
-(defn resolve-args [{:keys [ctx hook path]} args]
-  (if (hook? (first args))
-    {:r-hook (first args)
-     :r-path (hook-path (first args) ctx)
-     :r-f    (second args)
-     :r-args (nnext args)}
-    {:r-hook hook
-     :r-path path
-     :r-f    (first args)
-     :r-args (next args)}))
-
-
-(defn will-update [opts args]
-  (let [{:keys [r-path r-f r-args r-hook] :as rlv} (resolve-args opts args)]
-    (fn [state]
-      (let [fn-ensure-init (fn [m] (let [m (if m m (init r-hook))]
-                                     (apply r-f m r-args)))]
-        (update-in state r-path fn-ensure-init)))))
-
-
 (defn ui-dispatch [{:keys [id hook] :as opts} args]
   (let [{:keys [local-state foreign-states]} (get @component-states id)
         dispatch-f (-> @state/state
@@ -64,13 +44,6 @@
     (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
     ;make ui-update available to dispatch functions
     (apply dispatch-f local-state foreign-states (mk-hook-handle opts) (next args))))
-
-
-(defn ui-update [opts args]
-  (if (vector? (first args))
-    (fn [state] (reduce (fn [s v] ((will-update opts v) s)) state args))
-    (swap! state/state (will-update opts args))))
-
 
 
 (defn insert-debug-info [result {:keys [options local-state foreign-states]}]
@@ -96,32 +69,13 @@
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
 
-(defn ui-build
-  ([hook] (ui-build hook {}))
-  ([hook ctx] (ui-build hook ctx {}))
+(defn- build-impl
+  ([hook] (build-impl hook {}))
+  ([hook ctx] (build-impl hook ctx {}))
   ([hook ctx next-ctx] (gui hook (merge ctx next-ctx))))
 
-
-(defn hook-handle [{:keys [id ctx path hook] :as options} & args]
-  (let [one (first args)
-        two (first (next args))
-        third (first (nnext args))]
-
-    #_(println "one two three" one two third)
-
-    (condp = one
-      :build (ui-build two ctx third)
-      :update (ui-update options (rest args))
-      :dispatch (ui-dispatch options (rest args))
-      :ctx ctx
-      :path path
-      :hook hook
-      :id (if two (str id two) id)
-      :options options
-      :else (throw (js/Error. (str "Handle " (first args) " not supported"))))))
-
-(defn mk-hook-handle [options]
-  (partial hook-handle options))
+(defn- mk-hook-handle [options]
+  (partial dynamic-api options))
 
 (defn gui [hook ctx]
   {:pre [(keyword? hook) (map? ctx)]}
@@ -195,27 +149,77 @@
                                       result)))))})))
 
 
+(defn get-id [ctx hook]
+  (hash (hook-path hook ctx)))
+
+(defn- get-handle-data
+  ([ctx hook]
+   (get-handle-data (get-id ctx hook)))
+  ([id]
+   (get @component-states id)))
+
+(defn data-and-args [h args]
+  (if (hook? (first args))
+    {:h-data (get-handle-data (h :ctx) (first args))
+     :args   (rest args)}
+    {:h-data (get-handle-data (h :id))
+     :args   args}))
+
+(defn- update-impl [state {:keys [h-data args]}]
+  (let [upd (fn [m] (apply (first args) (if m m (:local-state h-data)) (rest args)))]
+    (update-in state (-> h-data :options :path) upd)))
+
+
 ;;;; API
+
 
 (defn id
   ([h] (h :id))
   ([h sub-id] (str (h :id) sub-id)))
 
-(defn build
-  ([h hook] (build h hook {}))
-  ([h hook further-ctx] (ui-build hook (:ctx h) further-ctx)))
+(defn ui-root
+  ([hook] (build-impl hook)))
 
-(defn update! [h & args]
-  (apply ui-update (h :options) args))
+(defn update [state h & args]
+  (->> (data-and-args h args)
+       (update-impl state)))
+
+(defn put! [h & args]
+  (swap! state/state #(apply update % h args)))
 
 (defn get-element
   ([h] (-> h id dom/getElement))
-  ([h sub-id]
-   (-> h (id sub-id) dom/getElement)))
+  ([h sub-id] (-> h (id sub-id) dom/getElement)))
 
-(defn handle [h foreign-hook]
-  (->> (hook-path foreign-hook (h :ctx))
-       hash
-       (get @component-states)
-       :options
-       mk-hook-handle))
+(defn local-state [h]
+  (-> h id get-handle-data :local-state))
+
+(defn get-handle [ctx hook]
+  (-> (get-handle-data ctx hook)
+      :options
+      mk-hook-handle))
+
+(defn foreign-handle [h foreign-hook]
+  (get-handle (h :ctx) foreign-hook))
+
+(defn- dynamic-api [{:keys [id ctx path hook] :as options} & args]
+  (let [first-arg (first args)
+        second-arg (second args)
+        third-arg (first (nnext args))
+
+        h-handle (mk-hook-handle options)]
+
+    ;; update is treated special - it takes state as first arg
+    (if (and (map? first-arg) (= second-arg :update))
+      (apply update first-arg h-handle (nnext args))
+      (condp = first-arg
+        :build (build-impl second-arg ctx third-arg)
+        ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
+        :put! (apply put! h-handle (rest args))
+        :dispatch (ui-dispatch options (rest args))
+        :ctx ctx
+        :path path
+        :hook hook
+        :id (if second-arg (str id second-arg) id)
+        :options options
+        :else (throw (js/Error. (str "Handle " (first args) " not supported")))))))

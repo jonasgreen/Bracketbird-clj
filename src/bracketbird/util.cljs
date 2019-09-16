@@ -10,9 +10,9 @@
    :scroll-height (.-scrollHeight element)
    :client-height (.-clientHeight element)})
 
-(defn scroll [f]
+(defn put-scroll-data [f]
   (fn [scroll-event]
-    (->> scroll-event .-target scroll-data (f :update merge))))
+    (->> scroll-event .-target scroll-data (f :put! merge))))
 
 (defn scroll-to-end [element]
   (let [{:keys [scroll-height client-height]} (scroll-data element)]

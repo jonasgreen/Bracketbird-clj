@@ -57,7 +57,7 @@
               :style       s/input-text-field
               :value       team-name
               :on-key-down key-down-handler
-              :on-change   (fn [e] (f :update assoc :team-name (.. e -target -value)))}]
+              :on-change   (fn [e] (f :put! assoc :team-name (.. e -target -value)))}]
 
      [:button {:class    "primaryButton"
                :on-click #(f :dispatch :create-team)
@@ -138,7 +138,7 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:id (f :id "scroll")
+     [:div {:id        (f :id "scroll")
             :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
@@ -147,7 +147,7 @@
                                :overflow-y     :auto}
                               (when (not= (+ scroll-top client-height)
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
-            :on-scroll (ut/scroll f)}
+            :on-scroll (ut/put-scroll-data f)}
       (map (fn [team-id]
              ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 

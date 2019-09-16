@@ -6,7 +6,6 @@
             [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.ui :as ui]
-            [reagent.core :as r]
             [bracketbird.util :as ut]))
 
 
@@ -55,10 +54,10 @@
                                                      {:event-type     [:tournament :create]
                                                       :ctx            (f :ctx)
                                                       :content        {}
-                                                      :state-coeffect (f :update [:hooks/ui-application-page
-                                                                                  assoc
-                                                                                  :active-page
-                                                                                  :hooks/ui-tournament-page])}))}}
+                                                      :state-coeffect #(-> (f % :update :hooks/ui-application-page
+                                                                              assoc
+                                                                              :active-page
+                                                                              :hooks/ui-tournament-page))}))}}
 
             :hooks/ui-tournament-page  {:path   [:hooks/ui-application-page :tournament-page]
                                         :render pages/tournament
@@ -86,18 +85,18 @@
 
             :hooks/ui-enter-team-input {:path   [:hooks/ui-teams-tab :enter-team-input]
                                         :render teams-tab/enter-team-input
-                                        :fns    {:create-team
-                                                 (fn [{:keys [team-name]} _ f]
-                                                   (ui-services/dispatch-event
-                                                     {:event-type     [:team :create]
-                                                      :ctx            (f :ctx)
-                                                      :content        {:team-name team-name}
-                                                      :state-coeffect (f :update [dissoc :team-name])
-                                                      :post-render    (fn [_]
-                                                                        (-> f
-                                                                            (ui/handle :hooks/ui-teams-tab)
-                                                                            (ui/get-element "scroll")
-                                                                            (ut/scroll-to-end)))}))}}
+                                        :fns    {:create-team (fn [{:keys [team-name]} _ f]
+                                                                (ui-services/dispatch-event
+                                                                  {:event-type     [:team :create]
+                                                                   :ctx            (f :ctx)
+                                                                   :content        {:team-name team-name}
+                                                                   :state-coeffect #(-> % (f :update dissoc :team-name))
+                                                                   :post-render    (fn [_]
+                                                                                     (-> f
+                                                                                         (ui/foreign-handle :hooks/ui-teams-tab)
+                                                                                         (ui/get-element "scroll")
+                                                                                         (ut/scroll-to-end)))}))
+                                                 }}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path   [:hooks/ui-tournament-page :settings-tab]

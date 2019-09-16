@@ -10,7 +10,7 @@
        [:div "No application"])]))
 
 
-(defn application [{:keys [active-page]} foreign-states f]
+(defn application [{:keys [active-page]} _ f]
   [:div {:class :application} (condp = active-page
                                 :hooks/ui-front-page ^{:key 1} [f :build :hooks/ui-front-page]
                                 :hooks/ui-tournament-page ^{:key 2} [f :build :hooks/ui-tournament-page (-> (:tournament application)
@@ -39,7 +39,7 @@
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
 
-(defn tournament [{:keys [selected order items]} foreign-state f]
+(defn tournament [{:keys [selected order items]} _ f]
   ;page
 
   [:div {:style s/tournament-page-style}
@@ -48,7 +48,7 @@
    [:div {:style s/menu-panel-style}
     (map (fn [k]
            (let [selected? (= selected k)]
-             ^{:key k} [:span {:on-click #(f :update assoc :previous-selected selected :selected k)
+             ^{:key k} [:span {:on-click #(f :put! assoc :previous-selected selected :selected k)
                                :style    (merge s/menu-item-style (when selected? {:opacity 1 :cursor :auto}))}
                         (get-in items [k :header])])) order)]
 
