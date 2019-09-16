@@ -13,9 +13,6 @@
 (defn hook? [h]
   (and (keyword? h) (= "hooks" (namespace h))))
 
-(defn init [ui-hook]
-  (get-in @state/state [:hooks ui-hook :values]))
-
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}
   (let [hv (get hooks h)
@@ -30,7 +27,7 @@
 (defn hook-path [h ctx]
   (let [path (resolve-path (:hooks @state/state) h)]
 
-    (->> (if (ut/ui-hook? h) (conj path :values) path)
+    (->> (if (ut/ui-hook? h) (conj path :_local-state) path)
          ;replace id's
          (map (fn [p] (get ctx p p)))
          (vec))))
@@ -92,7 +89,7 @@
         ;should not be reaction dependent
         initial-values (reduce (fn [m h]
                                  (assoc m h (if (ut/ui-hook? h)
-                                              (get-in @state/state [:hooks hook :values] {})
+                                              (get-in @state/state [:hooks hook :local-state] {})
                                               {})))
                                {}
                                all-hooks)
