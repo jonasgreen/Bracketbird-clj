@@ -85,18 +85,17 @@
 
             :hooks/ui-enter-team-input {:path   [:hooks/ui-teams-tab :enter-team-input]
                                         :render teams-tab/enter-team-input
-                                        :fns    {:create-team (fn [{:keys [team-name]} _ f]
+                                        :fns    {:create-team (fn [{:keys [team-name]} _ h]
                                                                 (ui-services/dispatch-event
                                                                   {:event-type     [:team :create]
-                                                                   :ctx            (f :ctx)
+                                                                   :ctx            (h :ctx)
                                                                    :content        {:team-name team-name}
-                                                                   :state-coeffect #(-> % (f :update dissoc :team-name))
+                                                                   :state-coeffect #(-> % (h :update dissoc :team-name))
                                                                    :post-render    (fn [_]
-                                                                                     (-> f
+                                                                                     (-> h
                                                                                          (ui/foreign-handle :hooks/ui-teams-tab)
                                                                                          (ui/get-element "scroll")
-                                                                                         (ut/scroll-to-end)))}))
-                                                 }}
+                                                                                         (ut/scroll-to-end)))}))}}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path        [:hooks/ui-tournament-page :settings-tab]

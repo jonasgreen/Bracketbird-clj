@@ -6,7 +6,7 @@
             [goog.dom :as dom]
             [reagent.core :as r]))
 
-(declare gui hook-path ui-update mk-hook-handle local-state get-handle foreign-handle dynamic-api)
+(declare gui hook-path ui-update mk-hook-handle local-state get-handle foreign-handle dynamic-api ctx)
 
 (defonce component-states (atom {}))
 
@@ -66,15 +66,14 @@
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
 
-(defn- build-impl
-  ([hook] (build-impl hook {}))
-  ([hook ctx] (build-impl hook ctx {}))
-  ([hook ctx next-ctx] (gui hook (merge ctx next-ctx))))
+(defn- build
+  ([h hook] (build h hook {}))
+  ([h hook next-ctx] (-> (ctx h) (merge next-ctx) (gui hook))))
 
 (defn- mk-hook-handle [options]
   (partial dynamic-api options))
 
-(defn gui [hook ctx]
+(defn gui [ctx hook]
   {:pre [(keyword? hook) (map? ctx)]}
   (println "NEW GUI - " hook)
   (let [system (state/subscribe [:system] ctx)
@@ -174,8 +173,10 @@
   ([h] (h :id))
   ([h sub-id] (str (h :id) sub-id)))
 
+(defn ctx [h] (h :ctx))
+
 (defn ui-root
-  ([hook] (build-impl hook)))
+  ([hook] (build (mk-hook-handle {:ctx {}}) hook)))
 
 (defn update [state h & args]
   (->> (data-and-args h args)
@@ -187,9 +188,6 @@
 (defn get-element
   ([h] (-> h id dom/getElement))
   ([h sub-id] (-> h (id sub-id) dom/getElement)))
-
-(defn local-state [h]
-  (-> h id get-handle-data :local-state))
 
 (defn get-handle [ctx hook]
   (-> (get-handle-data ctx hook)
@@ -210,7 +208,7 @@
     (if (and (map? first-arg) (= second-arg :update))
       (apply update first-arg h-handle (nnext args))
       (condp = first-arg
-        :build (build-impl second-arg ctx third-arg)
+        :build (build h-handle second-arg third-arg)
         ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
         :put! (apply put! h-handle (rest args))
         :dispatch (ui-dispatch options (rest args))
