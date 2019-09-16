@@ -5,7 +5,7 @@
 
 (defn render [{:keys [scroll-top]} _ f]
   [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
-         :on-scroll #(ut/put-scroll-data f)}
+         :on-scroll #(ut/put-scroll-data! f)}
 
    [:div "assafasdf"]
    [:div "settings-ssss"]

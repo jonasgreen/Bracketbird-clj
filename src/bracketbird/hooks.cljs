@@ -95,7 +95,7 @@
                                                                                      (-> h
                                                                                          (ui/foreign-handle :hooks/ui-teams-tab)
                                                                                          (ui/get-element "scroll")
-                                                                                         (ut/scroll-elm-to-end)))}))}}
+                                                                                         (ut/scroll-elm-to-bottom!)))}))}}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path        [:hooks/ui-tournament-page :settings-tab]

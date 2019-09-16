@@ -146,7 +146,7 @@
                                :overflow-y     :auto}
                               (when (not= (+ scroll-top client-height)
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
-            :on-scroll (ut/put-scroll-data f)}
+            :on-scroll (ut/put-scroll-data! f)}
       (map (fn [team-id]
              ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
 
