@@ -76,7 +76,12 @@
                                         :reactions   [:hooks/teams-order]
                                         :local-state {:scroll-top    0
                                                       :client-height 0
-                                                      :scroll-height 0}}
+                                                      :scroll-height 0}
+
+                                        :fns         {:scroll-to-bottom (fn [_ _ h]
+                                                                          (-> h
+                                                                              (ui/get-element "scroll")
+                                                                              (ut/scroll-elm-to-bottom!)))}}
 
             :hooks/ui-team-row         {:path      [:hooks/ui-teams-tab :team-id]
                                         :render    teams-tab/team-row
@@ -91,11 +96,7 @@
                                                                    :ctx            (h :ctx)
                                                                    :content        {:team-name team-name}
                                                                    :state-coeffect #(-> % (h :update dissoc :team-name))
-                                                                   :post-render    (fn [_]
-                                                                                     (-> h
-                                                                                         (ui/foreign-handle :hooks/ui-teams-tab)
-                                                                                         (ui/get-element "scroll")
-                                                                                         (ut/scroll-elm-to-bottom!)))}))}}
+                                                                   :post-render    (fn [_] (h :dispatch :hooks/ui-teams-tab :scroll-to-bottom))}))}}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path        [:hooks/ui-tournament-page :settings-tab]

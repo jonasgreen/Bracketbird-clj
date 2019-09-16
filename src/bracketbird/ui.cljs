@@ -32,17 +32,6 @@
          (map (fn [p] (get ctx p p)))
          (vec))))
 
-
-(defn ui-dispatch [{:keys [id hook] :as opts} args]
-  (let [{:keys [local-state foreign-states]} (get @component-states id)
-        dispatch-f (-> @state/state
-                       (get-in [:hooks hook :fns])
-                       (get (first args)))]
-    (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
-    ;make ui-update available to dispatch functions
-    (apply dispatch-f local-state foreign-states (mk-hook-handle opts) (next args))))
-
-
 (defn insert-debug-info [result {:keys [options local-state foreign-states]}]
   (let [[start end] (split-at 2 result)
         debug-element [:div {:style {:position   :relative
@@ -185,6 +174,18 @@
 (defn put! [h & args]
   (swap! state/state #(apply update % h args)))
 
+(defn dispatch [h args-org]
+  (let [{:keys [h-data args]} (data-and-args h args-org)
+        hook (-> h-data :options :hook)
+        dispatch-f (-> @state/state
+                       (get-in [:hooks hook :fns])
+                       (get (first args)))]
+    (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
+    ;make ui-update available to dispatch functions
+    (apply dispatch-f (:local-state h-data) (:foreign-states h-data) (mk-hook-handle (:options h-data)) (next args))))
+
+
+
 (defn get-element
   ([h] (-> h id dom/getElement))
   ([h sub-id] (-> h (id sub-id) dom/getElement)))
@@ -211,7 +212,7 @@
         :build (build h-handle second-arg third-arg)
         ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
         :put! (apply put! h-handle (rest args))
-        :dispatch (ui-dispatch options (rest args))
+        :dispatch (dispatch h-handle (rest args))
         :ctx ctx
         :path path
         :hook hook
