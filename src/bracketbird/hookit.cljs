@@ -1,5 +1,5 @@
-(ns bracketbird.ui
-  (:refer-clojure :exclude [update])
+(ns bracketbird.hookit
+  (:refer-clojure :exclude [update get])
   (:require [bracketbird.state :as state]
             [bracketbird.util :as ut]
             [bedrock.util :as b-ut]
@@ -10,12 +10,14 @@
 
 (defonce component-states (atom {}))
 
+(def core-get cljs.core/get)
+
 (defn hook? [h]
   (and (keyword? h) (= "hooks" (namespace h))))
 
 (defn- resolve-path [hooks h]
   {:pre [(keyword? h)]}
-  (let [hv (get hooks h)
+  (let [hv (core-get hooks h)
         p (if (ut/ui-hook? h) (:path hv) hv)]
     (when (nil? p)
       (throw (js/Error. (str "Unable to find mapping for hook " h " in hooks map: " hooks))))
@@ -29,7 +31,7 @@
 
     (->> (if (ut/ui-hook? h) (conj path :_local-state) path)
          ;replace id's
-         (map (fn [p] (get ctx p p)))
+         (map (fn [p] (core-get ctx p p)))
          (vec))))
 
 (defn insert-debug-info [result {:keys [options local-state foreign-states]}]
@@ -71,8 +73,8 @@
         all-hooks (into [hook] (:reactions r))
         all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx))) {} all-hooks)
 
-        id (hash (get all-paths hook))
-        path (get all-paths hook)
+        id (hash (core-get all-paths hook))
+        path (core-get all-paths hook)
 
         ;should not be reaction dependent
         initial-values (reduce (fn [m h]
@@ -98,7 +100,7 @@
 
     (r/create-class
       {:component-did-mount (fn [this] (when-let [dm (:did-mount r)]
-                                         (let [{:keys [local-state foreign-states]} (get @component-states id)]
+                                         (let [{:keys [local-state foreign-states]} (core-get @component-states id)]
                                            (dm local-state foreign-states f))))
        :reagent-render      (fn [this]
                               (let [{:keys [debug?]} @system
@@ -106,7 +108,7 @@
                                     ;dereferences and initializes
                                     state-map (resolve-reactions reactions-map initial-values)
 
-                                    local-state (get state-map hook)
+                                    local-state (core-get state-map hook)
                                     foreign-states (dissoc state-map hook)
 
                                     ;options
@@ -130,7 +132,7 @@
 
 
                                     (if debug?
-                                      (insert-debug-info result (get @component-states id))
+                                      (insert-debug-info result (core-get @component-states id))
                                       result)))))})))
 
 
@@ -141,7 +143,7 @@
   ([ctx hook]
    (get-handle-data (get-id ctx hook)))
   ([id]
-   (get @component-states id)))
+   (core-get @component-states id)))
 
 (defn data-and-args [h args]
   (if (hook? (first args))
@@ -167,6 +169,11 @@
 (defn ui-root
   ([hook] (build (mk-hook-handle {:ctx {}}) hook)))
 
+(defn get [h hook]
+  (if (ut/ui-hook? hook)
+    (get-handle-data (h :ctx) hook)
+    (get-in @state/state (hook-path hook (h :ctx)))))
+
 (defn update [state h & args]
   (->> (data-and-args h args)
        (update-impl state)))
@@ -178,8 +185,8 @@
   (let [{:keys [h-data args]} (data-and-args h args-org)
         hook (-> h-data :options :hook)
         dispatch-f (-> @state/state
-                       (get-in [:hooks hook :fns])
-                       (get (first args)))]
+                       (get-in [:hooks hook])
+                       (core-get (first args)))]
     (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
     ;make ui-update available to dispatch functions
     (apply dispatch-f (:local-state h-data) (:foreign-states h-data) (mk-hook-handle (:options h-data)) (next args))))
@@ -213,6 +220,7 @@
         ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
         :put! (apply put! h-handle (rest args))
         :dispatch (dispatch h-handle (rest args))
+        :get (get h-handle second-arg)
         :ctx ctx
         :path path
         :hook hook

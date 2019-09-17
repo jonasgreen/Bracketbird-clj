@@ -2,7 +2,7 @@
   (:require [bracketbird.styles :as s]))
 
 
-(defn ui-root [local-state {:keys [hooks/system]} f]
+(defn ui-root [_ {:keys [hooks/system]} f]
   (let [id (:active-application system)]
     [:div {:class :system}
      (if id
@@ -10,7 +10,7 @@
        [:div "No application"])]))
 
 
-(defn application [{:keys [active-page]} _ f]
+(defn application-page [{:keys [active-page]} {:keys [hooks/application]} f]
   [:div {:class :application} (condp = active-page
                                 :hooks/ui-front-page ^{:key 1} [f :build :hooks/ui-front-page]
                                 :hooks/ui-tournament-page ^{:key 2} [f :build :hooks/ui-tournament-page (-> (:tournament application)
@@ -18,12 +18,13 @@
                                 [:div "page " (:active-page application) " not supported"])])
 
 
-(defn front [state foreign-state f]
+(defn logo []
+  )
+
+(defn front-page [_ _ f]
   [:div
-   [:div {:style {:display         :flex
-                  :justify-content :center
-                  :padding-top     30}}
-    ;floating logo
+   [:div {:style {:display :flex :justify-content :center :padding-top 30}}
+    ;logo
     [:div {:style {:width 900}}
      [:div {:style {:letter-spacing 0.8 :font-size 22}}
       [:span {:style {:color "lightblue"}} "BRACKET"]
@@ -39,16 +40,17 @@
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
 
-(defn tournament [{:keys [selected order items]} _ f]
+(defn tournament-page [{:keys [selected order items]} _ f]
   ;page
 
   [:div {:style s/tournament-page-style}
 
+   [:div {:style {:position :fixed :top 20 :right 200}}]
    ;menu
    [:div {:style s/menu-panel-style}
     (map (fn [k]
            (let [selected? (= selected k)]
-             ^{:key k} [:span {:on-click #(f :put! assoc :previous-selected selected :selected k)
+             ^{:key k} [:span {:on-click (fn [] (f :dispatch :select-item k))
                                :style    (merge s/menu-item-style (when selected? {:opacity 1 :cursor :auto}))}
                         (get-in items [k :header])])) order)]
 

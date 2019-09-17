@@ -7,7 +7,7 @@
             [bracketbird.state :as state]
             [bracketbird.system :as system]
 
-            [bracketbird.ui :as ui]
+            [bracketbird.hookit :as ui]
 
             [bracketbird.hooks :as specification]
             [bracketbird.dom :as d]))

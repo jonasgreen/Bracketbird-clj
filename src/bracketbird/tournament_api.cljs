@@ -70,4 +70,19 @@
                                                              (-> t
                                                                  (update :teams assoc (:team-id team) team)
                                                                  (update :teams-order conj (:team-id team))
-                                                                 (assoc :dirty true))))}})
+                                                                 (assoc :dirty true))))}
+                  [:team :update]       {:validate-input (fn [ctx m] ())
+                                         :validate-state (fn [ctx m] ())
+                                         ;:event-input    {:name :string}
+                                         :mk-event       (fn [{:keys [tournament-id team-id] :as ctx}
+                                                              {:keys [team-name] :as m}]
+
+                                                           {:tournament-id tournament-id
+                                                            :team-id       team-id
+                                                            :team-name     team-name})
+
+                                         :execute-event  (fn [t {:keys [team-id team-name]}]
+                                                           (-> t
+                                                               (update :teams assoc-in [team-id :team-name] team-name)
+                                                               (assoc :dirty true)))}
+                  })

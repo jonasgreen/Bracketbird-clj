@@ -1,7 +1,7 @@
 (ns bracketbird.ui-services
   (:require [bracketbird.tournament-api :as tournament-api]
             [bracketbird.event-dispatcher :as event-dispatcher]
-            [bracketbird.ui :as ui]))
+            [bracketbird.hookit :as ui]))
 
 
 (defn dispatch-event [{:keys [ctx event-type content state-coeffect post-render] :as m}]

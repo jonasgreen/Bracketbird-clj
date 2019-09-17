@@ -5,8 +5,9 @@
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]
-            [bracketbird.ui :as ui]
-            [bracketbird.util :as ut]))
+            [bracketbird.hookit :as ui]
+            [bracketbird.util :as ut]
+            [bracketbird.dom :as d]))
 
 
 (def hooks {:hooks/system              [:system]
@@ -41,26 +42,26 @@
                                         :reactions [:hooks/system]}
 
             :hooks/ui-application-page {:path        [:ui :applications :application-id]
-                                        :render      pages/application
-                                        :local-state {:active-page :hooks/ui-front-page}}
+                                        :render      pages/application-page
+                                        :local-state {:active-page :hooks/ui-front-page}
+                                        :reactions   [:hooks/application]}
 
-            :hooks/ui-front-page       {:path        [:hooks/ui-application-page :front-page]
-                                        :render      pages/front
-                                        :local-state {}
-
-                                        :fns         {:create-tournament
-                                                      (fn [_ _ f]
-                                                        (ui-services/dispatch-event
-                                                          {:event-type     [:tournament :create]
-                                                           :ctx            (f :ctx)
-                                                           :content        {}
-                                                           :state-coeffect #(-> (f % :update :hooks/ui-application-page
-                                                                                   assoc
-                                                                                   :active-page
-                                                                                   :hooks/ui-tournament-page))}))}}
+            :hooks/ui-front-page       {:path              [:hooks/ui-application-page :front-page]
+                                        :render            pages/front-page
+                                        :local-state       {}
+                                        :create-tournament (fn [_ _ f]
+                                                             (ui-services/dispatch-event
+                                                               {:event-type     [:tournament :create]
+                                                                :ctx            (f :ctx)
+                                                                :content        {}
+                                                                :state-coeffect #(-> (f % :update :hooks/ui-application-page
+                                                                                        assoc
+                                                                                        :active-page
+                                                                                        :hooks/ui-tournament-page))
+                                                                :post-render    (fn [_])}))}
 
             :hooks/ui-tournament-page  {:path        [:hooks/ui-application-page :tournament-page]
-                                        :render      pages/tournament
+                                        :render      pages/tournament-page
                                         :local-state {:items             {:teams    {:header "TEAMS" :content :hooks/ui-teams-tab}
                                                                           :settings {:header "SETTINGS" :content :hooks/ui-settings-tab}
                                                                           :matches  {:header "MATCHES" :content :hooks/ui-matches-tab}
@@ -69,34 +70,46 @@
                                                       :order             [:teams :settings :matches :ranking]
                                                       :selection-type    :single
                                                       :selected          :teams
-                                                      :previous-selected :teams}}
+                                                      :previous-selected :teams}
+
+                                        :select-item (fn [{:keys [selected]} _ f select]
+                                                       (f :put! assoc :previous-selected selected :selected select))
+
+                                        }
             ;; --- TEAMS TAB
-            :hooks/ui-teams-tab        {:path        [:hooks/ui-tournament-page :teams-tab]
-                                        :render      teams-tab/render
-                                        :reactions   [:hooks/teams-order]
-                                        :local-state {:scroll-top    0
-                                                      :client-height 0
-                                                      :scroll-height 0}
+            :hooks/ui-teams-tab        {:path             [:hooks/ui-tournament-page :teams-tab]
+                                        :render           teams-tab/render
+                                        :reactions        [:hooks/teams-order]
+                                        :local-state      {:scroll-top    0
+                                                           :client-height 0
+                                                           :scroll-height 0}
+                                        :scroll-to-bottom (fn [_ _ h] (-> h
+                                                                          (ui/get-element "scroll")
+                                                                          (ut/scroll-elm-to-bottom!)))
+                                        }
 
-                                        :fns         {:scroll-to-bottom (fn [_ _ h]
-                                                                          (-> h
-                                                                              (ui/get-element "scroll")
-                                                                              (ut/scroll-elm-to-bottom!)))}}
+            :hooks/ui-team-row         {:path        [:hooks/ui-teams-tab :team-id]
+                                        :render      teams-tab/team-row
+                                        :reactions   [:hooks/team]
 
-            :hooks/ui-team-row         {:path      [:hooks/ui-teams-tab :team-id]
-                                        :render    teams-tab/team-row
-                                        :reactions [:hooks/team]}
+                                        :update-team (fn [{:keys [team-name]} _ h]
+                                                       (ui-services/dispatch-event
+                                                         {:event-type [:team :update]
+                                                          :ctx        (h :ctx)
+                                                          :content    {:team-name team-name}}))}
 
 
-            :hooks/ui-enter-team-input {:path   [:hooks/ui-teams-tab :enter-team-input]
-                                        :render teams-tab/enter-team-input
-                                        :fns    {:create-team (fn [{:keys [team-name]} _ h]
-                                                                (ui-services/dispatch-event
-                                                                  {:event-type     [:team :create]
-                                                                   :ctx            (h :ctx)
-                                                                   :content        {:team-name team-name}
-                                                                   :state-coeffect #(-> % (h :update dissoc :team-name))
-                                                                   :post-render    (fn [_] (h :dispatch :hooks/ui-teams-tab :scroll-to-bottom))}))}}
+            :hooks/ui-enter-team-input {:path        [:hooks/ui-teams-tab :enter-team-input]
+                                        :render      teams-tab/enter-team-input
+                                        :did-mount   (fn [_ _ h] (-> h (ui/get-element "input") (.focus)))
+
+                                        :create-team (fn [{:keys [team-name]} _ h]
+                                                       (ui-services/dispatch-event
+                                                         {:event-type     [:team :create]
+                                                          :ctx            (h :ctx)
+                                                          :content        {:team-name team-name}
+                                                          :state-coeffect #(-> % (h :update dissoc :team-name))
+                                                          :post-render    (fn [_] (h :dispatch :hooks/ui-teams-tab :scroll-to-bottom))}))}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path        [:hooks/ui-tournament-page :settings-tab]

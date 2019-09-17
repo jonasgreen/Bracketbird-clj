@@ -45,22 +45,25 @@
 
 
 
-(defn enter-team-input [{:keys [team-name]} foreign-states f]
-  (let [key-down-handler (d/handle-key {:ENTER #(f :dispatch :create-team)})]
+(defn enter-team-input [{:keys [team-name]} _ f]
+  [:div {:style {:display     :flex
+                 :margin-top  30
+                 :align-items :center}}
+   [:input {:id          (f :id "input")
+            :placeholder "Enter team"
+            :type        :text
+            :style       s/input-text-field
+            :value       team-name
+            :on-key-down (d/key-handler {[:ENTER]     (fn [] (f :dispatch :create-team))
+                                         [:BACKSPACE] (fn [] (println "key-down" team-name))})
 
-    [:div {:style {:display     :flex
-                   :margin-top  30
-                   :align-items :center}}
-     [:input {:placeholder "Enter team"
-              :type        :text
-              :style       s/input-text-field
-              :value       team-name
-              :on-key-down key-down-handler
-              :on-change   (fn [e] (f :put! assoc :team-name (.. e -target -value)))}]
+            :on-key-up   (d/key-handler {[:BACKSPACE] (fn [] (println "key-up" team-name))})
 
-     [:button {:class    "primaryButton"
-               :on-click #(f :dispatch :create-team)
-               } "Add Team"]]))
+            :on-change   #(->> % ut/value (f :put! assoc :team-name))}]
+
+   [:button {:class    "primaryButton"
+             :on-click #(f :dispatch :create-team)
+             } "Add Team"]])
 
 
 (defn team-row_old [position ctx]
@@ -92,7 +95,7 @@
                                (cond (and (d/key? :BACKSPACE e) @delete-by-backspace)
                                      #_(dispatcher [:team-name :delete] team)
 
-                                     (d/key? :ENTER e)
+                                     (d/key? #{:ENTER :SHIFT} e)
                                      (do
                                        (.stopPropagation e)
                                        (.preventDefault e)
@@ -121,8 +124,24 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [state {:keys [hooks/team]} f]
-  [:div (:team-name team)])
+(defn team-row [{:keys [team-name]} {:keys [hooks/team]} f]
+  (let [index (->> :hooks/teams-order (f :get) (ut/index-of (:team-id team)))]
+    [:div {:style {:display :flex :align-items :center :min-height 30}}
+     [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
+     [:input {:id          (f :id "team-name")
+              :style       (merge s/input-text-field {:min-width 200})
+
+              ;take from local state first
+              :value       (if team-name team-name (:team-name team))
+
+              :on-change   (ut/put! f :team-name)
+              :on-key-down (ut/key-handler {})
+              :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
+                                            [:ENTER]        (fn [] [:STOP-PROPAGATION])
+                                            [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                            [:UP]           (fn [])
+                                            [:DOWN]         (fn [])
+                                            :else           (fn [])})}]]))
 
 
 (defn render [state {:keys [hooks/teams-order]} f]

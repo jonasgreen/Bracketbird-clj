@@ -1,7 +1,6 @@
 (ns bracketbird.dom
   (:require [clojure.set :as s]
-            [goog.dom :as dom-helper]
-            [bedrock.util :as ut])
+            [goog.dom :as dom-helper])
 
   (:import [goog.events EventType]
            [goog.events KeyCodes]))
@@ -183,39 +182,35 @@
 (defn key? [k event]
   (key-and-modifier? k (comp not modifier?) event))
 
-(defn handle-key
-  "Key event handler that takes a map of the following structure:
-  {:UP   {f-pred1 fkv1
-          f-pred2 fkv2}
-   :DOWN  {f-pred fkv}
-   :RIGHT fkv
-   ...
-   :ELSE  {f-pred fkv}}
-   -------------------
-   Where
-    f-pred :  predicate that takes a key-event.
-    fkv    :  [f :stop-event :prevent-event]} ; executes (f e) and calls (.stopPropagation e) (.preventDefault e).
-              Order can number be changed.
-              Can also just take f or :stop or :prevent.
-    :ELSE  :  like a conditional else.
-   "
-  [m]
-  (fn [e]
-    (when-let [value (->> (get codes-to-keys (.-keyCode e) :ELSE)
-                          (get m))]
-      (when-let [fkv (if (map? value)
-                       (->> (keys value)
-                            (filter (fn [p] (p e)))
-                            (first)
-                            (ut/prn-str')
-                            (get value))
-                       value)]
 
-        (doseq [fkv-item (if (seq? fkv) fkv [fkv])]
-          (cond
-            (fn? fkv-item) (fkv-item e)
-            (= :stop-event) (.stopPropagation e)
-            (= :prevent-event) (.preventDefault e)))))))
+(defn key-handler [fns]
+  (let [{:keys [else]} fns
+        modifier-preds {:SHIFT shift-modifier?
+                        :ALT   alt-modifier?
+                        :CTRL  ctrl-modifier?
+                        :META  meta-modifier?}
+
+        exits-fns {:STOP-PROPAGATION (fn [e] (.stopPropagation e))
+                   :PREVENT-DEFAULT  (fn [e] (.preventDefault e))}
+
+        fns-by-set (reduce-kv (fn [m k v] (assoc m (set (if (sequential? k) k [k])) v)) {} (dissoc fns :else))]
+    (fn [e]
+      ; produce a key set from event
+      (let [key-set (reduce-kv (fn [s k v] (if (v e) (conj s k) s))
+                               #{(get codes-to-keys (.-keyCode e))}
+                               modifier-preds)
+
+            ;find function from fns-map by key-set
+            f (get fns-by-set key-set else)
+
+            ;expects exits to be in the form [:STOP-PROPAGATION :PREVENT-DEFAULT]
+            exits (when f (f))]
+
+        (when (sequential? exits)
+          (doall (->> exits
+                      (map exits-fns)
+                      (map (fn [exit-f] (when exit-f (exit-f e)))))))))))
+
 
 ; Reagent
 ; -------------
