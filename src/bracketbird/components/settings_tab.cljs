@@ -1,11 +1,12 @@
 (ns bracketbird.components.settings-tab
   (:require [bracketbird.styles :as s]
-            [bracketbird.util :as ut]))
+            [bracketbird.util :as ut]
+            [bracketbird.hookit :as h]))
 
 
-(defn render [{:keys [scroll-top]} _ f]
+(defn render [handle {:keys [scroll-top]} _]
   [:div {:style     (merge s/tournamet-tab-content-style (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
-         :on-scroll (ut/put-scroll-data! f)}
+         :on-scroll (fn [e] (->> e .-target ut/scroll-data (h/put! handle merge)))}
 
    [:div "assafasdf"]
    [:div "settings-ssss"]

@@ -4,5 +4,5 @@
 
 
 
-(defn render [state foreign-state f]
+(defn render [handle state foreign-state]
   [:div {:style s/tournamet-tab-content-style} "matches-tab"])

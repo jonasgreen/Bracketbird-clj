@@ -6,62 +6,55 @@
             [goog.dom :as dom]
             [reagent.core :as r]))
 
-(declare gui hook-path ui-update mk-hook-handle local-state get-handle foreign-handle dynamic-api ctx)
+(declare gui hook-path get-handle)
 
 (defonce component-states (atom {}))
 
 (def core-get cljs.core/get)
 
-(defn hook? [h]
-  (and (keyword? h) (= "hooks" (namespace h))))
 
-(defn- resolve-path [hooks h]
-  {:pre [(keyword? h)]}
-  (let [hv (core-get hooks h)
-        p (if (ut/ui-hook? h) (:path hv) hv)]
+(defn- resolve-path [hooks hook]
+  {:pre [(keyword? hook)]}
+  (let [hv (core-get hooks hook)
+        p (if (ut/ui-hook? hook) (:path hv) hv)]
     (when (nil? p)
-      (throw (js/Error. (str "Unable to find mapping for hook " h " in hooks map: " hooks))))
+      (throw (js/Error. (str "Unable to find mapping for hook " hook " in hooks map: " hooks))))
 
     (if (= "hooks" (namespace (first p)))
       (into (resolve-path hooks (first p)) (vec (rest p)))
       p)))
 
-(defn hook-path [h ctx]
-  (let [path (resolve-path (:hooks @state/state) h)]
+(defn hook-path [hook ctx]
+  (let [path (resolve-path (:hooks @state/state) hook)]
 
-    (->> (if (ut/ui-hook? h) (conj path :_local-state) path)
+    (->> (if (ut/ui-hook? hook) (conj path :_local-state) path)
          ;replace id's
          (map (fn [p] (core-get ctx p p)))
          (vec))))
 
-(defn insert-debug-info [result {:keys [options local-state foreign-states]}]
+(defn insert-debug-info [result {:keys [handle local-state foreign-states]}]
   (let [[start end] (split-at 2 result)
         debug-element [:div {:style {:position   :relative
                                      :align-self :flex-start
                                      :display    :table-cell}}
                        [:button {:class    "debugButton"
-                                 :on-click (fn [e]
+                                 :on-click (fn [_]
                                              (println "\n-----------------------")
-                                             (println (str "\nHOOK\n" (:hook options)))
+                                             (println (str "\nHOOK\n" (:hook handle)))
                                              (println (str "RENDER RESULT\n" (b-ut/pp-str result)))
-                                             (println "OPTIONS\n" (b-ut/pp-str options))
+                                             (println "HANDLE\n" (b-ut/pp-str handle))
                                              (println "LOCAL-STATE\n" (b-ut/pp-str local-state))
                                              (println "FOREIGN-STATE-KEYS\n" (b-ut/pp-str (keys foreign-states))))}
-                        (:hook options)]]]
+                        (:hook handle)]]]
     (-> (concat start [debug-element] end)
         vec
         (update-in [1 :style] assoc :border "1px solid #00796B"))))
 
 (defn resolve-reactions [reactions-map initial-values]
-  (let [initial (fn [v hook] (if v v (hook initial-values)))]
+  (let [initial (fn [v hook] (if v v (core-get initial-values hook)))]
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
 
-(defn- build [h hook next-ctx opts]
-  [gui (merge (ctx h) next-ctx) hook opts])
-
-(defn- mk-hook-handle [options]
-  (partial dynamic-api options))
 
 (defn gui [ctx hook _]
   {:pre [(keyword? hook) (map? ctx)]}
@@ -86,23 +79,21 @@
         ; includes state and foreign state
         reactions-map (reduce (fn [m h] (assoc m h (state/subscribe (h all-paths)))) {} all-hooks)
 
-        options {:id            id
-                 :ctx           ctx
-                 :path          path
-                 :hook          hook
-                 :foreign-paths (-> all-paths
-                                    (dissoc hook)
-                                    vals
-                                    vec)}
-
-        f (mk-hook-handle options)]
+        handle {:id            id
+                :ctx           ctx
+                :path          path
+                :hook          hook
+                :foreign-paths (-> all-paths
+                                   (dissoc hook)
+                                   vals
+                                   vec)}]
 
     (r/create-class
-      {:component-did-mount (fn [this]
+      {:component-did-mount (fn [_]
                               (when (:debug? @system) (println "DID MOUNT - " hook))
                               (when-let [dm (:did-mount r)]
                                 (let [{:keys [local-state foreign-states]} (core-get @component-states id)]
-                                  (dm local-state foreign-states f))))
+                                  (dm handle local-state foreign-states))))
        :reagent-render      (fn [_ _ opts]
                               (let [{:keys [debug?]} @system
                                     _ (when debug? (println "RENDER - " hook))
@@ -114,7 +105,7 @@
 
                                     ;options
 
-                                    _ (swap! component-states assoc id {:options        options
+                                    _ (swap! component-states assoc id {:handle         handle
                                                                         :local-state    local-state
                                                                         :foreign-states foreign-states})
                                     render (:render r)]
@@ -122,7 +113,7 @@
                                 (if-not render
                                   [:div (str "No render: " hook ctx)]
 
-                                  (let [rendered (render local-state foreign-states f opts) ;instead of reagent calling render function - we do it
+                                  (let [rendered (render handle local-state foreign-states opts) ;instead of reagent calling render function - we do it
                                         [elm elm-opts & remaining] rendered
 
                                         ;insert dom-id
@@ -135,97 +126,47 @@
                                     (if debug?
                                       (insert-debug-info result (core-get @component-states id))
                                       result)))))})))
-
-
-(defn get-id [ctx hook]
+(defn- mk-handle-id [ctx hook]
   (hash (hook-path hook ctx)))
-
-(defn- get-handle-data
-  ([ctx hook]
-   (get-handle-data (get-id ctx hook)))
-  ([id]
-   (core-get @component-states id)))
-
-(defn data-and-args [h args]
-  (if (hook? (first args))
-    {:h-data (get-handle-data (h :ctx) (first args))
-     :args   (rest args)}
-    {:h-data (get-handle-data (h :id))
-     :args   args}))
-
-(defn- update-impl [state {:keys [h-data args]}]
-  (let [upd (fn [m] (apply (first args) (if m m (:local-state h-data)) (rest args)))]
-    (update-in state (-> h-data :options :path) upd)))
-
 
 ;;;; API
 
+(defn build [{:keys [ctx]} hook next-ctx opts]
+  [gui (merge ctx next-ctx) hook opts])
 
-(defn id
-  ([h] (h :id))
-  ([h sub-id] (str (h :id) sub-id)))
+(defn ui-root [hook]
+  (build {:ctx {}} hook {} nil))
 
-(defn ctx [h] (h :ctx))
+(defn- get-handle-data
+  ([ctx hook]
+   (get-handle-data (mk-handle-id ctx hook)))
+  ([id]
+   (core-get @component-states id)))
 
-(defn ui-root
-  ([hook] (build (mk-hook-handle {:ctx {}}) hook {} nil)))
 
-(defn get [h hook]
-  (if (ut/ui-hook? hook)
-    (get-handle-data (h :ctx) hook)
-    (get-in @state/state (hook-path hook (h :ctx)))))
+(defn mk-id [handle sub-id] (str (:id handle) sub-id))
 
-(defn update [state h & args]
-  (->> (data-and-args h args)
-       (update-impl state)))
+(defn update [state {:keys [id path]} & args]
+  (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle-data id))) (rest args)))]
+    (update-in state path upd)))
 
-(defn put! [h & args]
-  (swap! state/state #(apply update % h args)))
+(defn put! [handle & args]
+  (swap! state/state #(apply update % handle args)))
 
-(defn dispatch [h args-org]
-  (let [{:keys [h-data args]} (data-and-args h args-org)
-        hook (-> h-data :options :hook)
-        dispatch-f (-> @state/state
+(defn dispatch [{:keys [hook id]} dispatch-f & args]
+  (let [h-data (get-handle-data id)
+        f (-> @state/state
                        (get-in [:hooks hook])
-                       (core-get (first args)))]
-    (when-not dispatch-f (throw (js/Error. (str "Dispatch function " (first args) " is not defined in hook " hook))))
+                       (core-get dispatch-f))]
+    (when-not f (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook))))
     ;make ui-update available to dispatch functions
-    (apply dispatch-f (:local-state h-data) (:foreign-states h-data) (mk-hook-handle (:options h-data)) (next args))))
-
-
+    (apply f (:handle h-data) (:local-state h-data) (:foreign-states h-data) args)))
 
 (defn get-element
-  ([h] (-> h id dom/getElement))
-  ([h sub-id] (-> h (id sub-id) dom/getElement)))
+  ([handle] (-> handle :id dom/getElement))
+  ([handle sub-id] (-> handle (mk-id sub-id) dom/getElement)))
 
-(defn get-handle [ctx hook]
-  (-> (get-handle-data ctx hook)
-      :options
-      mk-hook-handle))
-
-(defn foreign-handle [h foreign-hook]
-  (get-handle (h :ctx) foreign-hook))
-
-(defn- dynamic-api [{:keys [id ctx path hook] :as options} & args]
-  (let [first-arg (first args)
-        second-arg (second args)
-        third-arg (first (nnext args))
-        fourth-arg (second (nnext args))
-
-        h-handle (mk-hook-handle options)]
-
-    ;; update is treated special - it takes state as first arg
-    (if (and (map? first-arg) (= second-arg :update))
-      (apply update first-arg h-handle (nnext args))
-      (condp = first-arg
-        :build (build h-handle second-arg third-arg fourth-arg)
-        ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
-        :put! (apply put! h-handle (rest args))
-        :dispatch (dispatch h-handle (rest args))
-        :get (get h-handle second-arg)
-        :ctx ctx
-        :path path
-        :hook hook
-        :id (if second-arg (str id second-arg) id)
-        :options options
-        :else (throw (js/Error. (str "Handle " (first args) " not supported")))))))
+(defn get-handle
+  ([handle hook] (get-handle handle hook {}))
+  ([{:keys [ctx]} hook additional-ctx]
+   (:handle (get-handle-data (merge ctx additional-ctx) hook))))

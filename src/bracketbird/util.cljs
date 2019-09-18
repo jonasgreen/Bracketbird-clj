@@ -11,9 +11,6 @@
    :scroll-height (.-scrollHeight element)
    :client-height (.-clientHeight element)})
 
-(defn put-scroll-data! [f]
-  (fn [scroll-event]
-    (->> scroll-event .-target scroll-data (f :put! merge))))
 
 (defn scroll-to-bottom [scroll-data]
   (let [{:keys [scroll-height client-height]} scroll-data]
@@ -29,10 +26,6 @@
        (update-scroll-top! elm)))
 
 (defn value [e] (.. e -target -value))
-
-(defn put! [f k]
-  (fn [e] (->> e value (f :put! assoc k))))
-
 
 (defn key-handler [fns] (d/key-handler fns))
 
