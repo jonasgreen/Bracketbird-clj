@@ -57,7 +57,6 @@
             :value       team-name
             :on-key-down (d/key-handler {[:ENTER] (fn [e] (h/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                          [:UP]    (fn [e] (-> handle
-                                                              :ctx
                                                               (h/get-handle :hooks/ui-teams-tab)
                                                               (h/dispatch :focus-last-team)))})
 

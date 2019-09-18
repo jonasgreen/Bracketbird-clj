@@ -87,7 +87,7 @@
                                                                                (h/get-element "scroll")
                                                                                (ut/scroll-elm-to-bottom!)))
 
-                                        :focus-last-team  (fn [handle {:keys [hooks/teams-order]} _]
+                                        :focus-last-team  (fn [handle _ {:keys [hooks/teams-order]}]
                                                             (-> handle
                                                                 (h/get-handle :hooks/ui-team-row {:team-id (last teams-order)})
                                                                 (h/dispatch :focus)))}
