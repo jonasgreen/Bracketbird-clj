@@ -204,7 +204,7 @@
             f (get fns-by-set key-set else)
 
             ;expects exits to be in the form [:STOP-PROPAGATION :PREVENT-DEFAULT]
-            exits (when f (f))]
+            exits (when f (f e))]
 
         (when (sequential? exits)
           (doall (->> exits

@@ -2,6 +2,7 @@
   (:require [bracketbird.styles :as s]
             [bracketbird.dom :as d]
             [reagent.core :as r]
+            [bracketbird.hookit :as hit]
             [bracketbird.util :as ut]))
 
 
@@ -54,10 +55,13 @@
             :type        :text
             :style       s/input-text-field
             :value       team-name
-            :on-key-down (d/key-handler {[:ENTER]     (fn [] (f :dispatch :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                         [:BACKSPACE] (fn [] (println "key-down" team-name))})
+            :on-key-down (d/key-handler {[:ENTER] (fn [e] (f :dispatch :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                         [:UP]    (fn [e] (let [h (-> f
+                                                              hit/ctx
+                                                              (hit/get-handle :hooks/ui-teams-tab))]
+                                                              (h :dispatch :focus-last-team)))})
 
-            :on-key-up   (d/key-handler {[:BACKSPACE] (fn [] (println "key-up" team-name))})
+            :on-key-up   (d/key-handler {[:BACKSPACE] (fn [e] (println "key-up" team-name))})
 
             :on-change   #(->> % ut/value (f :put! assoc :team-name))}]
 

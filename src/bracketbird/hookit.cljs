@@ -99,13 +99,11 @@
 
     (r/create-class
       {:component-did-mount (fn [this]
-                              (println "DID MOUNT - " hook)
+                              (when (:debug? @system) (println "DID MOUNT - " hook))
                               (when-let [dm (:did-mount r)]
-                                         (let [{:keys [local-state foreign-states]} (core-get @component-states id)]
-                                           (dm local-state foreign-states f))))
+                                (let [{:keys [local-state foreign-states]} (core-get @component-states id)]
+                                  (dm local-state foreign-states f))))
        :reagent-render      (fn [_ _ opts]
-
-                              ;(println "RENDER ARGS" opts)
                               (let [{:keys [debug?]} @system
                                     _ (when debug? (println "RENDER - " hook))
                                     ;dereferences and initializes

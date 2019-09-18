@@ -5,10 +5,9 @@
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]
-            [bracketbird.hookit :as ui]
-            [bracketbird.util :as ut]
-            [reagent.core :as r]
-            [bracketbird.dom :as d]))
+            [bracketbird.hookit :as hit]
+            [bracketbird.util :as ut]))
+
 
 
 (def hooks {:hooks/system              [:system]
@@ -85,8 +84,14 @@
                                                            :client-height 0
                                                            :scroll-height 0}
                                         :scroll-to-bottom (fn [_ _ h] (-> h
-                                                                          (ui/get-element "scroll")
+                                                                          (hit/get-element "scroll")
                                                                           (ut/scroll-elm-to-bottom!)))
+
+                                        :focus-last-team  (fn [_ {:keys [hooks/teams-order]} h]
+                                                            (let [f (-> {:team-id (last teams-order)}
+                                                                (merge (h :ctx))
+                                                                (hit/get-handle :hooks/ui-team-row))]
+                                                                (f :dispatch :focus)))
                                         }
 
             :hooks/ui-team-row         {:path        [:hooks/ui-teams-tab :team-id]
@@ -97,25 +102,24 @@
                                                        (ui-services/dispatch-event
                                                          {:event-type [:team :update]
                                                           :ctx        (h :ctx)
-                                                          :content    {:team-name team-name}}))}
+                                                          :content    {:team-name team-name}}))
+
+                                        :focus       (fn [_ _ h] (-> h (hit/get-element "team-name") (.focus)))
+                                        }
 
 
             :hooks/ui-enter-team-input {:path        [:hooks/ui-teams-tab :enter-team-input]
                                         :render      teams-tab/enter-team-input
-                                        :did-mount   (fn [_ _ h] (-> h (ui/get-element "input") (.focus)))
+                                        :did-mount   (fn [_ _ h] (-> h (hit/get-element "input") (.focus)))
 
                                         :create-team (fn [{:keys [team-name]} _ h]
-
-                                                       (let [start (.getTime (js/Date.))]
-
-                                                         (ui-services/dispatch-event
-                                                           {:event-type     [:team :create]
-                                                            :ctx            (h :ctx)
-                                                            :content        {:team-name team-name}
-                                                            :state-coeffect #(-> % (h :update dissoc :team-name))
-                                                            :post-render    (fn [_]
-                                                                              (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
-                                                                              (h :dispatch :hooks/ui-teams-tab :scroll-to-bottom))})))}
+                                                       (ui-services/dispatch-event
+                                                         {:event-type     [:team :create]
+                                                          :ctx            (h :ctx)
+                                                          :content        {:team-name team-name}
+                                                          :state-coeffect #(-> % (h :update dissoc :team-name))
+                                                          :post-render    (fn [_]
+                                                                            (h :dispatch :hooks/ui-teams-tab :scroll-to-bottom))}))}
 
             ;; --- SETTINGS TAB
             :hooks/ui-settings-tab     {:path        [:hooks/ui-tournament-page :settings-tab]
