@@ -57,16 +57,15 @@
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
 
-(defn- build
-  ([h hook] (build h hook {}))
-  ([h hook next-ctx] (-> (ctx h) (merge next-ctx) (gui hook))))
+(defn- build [h hook next-ctx opts]
+  [gui (merge (ctx h) next-ctx) hook opts])
 
 (defn- mk-hook-handle [options]
   (partial dynamic-api options))
 
-(defn gui [ctx hook]
+(defn gui [ctx hook _]
   {:pre [(keyword? hook) (map? ctx)]}
-  (println "NEW GUI - " hook)
+  #_(println "NEW GUI - " hook)
   (let [system (state/subscribe [:system] ctx)
 
         r (get-in @state/state [:hooks hook])
@@ -99,10 +98,14 @@
         f (mk-hook-handle options)]
 
     (r/create-class
-      {:component-did-mount (fn [this] (when-let [dm (:did-mount r)]
+      {:component-did-mount (fn [this]
+                              (println "DID MOUNT - " hook)
+                              (when-let [dm (:did-mount r)]
                                          (let [{:keys [local-state foreign-states]} (core-get @component-states id)]
                                            (dm local-state foreign-states f))))
-       :reagent-render      (fn [this]
+       :reagent-render      (fn [_ _ opts]
+
+                              ;(println "RENDER ARGS" opts)
                               (let [{:keys [debug?]} @system
                                     _ (when debug? (println "RENDER - " hook))
                                     ;dereferences and initializes
@@ -121,7 +124,7 @@
                                 (if-not render
                                   [:div (str "No render: " hook ctx)]
 
-                                  (let [rendered (render local-state foreign-states f) ;instead of reagent calling render function - we do it
+                                  (let [rendered (render local-state foreign-states f opts) ;instead of reagent calling render function - we do it
                                         [elm elm-opts & remaining] rendered
 
                                         ;insert dom-id
@@ -167,7 +170,7 @@
 (defn ctx [h] (h :ctx))
 
 (defn ui-root
-  ([hook] (build (mk-hook-handle {:ctx {}}) hook)))
+  ([hook] (build (mk-hook-handle {:ctx {}}) hook {} nil)))
 
 (defn get [h hook]
   (if (ut/ui-hook? hook)
@@ -209,6 +212,7 @@
   (let [first-arg (first args)
         second-arg (second args)
         third-arg (first (nnext args))
+        fourth-arg (second (nnext args))
 
         h-handle (mk-hook-handle options)]
 
@@ -216,7 +220,7 @@
     (if (and (map? first-arg) (= second-arg :update))
       (apply update first-arg h-handle (nnext args))
       (condp = first-arg
-        :build (build h-handle second-arg third-arg)
+        :build (build h-handle second-arg third-arg fourth-arg)
         ;:update (apply put! h-handle (rest args)) - when called without state it acts as a put!
         :put! (apply put! h-handle (rest args))
         :dispatch (dispatch h-handle (rest args))

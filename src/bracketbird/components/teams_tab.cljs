@@ -54,7 +54,7 @@
             :type        :text
             :style       s/input-text-field
             :value       team-name
-            :on-key-down (d/key-handler {[:ENTER]     (fn [] (f :dispatch :create-team))
+            :on-key-down (d/key-handler {[:ENTER]     (fn [] (f :dispatch :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                          [:BACKSPACE] (fn [] (println "key-down" team-name))})
 
             :on-key-up   (d/key-handler {[:BACKSPACE] (fn [] (println "key-up" team-name))})
@@ -124,27 +124,44 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [{:keys [team-name]} {:keys [hooks/team]} f]
-  (let [index (->> :hooks/teams-order (f :get) (ut/index-of (:team-id team)))]
-    [:div {:style {:display :flex :align-items :center :min-height 30}}
-     [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
-     [:input {:id          (f :id "team-name")
-              :style       (merge s/input-text-field {:min-width 200})
+(defn team-row [{:keys [team-name]} {:keys [hooks/team]} f index]
+  [:div {:style {:display :flex :align-items :center :min-height 30}}
+   [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
+   [:input {:id          (f :id "team-name")
+            :style       (merge s/input-text-field {:min-width 200})
 
-              ;take from local state first
-              :value       (if team-name team-name (:team-name team))
+            ;take from local state first
+            :value       (if team-name team-name (:team-name team))
 
-              :on-change   (ut/put! f :team-name)
-              :on-key-down (ut/key-handler {})
-              :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
-                                            [:ENTER]        (fn [] [:STOP-PROPAGATION])
-                                            [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                            [:UP]           (fn [])
-                                            [:DOWN]         (fn [])
-                                            :else           (fn [])})}]]))
+            :on-change   (ut/put! f :team-name)
+            :on-key-down (ut/key-handler {})
+            :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
+                                          [:ENTER]        (fn [] [:STOP-PROPAGATION])
+                                          [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                          [:UP]           (fn [])
+                                          [:DOWN]         (fn [])
+                                          :else           (fn [])})}]])
 
 
-(defn render [state {:keys [hooks/teams-order]} f]
+(defn team-row-new [{:keys [team-name]} index]
+  [:div {:style {:display :flex :align-items :center :min-height 30}}
+   [:div {:style {:width 30 :opacity 0.5 :font-size 10}} index]
+   [:input {:style       (merge s/input-text-field {:min-width 200})
+
+            ;take from local state first
+            :value       team-name
+
+            :on-key-down (ut/key-handler {})
+            :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
+                                          [:ENTER]        (fn [] [:STOP-PROPAGATION])
+                                          [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                          [:UP]           (fn [])
+                                          [:DOWN]         (fn [])
+                                          :else           (fn [])})}]])
+
+
+
+(defn render [state {:keys [hooks/teams-order hooks/teams]} f]
   (let [{:keys [scroll-top
                 scroll-height
                 client-height]} state]
@@ -166,8 +183,8 @@
                               (when (not= (+ scroll-top client-height)
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
             :on-scroll (ut/put-scroll-data! f)}
-      (map (fn [team-id]
-             ^{:key team-id} [f :build :hooks/ui-team-row {:team-id team-id}]) teams-order)]
+      (map (fn [team-id index]
+             ^{:key team-id} #_[team-row-new (get teams team-id) index] [f :build :hooks/ui-team-row {:team-id team-id} index]) teams-order (range (count teams)))]
 
      ; input field
      [:div {:style {:padding-left 120 :padding-bottom 20}}

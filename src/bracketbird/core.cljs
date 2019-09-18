@@ -58,5 +58,8 @@
 (defn ^:after-load on-js-reload []
   (r/unmount-component-at-node (dom-helper/getElement "system"))
   (load-specifications)
-  (mount-reagent)
+  (let [start (.getTime (js/Date.))]
+    (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
+    (mount-reagent)
+    )
   )
