@@ -188,7 +188,7 @@
             :on-scroll (fn [e] (->> e .-target ut/scroll-data (h/put! handle merge)))}
 
       (map (fn [team-id index]
-             ^{:key team-id} #_[team-row-new (get teams team-id) (rand-int 1000)] [h/build handle :hooks/ui-team-row {:team-id team-id} (rand-int 1000)]) teams-order (range (count teams)))]
+             ^{:key team-id} [h/build handle :hooks/ui-team-row {:team-id team-id} index]) teams-order (range (count teams)))]
 
      ; input field
      [:div {:style {:padding-left 120 :padding-bottom 20}}
