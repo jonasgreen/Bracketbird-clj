@@ -6,7 +6,6 @@
             [goog.dom :as dom]
             [reagent.core :as r]))
 
-(declare gui hook-path get-handle)
 
 (defonce component-states (atom {}))
 
@@ -154,7 +153,6 @@
   (swap! state/state #(apply update % handle args)))
 
 (defn dispatch [{:keys [hook id] :as handle} dispatch-f & args]
-  (println "dispatch " handle)
   (let [h-data (get-handle-data id)
         f (-> @state/state
                        (get-in [:hooks hook])
