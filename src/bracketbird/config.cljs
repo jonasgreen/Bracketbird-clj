@@ -18,7 +18,7 @@
 
             :hook/teams               [:hook/tournament :teams]
             :hook/teams-order         [:hook/tournament :teams-order]
-            :hook/team                [:hook/tournament #{:teams :team-id}]
+            :hook/team                [:hook/tournament :teams #{:team-id}]
 
             :hook/stages              [:hook/tournament :stages]
             :hook/stages-order        [:hook/tournament :stages-order]
@@ -87,7 +87,7 @@
                                                                               (rc/get-element "scroll")
                                                                               (ut/scroll-elm-to-bottom!)))
 
-                                       :focus-last-team  (fn [handle _ {:keys [hooks/teams-order]}]
+                                       :focus-last-team  (fn [handle _ {:keys [hook/teams-order]}]
                                                            (-> handle
                                                                (rc/get-handle :hook/ui-team-row {:team-id (last teams-order)})
                                                                (rc/dispatch :focus)))}

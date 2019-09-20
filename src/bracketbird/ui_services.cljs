@@ -26,8 +26,8 @@
         events-path (-> (rc/hook-path :hook/application ctx)
                         (conj :tournament-events))
 
-
         aggregate-path (rc/hook-path :hook/tournament ctx)
+
         execute-event (-> tournament-api/events-spec
                           (get event-type)
                           :execute-event)]

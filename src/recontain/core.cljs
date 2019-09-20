@@ -21,24 +21,30 @@
 (defn- debug [f]
   (when (:debug? @config-atom) (f)))
 
-(defn- resolve-path-from-ctx [hooks hook ctx]
-  (let [path (get-in hooks [hook :path])
-        config-ctx (get-in hooks [hook :ctx])]
-    (when (nil? path)
-      (throw (js/Error. (str "Unable to find mapping for hook " hook " in config"))))
+(defn- get-hook-value [hook]
+  (let [hook-value (get-in @config-atom [:hooks hook])]
+    (when-not hook-value (throw (js/Error. (str "Unable to find mapping fog hook: " hook " in config"))))
+    hook-value))
 
+(defn- ui-hook? [hook]
+  (s/ui-hook? (get-hook-value hook)))
+
+(defn- resolve-path-from-ctx [hook given-ctx]
+  (let [{:keys [path ctx]} (get-hook-value hook)]
     (reduce (fn [v p]
               (if (set? p)
-                (if-let [ctx-value (get ctx (first p))]
+                (if-let [ctx-value (get given-ctx (first p))]
                   (conj v ctx-value)
-                  (throw (js/Error. (str "Unable to find ctx-value for " p . " Given ctx: " ctx ". Required ctx: " config-ctx))))
+                  (throw (js/Error. (str "Unable to find given-ctx-value for " p . " Given ctx: " given-ctx ". Required ctx: " ctx))))
                 (conj v p)))
             []
             path)))
 
-
 (defn hook-path [hook ctx]
-  (resolve-path-from-ctx (:hooks @config-atom) hook ctx))
+  (let [p (resolve-path-from-ctx hook ctx)]
+    (if (ui-hook? hook)
+      (conj p :_local-state)
+      p)))
 
 (defn- resolve-reactions [reactions-map initial-values]
   (let [initial (fn [v hook] (if v v (get initial-values hook)))]
@@ -127,8 +133,9 @@
   ([id]
    (get @component-states-atom id)))
 
-
-(defn mk-id [handle sub-id] (str (:id handle) sub-id))
+(defn id
+  ([handle] (:id handle))
+  ([handle sub-id] (str (:id handle) sub-id)))
 
 (defn update [state {:keys [id path]} & args]
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle-data id))) (rest args)))]
@@ -148,7 +155,7 @@
 
 (defn get-element
   ([handle] (-> handle :id dom/getElement))
-  ([handle sub-id] (-> handle (mk-id sub-id) dom/getElement)))
+  ([handle sub-id] (-> handle (id sub-id) dom/getElement)))
 
 (defn get-handle
   ([handle hook] (get-handle handle hook {}))

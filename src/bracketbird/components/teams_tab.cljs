@@ -47,12 +47,10 @@
 
 
 (defn enter-team-input [handle {:keys [team-name] :as local-state} _]
-  (println "ENTER TEAM HANDLE" handle)
-  (println "ENTER TEAM LOCAL-STATE" local-state)
   [:div {:style {:display     :flex
                  :margin-top  30
                  :align-items :center}}
-   [:input {:id          (rc/mk-id handle "input")
+   [:input {:id          (rc/id handle "input")
             :placeholder "Enter team"
             :type        :text
             :style       s/input-text-field
@@ -129,10 +127,10 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [handle {:keys [team-name]} {:keys [hook/team]} index]
+(defn team-row [handle {:keys [team-name] :as ls} {:keys [hook/team] :as fs} index]
   [:div {:style {:display :flex :align-items :center :min-height 30}}
    [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
-   [:input {:id          (rc/mk-id handle "team-name")
+   [:input {:id          (rc/id handle "team-name")
             :style       (merge s/input-text-field {:min-width 200})
 
             ;take from local state first
@@ -148,24 +146,6 @@
                                           :else           (fn [])})}]])
 
 
-(defn team-row-new [{:keys [team-name]} index]
-  [:div {:style {:display :flex :align-items :center :min-height 30}}
-   [:div {:style {:width 30 :opacity 0.5 :font-size 10}} index]
-   [:input {:style       (merge s/input-text-field {:min-width 200})
-
-            ;take from local state first
-            :value       team-name
-            :on-change   #()
-            :on-key-down (ut/key-handler {})
-            :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
-                                          [:ENTER]        (fn [] [:STOP-PROPAGATION])
-                                          [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                          [:UP]           (fn [])
-                                          [:DOWN]         (fn [])
-                                          :else           (fn [])})}]])
-
-
-
 (defn render [handle state {:keys [hook/teams-order hook/teams]}]
   (let [{:keys [scroll-top
                 scroll-height
@@ -178,7 +158,7 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:id        (rc/mk-id handle "scroll")
+     [:div {:id        (rc/id handle "scroll")
             :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%

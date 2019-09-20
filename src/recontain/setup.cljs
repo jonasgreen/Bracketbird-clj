@@ -1,28 +1,38 @@
 (ns recontain.setup
   (:require [clojure.set :as set]))
 
-(defn- ui-hook?
-  ([hook-value] (map? hook-value))
-  ([hooks h] (ui-hook? (get hooks h))))
+; can be used before hook-type is set
+(defn ui-hook? [hook-value]
+  (= :ui (:hook-type hook-value)))
 
-(defn resolve-path [m k]
-  (let [v (get m k)
-        path (if (ui-hook? v) (:path v) v)]
+;obs - hooks are original unmodified
+(defn generate-path [hook-value hooks]
+  (let [p (:path hook-value)
+        parent-hook (get hooks (first p))]
 
-    (if (get m (first path))                                ; parent ref
-      (into (resolve-path m (first path)) (vec (rest path)))
-      path)))
+    (if parent-hook                                         ;; parent ref
+      (into (generate-path parent-hook hooks) (vec (rest p)))
+      p)))
 
-(defn resolve-ctx [path]
-  (->> path
+(defn resolve-path [hook-value hooks]
+  (assoc hook-value :path (generate-path hook-value hooks)))
+
+(defn resolve-ctx [hook-value]
+  (->> (:path hook-value)
        (filter set?)
-       (apply set/union)))
+       (apply set/union)
+       (assoc hook-value :ctx)))
 
-(defn resolve-path-and-ctx [hooks]
-  (reduce (fn [m k]
-            (let [path (resolve-path hooks k)
-                  ctx (resolve-ctx path)]
-              (assoc m k {:path path :ctx ctx}))) {} (keys hooks)))
+(defn resolve-hook [hooks hook-value]
+  (-> hook-value
+      (resolve-path hooks)
+      resolve-ctx))
+
+
+(defn ensure-structure-and-type [hook-value]
+  (if (map? hook-value)
+    (assoc hook-value :hook-type :ui)
+    {:path hook-value :hook-type :data}))
 
 (defn validate-hook [hook v]
   (cond
@@ -36,18 +46,14 @@
               keys
               (map (fn [h] (validate-hook h (get hooks h)))))))
 
-
 (defn resolve-config [config]
-  (let [{:keys [hooks]} config]
-    (validate-hooks hooks)
+  (validate-hooks (:hooks config))
 
-    (let [ui-hooks (reduce-kv (fn [m k v] (if (ui-hook? v) (assoc m k v) m)) {} hooks)
-          data-hooks (reduce-kv (fn [m k v] (if (not (ui-hook? v)) (assoc m k v) m)) {} hooks)
+  ;first ensure structure - all hook values are maps
+  (let [hooks (reduce-kv (fn [m k v] (assoc m k (ensure-structure-and-type v)))
+                         {}
+                         (:hooks config))]
 
-          data-hooks-path-ctx (resolve-path-and-ctx data-hooks)
-          ui-hooks-path-ctx (resolve-path-and-ctx ui-hooks)
-
-          ui-hooks-result (reduce-kv (fn [m k {:keys [path ctx]}]
-                                       (update-in m [k] assoc :path path :ctx ctx)) ui-hooks ui-hooks-path-ctx)]
-
-      (update config :hooks merge ui-hooks-result data-hooks-path-ctx))))
+    (reduce (fn [c h] (update-in c [:hooks h] (fn [_] (resolve-hook hooks (get hooks h)))))
+            config
+            (keys hooks))))
