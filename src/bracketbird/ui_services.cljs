@@ -1,7 +1,7 @@
 (ns bracketbird.ui-services
-  (:require [bracketbird.tournament-api :as tournament-api]
-            [bracketbird.event-dispatcher :as event-dispatcher]
-            [bracketbird.hookit :as ui]))
+  (:require [recontain.core :as rc]
+            [bracketbird.tournament-api :as tournament-api]
+            [bracketbird.event-dispatcher :as event-dispatcher]))
 
 
 (defn dispatch-event [{:keys [ctx event-type content state-coeffect post-render] :as m}]
@@ -23,11 +23,11 @@
         event (-> (mk-event ctx content)
                   (assoc :event-type event-type))
 
-        events-path (-> (ui/hook-path :hooks/application ctx)
+        events-path (-> (rc/hook-path :hook/application ctx)
                         (conj :tournament-events))
 
 
-        aggregate-path (ui/hook-path :hooks/tournament ctx)
+        aggregate-path (rc/hook-path :hook/tournament ctx)
         execute-event (-> tournament-api/events-spec
                           (get event-type)
                           :execute-event)]

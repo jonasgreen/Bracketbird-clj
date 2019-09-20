@@ -25,6 +25,9 @@
 
 (defn test? [] (get-in @state/state [:system :test]))
 
+(defn debug? [] (get-in @state/state [:system :debug?]))
+
+
 (defn unique-id [k]
   (if (test?)
     (-> test-ids

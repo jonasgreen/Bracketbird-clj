@@ -6,19 +6,14 @@
 
             [bracketbird.state :as state]
             [bracketbird.system :as system]
+            [bracketbird.config :as config]
+            [bracketbird.dom :as d]
+            [recontain.core :as rc]))
 
-            [bracketbird.hookit :as ui]
-
-            [bracketbird.hooks :as specification]
-            [bracketbird.dom :as d]))
 
 
 (defn mount-reagent []
-  (r/render [ui/ui-root :hooks/ui-root] (js/document.getElementById "system")))
-
-
-(defn load-specifications []
-  (swap! state/state assoc :hooks specification/hooks))
+  (r/render [rc/ui-root :hook/ui-root] (js/document.getElementById "system")))
 
 (defn main []
   (enable-console-print!)
@@ -28,7 +23,7 @@
                                                           (= (.. js/window -location -hostname) "localhost")
                                                           (= (.. js/window -location -hash) "#test"))})
 
-  (load-specifications)
+  (config/setup-recontain state/state)
 
   (let [app-id (system/unique-id :application)]
     (swap! state/state assoc-in [:system :active-application] app-id)
@@ -57,9 +52,7 @@
 
 (defn ^:after-load on-js-reload []
   (r/unmount-component-at-node (dom-helper/getElement "system"))
-  (load-specifications)
+  (config/setup-recontain state/state)
   (let [start (.getTime (js/Date.))]
     (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (mount-reagent)
-    )
-  )
+    (mount-reagent)))

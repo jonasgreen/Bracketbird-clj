@@ -5,4 +5,4 @@
 
 
 (defn render [handle state foreign-state]
-  [:div {:style s/tournamet-tab-content-style} "scores-tab"])
+  [:div {:style s/tournament-tab-content-style} "scores-tab"])

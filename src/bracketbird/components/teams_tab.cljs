@@ -1,8 +1,8 @@
 (ns bracketbird.components.teams-tab
-  (:require [bracketbird.styles :as s]
+  (:require [reagent.core :as r]
+            [recontain.core :as rc]
+            [bracketbird.styles :as s]
             [bracketbird.dom :as d]
-            [reagent.core :as r]
-            [bracketbird.hookit :as h]
             [bracketbird.util :as ut]))
 
 
@@ -46,31 +46,33 @@
 
 
 
-(defn enter-team-input [handle {:keys [team-name]} _]
+(defn enter-team-input [handle {:keys [team-name] :as local-state} _]
+  (println "ENTER TEAM HANDLE" handle)
+  (println "ENTER TEAM LOCAL-STATE" local-state)
   [:div {:style {:display     :flex
                  :margin-top  30
                  :align-items :center}}
-   [:input {:id          (h/mk-id handle "input")
+   [:input {:id          (rc/mk-id handle "input")
             :placeholder "Enter team"
             :type        :text
             :style       s/input-text-field
             :value       team-name
-            :on-key-down (d/key-handler {[:ENTER] (fn [e] (h/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+            :on-key-down (d/key-handler {[:ENTER] (fn [e] (rc/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                          [:UP]    (fn [e] (-> handle
-                                                              (h/get-handle :hooks/ui-teams-tab)
-                                                              (h/dispatch :focus-last-team)))})
+                                                              (rc/get-handle :hook/ui-teams-tab)
+                                                              (rc/dispatch :focus-last-team)))})
 
             :on-key-up   (d/key-handler {[:BACKSPACE] (fn [e] (println "key-up" team-name))})
 
-            :on-change   #(->> % ut/value (h/put! handle assoc :team-name))}]
+            :on-change   #(->> % ut/value (rc/put! handle assoc :team-name))}]
 
    [:button {:class    "primaryButton"
-             :on-click #(h/dispatch handle :create-team)
+             :on-click #(rc/dispatch handle :create-team)
              } "Add Team"]])
 
 
 (defn team-row_old [position ctx]
-  (let [team nil #_(ui/hook :hooks/team ctx)
+  (let [team nil #_(ui/hook :hook/team ctx)
         team-name-state (r/atom (:team-name team))
         delete-by-backspace (atom (clojure.string/blank? (:team-name team)))]
     (fn [position _]
@@ -127,16 +129,16 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [handle {:keys [team-name]} {:keys [hooks/team]} index]
+(defn team-row [handle {:keys [team-name]} {:keys [hook/team]} index]
   [:div {:style {:display :flex :align-items :center :min-height 30}}
    [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
-   [:input {:id          (h/mk-id handle "team-name")
+   [:input {:id          (rc/mk-id handle "team-name")
             :style       (merge s/input-text-field {:min-width 200})
 
             ;take from local state first
             :value       (if team-name team-name (:team-name team))
 
-            :on-change   (fn [e] (->> e ut/value (h/put! handle assoc :team-name)))
+            :on-change   (fn [e] (->> e ut/value (rc/put! handle assoc :team-name)))
             :on-key-down (ut/key-handler {})
             :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
                                           [:ENTER]        (fn [] [:STOP-PROPAGATION])
@@ -164,7 +166,7 @@
 
 
 
-(defn render [handle state {:keys [hooks/teams-order hooks/teams]}]
+(defn render [handle state {:keys [hook/teams-order hook/teams]}]
   (let [{:keys [scroll-top
                 scroll-height
                 client-height]} state]
@@ -176,7 +178,7 @@
            :on-click (fn [e] ())}
 
      ; teams table
-     [:div {:id        (h/mk-id handle "scroll")
+     [:div {:id        (rc/mk-id handle "scroll")
             :style     (merge {:padding-top    40
                                :padding-left   120
                                :max-height     :100%
@@ -185,11 +187,11 @@
                                :overflow-y     :auto}
                               (when (not= (+ scroll-top client-height)
                                           scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
-            :on-scroll (fn [e] (->> e .-target ut/scroll-data (h/put! handle merge)))}
+            :on-scroll (fn [e] (->> e .-target ut/scroll-data (rc/put! handle merge)))}
 
       (map (fn [team-id index]
-             ^{:key team-id} [h/build handle :hooks/ui-team-row {:team-id team-id} index]) teams-order (range (count teams)))]
+             ^{:key team-id} [rc/build handle :hook/ui-team-row {:team-id team-id} index]) teams-order (range (count teams)))]
 
      ; input field
      [:div {:style {:padding-left 120 :padding-bottom 20}}
-      [h/build handle :hooks/ui-enter-team-input]]]))
+      [rc/build handle :hook/ui-enter-team-input]]]))

@@ -1,22 +1,22 @@
 (ns bracketbird.pages
   (:require [bracketbird.styles :as s]
-            [bracketbird.hookit :as h]))
+            [recontain.core :as rc]))
 
 
-(defn ui-root [handle _ {:keys [hooks/system]}]
+(defn ui-root [handle _ {:keys [hook/system]}]
   (let [id (:active-application system)]
     [:div {:class :system}
      (if id
-       [h/build handle :hooks/ui-application-page {:application-id id}]
+       [rc/build handle :hook/ui-application-page {:application-id id}]
        [:div "No application"])]))
 
 
-(defn application-page [handle {:keys [active-page]} {:keys [hooks/application]}]
+(defn application-page [handle {:keys [active-page] :as local-state} {:keys [hook/application] :as fs}]
   [:div {:class :application} (condp = active-page
-                                :hooks/ui-front-page ^{:key 1} [h/build handle :hooks/ui-front-page]
-                                :hooks/ui-tournament-page ^{:key 2} [h/build handle :hooks/ui-tournament-page (-> (:tournament application)
+                                :hook/ui-front-page ^{:key 1} [rc/build handle :hook/ui-front-page]
+                                :hook/ui-tournament-page ^{:key 2} [rc/build handle :hook/ui-tournament-page (-> (:tournament application)
                                                                                                                   (select-keys [:tournament-id]))]
-                                [:div "page " (:active-page application) " not supported"])])
+                                [:div "page " active-page " not supported"])])
 
 
 (defn front-page [handle _ _]
@@ -32,7 +32,7 @@
     [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
      "Instant tournaments"]
     [:button {:class    "largeButton primaryButton"
-              :on-click (fn [_] (h/dispatch handle :create-tournament))}
+              :on-click (fn [_] (rc/dispatch handle :create-tournament))}
 
      "Create a tournament"]
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
@@ -48,7 +48,7 @@
    [:div {:style s/menu-panel-style}
     (map (fn [k]
            (let [selected? (= selected k)]
-             ^{:key k} [:span {:on-click (fn [] (h/dispatch handle :select-item k))
+             ^{:key k} [:span {:on-click (fn [] (rc/dispatch handle :select-item k))
                                :style    (merge s/menu-item-style (when selected? {:opacity 1 :cursor :auto}))}
                         (get-in items [k :header])])) order)]
 
@@ -56,6 +56,6 @@
    (->> items
         (reduce-kv (fn [m k {:keys [content]}]
                      (conj m ^{:key k} [:div {:style (merge {:height :100%} (when-not (= selected k) {:display :none}))}
-                                        [h/build handle content]]))
+                                        [rc/build handle content]]))
                    [])
         seq)])
