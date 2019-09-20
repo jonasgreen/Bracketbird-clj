@@ -14,8 +14,8 @@
 (defn application-page [handle {:keys [active-page] :as local-state} {:keys [hook/application] :as fs}]
   [:div {:class :application} (condp = active-page
                                 :hook/ui-front-page ^{:key 1} [rc/build handle :hook/ui-front-page]
-                                :hook/ui-tournament-page ^{:key 2} [rc/build handle :hook/ui-tournament-page (-> (:tournament application)
-                                                                                                                  (select-keys [:tournament-id]))]
+                                :hook/ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
+                                                                     [rc/build handle :hook/ui-tournament-page {:tournament-id tournament-id}])
                                 [:div "page " active-page " not supported"])])
 
 

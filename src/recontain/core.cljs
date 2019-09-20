@@ -29,18 +29,28 @@
 (defn- ui-hook? [hook]
   (s/ui-hook? (get-hook-value hook)))
 
+(defn- validate [hook given-ctx]
+  (let [rq-ctx (:ctx (get-hook-value hook))
+        given-ctx-set (reduce-kv (fn [s k v] (if v (conj s k))) #{} given-ctx)]
+
+    #_(println "validate hook" hook "req-ctx" rq-ctx "given ctx set" given-ctx-set  "given" given-ctx)
+
+    (when-not (clojure.set/subset? rq-ctx given-ctx-set)
+      (throw (js/Error. (str "Missing context for hook " hook ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
+
 (defn- resolve-path-from-ctx [hook given-ctx]
   (let [{:keys [path ctx]} (get-hook-value hook)]
     (reduce (fn [v p]
               (if (set? p)
                 (if-let [ctx-value (get given-ctx (first p))]
                   (conj v ctx-value)
-                  (throw (js/Error. (str "Unable to find given-ctx-value for " p . " Given ctx: " given-ctx ". Required ctx: " ctx))))
+                  (throw (js/Error. (str "Missing context " p " for hook " hook ". Given ctx: " given-ctx ". Required ctx: " ctx))))
                 (conj v p)))
             []
             path)))
 
 (defn hook-path [hook ctx]
+  (validate hook ctx)
   (let [p (resolve-path-from-ctx hook ctx)]
     (if (ui-hook? hook)
       (conj p :_local-state)
@@ -50,7 +60,6 @@
   (let [initial (fn [v hook] (if v v (get initial-values hook)))]
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
-
 
 (defn- gui [ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
@@ -122,7 +131,9 @@
 ;;;; API
 
 (defn build [{:keys [ctx]} hook next-ctx opts]
-  [gui (merge ctx next-ctx) hook opts])
+  (let [next-ctx (merge ctx next-ctx)]
+    (validate hook next-ctx)
+    [gui next-ctx hook opts]))
 
 (defn ui-root [hook]
   (build {:ctx {}} hook {} nil))
@@ -144,7 +155,7 @@
 (defn put! [handle & args]
   (swap! (:state-atom @config-atom) #(apply update % handle args)))
 
-(defn dispatch [{:keys [hook id] :as handle} dispatch-f & args]
+(defn dispatch [{:keys [hook id]} dispatch-f & args]
   (let [h-data (get-handle-data id)
         f (-> @config-atom
               (get-in [:hooks hook])
@@ -160,4 +171,6 @@
 (defn get-handle
   ([handle hook] (get-handle handle hook {}))
   ([{:keys [ctx]} hook additional-ctx]
-   (:handle (get-handle-data (merge ctx additional-ctx) hook))))
+   (let [given-ctx (merge ctx additional-ctx)]
+     (validate hook given-ctx)
+     (:handle (get-handle-data given-ctx hook)))))

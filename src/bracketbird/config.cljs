@@ -14,7 +14,7 @@
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
             :hook/application         [:applications #{:application-id}]
-            :hook/tournament          [:hook/application :tournament]
+            :hook/tournament          [:hook/application :tournaments #{:tournament-id}]
 
             :hook/teams               [:hook/tournament :teams]
             :hook/teams-order         [:hook/tournament :teams-order]
@@ -50,17 +50,19 @@
             :hook/ui-front-page       {:path              [:hook/ui-application-page :front-page]
                                        :render            pages/front-page
                                        :local-state       {}
-                                       :create-tournament (fn [handle _ _]
-                                                            (ui-services/dispatch-event
-                                                              {:event-type     [:tournament :create]
-                                                               :ctx            (:ctx handle)
-                                                               :content        {}
-                                                               :state-coeffect #(-> (rc/update % (rc/get-handle handle :hook/ui-application-page) assoc
-                                                                                               :active-page
-                                                                                               :hook/ui-tournament-page))
-                                                               :post-render    (fn [_])}))}
 
-            :hook/ui-tournament-page  {:path        [:hook/ui-application-page :tournament-page]
+                                       :create-tournament (fn [handle _ _]
+                                                            (let [tournament-id (system/unique-id :tournament)]
+                                                              (ui-services/dispatch-event
+                                                                {:event-type     [:tournament :create]
+                                                                 :ctx            (assoc (:ctx handle) :tournament-id tournament-id)
+                                                                 :content        {:tournament-id tournament-id}
+                                                                 :state-coeffect #(-> (rc/update % (rc/get-handle handle :hook/ui-application-page) assoc
+                                                                                                 :active-page
+                                                                                                 :hook/ui-tournament-page))
+                                                                 :post-render    (fn [_])})))}
+
+            :hook/ui-tournament-page  {:path        [:hook/ui-application-page :tournaments #{:tournament-id}]
                                        :render      pages/tournament-page
                                        :local-state {:items             {:teams    {:header "TEAMS" :content :hook/ui-teams-tab}
                                                                          :settings {:header "SETTINGS" :content :hook/ui-settings-tab}
@@ -88,9 +90,10 @@
                                                                               (ut/scroll-elm-to-bottom!)))
 
                                        :focus-last-team  (fn [handle _ {:keys [hook/teams-order]}]
-                                                           (-> handle
-                                                               (rc/get-handle :hook/ui-team-row {:team-id (last teams-order)})
-                                                               (rc/dispatch :focus)))}
+                                                           (when (seq teams-order)
+                                                             (-> handle
+                                                                 (rc/get-handle :hook/ui-team-row {:team-id (last teams-order)})
+                                                                 (rc/dispatch :focus))))}
 
             :hook/ui-team-row         {:path        [:hook/ui-teams-tab #{:team-id}]
                                        :render      teams-tab/team-row

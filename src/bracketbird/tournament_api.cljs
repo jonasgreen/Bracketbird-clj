@@ -50,7 +50,9 @@
 (def events-spec {[:tournament :create] {:validate-input (fn [ctx m] ())
                                          :validate-state (fn [ctx m] ())
                                          ;:event-input    {}
-                                         :mk-event       (fn [ctx m] {:tournament-id (system/unique-id :tournament)})
+                                         :mk-event       (fn [{:keys [tournament-id]} m]
+                                                           {:tournament-id tournament-id})
+
                                          :execute-event  (fn [t e]
                                                            (mk-tournament (:tournament-id e)))}
 
