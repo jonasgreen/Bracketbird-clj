@@ -13,7 +13,7 @@
 
 
 (defn mount-reagent []
-  (r/render [rc/ui-root :hook/ui-root] (js/document.getElementById "system")))
+  (r/render [rc/build {} :hook/ui-root] (js/document.getElementById "system")))
 
 (defn main []
   (enable-console-print!)

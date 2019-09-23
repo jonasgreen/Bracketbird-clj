@@ -33,8 +33,6 @@
   (let [rq-ctx (:ctx (get-hook-value hook))
         given-ctx-set (reduce-kv (fn [s k v] (if v (conj s k))) #{} given-ctx)]
 
-    #_(println "validate hook" hook "req-ctx" rq-ctx "given ctx set" given-ctx-set  "given" given-ctx)
-
     (when-not (clojure.set/subset? rq-ctx given-ctx-set)
       (throw (js/Error. (str "Missing context for hook " hook ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
 
@@ -125,22 +123,26 @@
                                     (if-let [decorator (:component-hiccup-decorator @config-atom)]
                                       (decorator result (get @component-states-atom id))
                                       result)))))})))
-(defn- mk-handle-id [ctx hook]
+
+
+(defn mk-id [ctx hook]
   (hash (hook-path hook ctx)))
 
 ;;;; API
 
-(defn build [{:keys [ctx]} hook next-ctx opts]
-  (let [next-ctx (merge ctx next-ctx)]
-    (validate hook next-ctx)
-    [gui next-ctx hook opts]))
 
-(defn ui-root [hook]
-  (build {:ctx {}} hook {} nil))
+(defn build
+  ([ctx hook]
+   (build ctx hook {}))
+
+  ([ctx hook opts]
+   (validate hook ctx)
+   [gui ctx hook opts]))
+
 
 (defn- get-handle-data
   ([ctx hook]
-   (get-handle-data (mk-handle-id ctx hook)))
+   (get-handle-data (mk-id ctx hook)))
   ([id]
    (get @component-states-atom id)))
 
@@ -155,8 +157,9 @@
 (defn put! [handle & args]
   (swap! (:state-atom @config-atom) #(apply update % handle args)))
 
-(defn dispatch [{:keys [hook id]} dispatch-f & args]
-  (let [h-data (get-handle-data id)
+(defn dispatch [handle dispatch-f & args]
+  (let [{:keys [hook id]} handle
+        h-data (get-handle-data id)
         f (-> @config-atom
               (get-in [:hooks hook])
               (get dispatch-f))]
@@ -168,9 +171,13 @@
   ([handle] (-> handle :id dom/getElement))
   ([handle sub-id] (-> handle (id sub-id) dom/getElement)))
 
-(defn get-handle
-  ([handle hook] (get-handle handle hook {}))
-  ([{:keys [ctx]} hook additional-ctx]
-   (let [given-ctx (merge ctx additional-ctx)]
-     (validate hook given-ctx)
-     (:handle (get-handle-data given-ctx hook)))))
+(defn get-handle [ctx hook]
+  (validate hook ctx)
+  (:handle (get-handle-data ctx hook)))
+
+(defn get-data [handle hook]
+  (get-in @(state-atom) (hook-path hook (:ctx handle))))
+
+(defn ctx
+  ([handle] (:ctx handle))
+  ([handle extra-ctx] (merge (:ctx handle) extra-ctx)))

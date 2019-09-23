@@ -52,12 +52,14 @@
                                        :local-state       {}
 
                                        :create-tournament (fn [handle _ _]
-                                                            (let [tournament-id (system/unique-id :tournament)]
+                                                            (let [ctx (:ctx handle)
+                                                                  tournament-id (system/unique-id :tournament)]
                                                               (ui-services/dispatch-event
                                                                 {:event-type     [:tournament :create]
-                                                                 :ctx            (assoc (:ctx handle) :tournament-id tournament-id)
+                                                                 :ctx            (assoc ctx :tournament-id tournament-id)
                                                                  :content        {:tournament-id tournament-id}
-                                                                 :state-coeffect #(-> (rc/update % (rc/get-handle handle :hook/ui-application-page) assoc
+                                                                 :state-coeffect #(-> (rc/update % (rc/get-handle ctx :hook/ui-application-page)
+                                                                                                 assoc
                                                                                                  :active-page
                                                                                                  :hook/ui-tournament-page))
                                                                  :post-render    (fn [_])})))}
@@ -89,10 +91,10 @@
                                                                               (rc/get-element "scroll")
                                                                               (ut/scroll-elm-to-bottom!)))
 
-                                       :focus-last-team  (fn [handle _ {:keys [hook/teams-order]}]
+                                       :focus-last-team  (fn [{:keys [ctx]} _ {:keys [hook/teams-order]}]
                                                            (when (seq teams-order)
-                                                             (-> handle
-                                                                 (rc/get-handle :hook/ui-team-row {:team-id (last teams-order)})
+                                                             (-> (merge ctx {:team-id (last teams-order)})
+                                                                 (rc/get-handle :hook/ui-team-row)
                                                                  (rc/dispatch :focus))))}
 
             :hook/ui-team-row         {:path        [:hook/ui-teams-tab #{:team-id}]
@@ -112,17 +114,16 @@
                                        :render      teams-tab/enter-team-input
                                        :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
 
-                                       :create-team (fn [handle {:keys [team-name]} _]
+                                       :create-team (fn [{:keys [ctx] :as handle} {:keys [team-name]} _]
                                                       (let [start (.getTime (js/Date.))]
                                                         (ui-services/dispatch-event
                                                           {:event-type     [:team :create]
-                                                           :ctx            (:ctx handle)
+                                                           :ctx            ctx
                                                            :content        {:team-name team-name}
                                                            :state-coeffect #(-> % (rc/update handle dissoc :team-name))
                                                            :post-render    (fn [_]
                                                                              (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
-                                                                             (-> handle
-                                                                                 (rc/get-handle :hook/ui-teams-tab)
+                                                                             (-> (rc/get-handle ctx :hook/ui-teams-tab)
                                                                                  (rc/dispatch :scroll-to-bottom)))})))}
 
             ;; --- SETTINGS TAB

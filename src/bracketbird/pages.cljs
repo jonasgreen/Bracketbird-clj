@@ -4,18 +4,19 @@
 
 
 (defn ui-root [handle _ {:keys [hook/system]}]
-  (let [id (:active-application system)]
+  (let [ctx (:ctx handle)
+        app-id (:active-application system)]
     [:div {:class :system}
-     (if id
-       [rc/build handle :hook/ui-application-page {:application-id id}]
+     (if app-id
+       [rc/build (merge ctx {:application-id app-id}) :hook/ui-application-page]
        [:div "No application"])]))
 
 
-(defn application-page [handle {:keys [active-page] :as local-state} {:keys [hook/application] :as fs}]
+(defn application-page [{:keys [ctx]} {:keys [active-page]} {:keys [hook/application]}]
   [:div {:class :application} (condp = active-page
-                                :hook/ui-front-page ^{:key 1} [rc/build handle :hook/ui-front-page]
+                                :hook/ui-front-page ^{:key 1} [rc/build ctx :hook/ui-front-page]
                                 :hook/ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
-                                                                     [rc/build handle :hook/ui-tournament-page {:tournament-id tournament-id}])
+                                                                     [rc/build (merge ctx {:tournament-id tournament-id}) :hook/ui-tournament-page])
                                 [:div "page " active-page " not supported"])])
 
 
@@ -56,6 +57,6 @@
    (->> items
         (reduce-kv (fn [m k {:keys [content]}]
                      (conj m ^{:key k} [:div {:style (merge {:height :100%} (when-not (= selected k) {:display :none}))}
-                                        [rc/build handle content]]))
+                                        [rc/build (:ctx handle) content]]))
                    [])
         seq)])
