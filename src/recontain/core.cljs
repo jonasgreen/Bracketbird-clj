@@ -11,7 +11,6 @@
 
 
 (defn setup [config]
-  ;todo - different validations, data refinements etc
   (reset! component-states-atom {})
   (reset! config-atom (s/resolve-config config))
   @config-atom)

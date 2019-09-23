@@ -8,8 +8,7 @@
             [bracketbird.util :as ut]
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.matches-tab :as matches-tab]
-            [bracketbird.components.ranking-tab :as ranking-tab]
-            [bedrock.util :as b-ut]))
+            [bracketbird.components.ranking-tab :as ranking-tab]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -35,130 +34,115 @@
 
             :hook/group-matches       [:hook/group :matches]
             :hook/group-matches-order [:hook/group :matches :matches-order]
-            :hook/group-match         [:hook/group :matches #{:match-id}]
-
-            ;ui hooks
-            :hook/ui-root             {:path      [:ui]
-                                       :render    pages/ui-root
-                                       :reactions [:hook/system]}
-
-            :hook/ui-application-page {:path        [:ui :applications #{:application-id}]
-                                       :render      pages/application-page
-                                       :local-state {:active-page :hook/ui-front-page}
-                                       :reactions   [:hook/application]}
-
-            :hook/ui-front-page       {:path              [:hook/ui-application-page :front-page]
-                                       :render            pages/front-page
-                                       :local-state       {}
-
-                                       :create-tournament (fn [handle _ _]
-                                                            (let [ctx (:ctx handle)
-                                                                  tournament-id (system/unique-id :tournament)]
-                                                              (ui-services/dispatch-event
-                                                                {:event-type     [:tournament :create]
-                                                                 :ctx            (assoc ctx :tournament-id tournament-id)
-                                                                 :content        {:tournament-id tournament-id}
-                                                                 :state-coeffect #(-> (rc/update % (rc/get-handle ctx :hook/ui-application-page)
-                                                                                                 assoc
-                                                                                                 :active-page
-                                                                                                 :hook/ui-tournament-page))
-                                                                 :post-render    (fn [_])})))}
-
-            :hook/ui-tournament-page  {:path        [:hook/ui-application-page :tournaments #{:tournament-id}]
-                                       :render      pages/tournament-page
-                                       :local-state {:items             {:teams    {:header "TEAMS" :content :hook/ui-teams-tab}
-                                                                         :settings {:header "SETTINGS" :content :hook/ui-settings-tab}
-                                                                         :matches  {:header "MATCHES" :content :hook/ui-matches-tab}
-                                                                         :ranking  {:header "SCORES" :content :hook/ui-ranking-tab}}
-
-                                                     :order             [:teams :settings :matches :ranking]
-                                                     :selection-type    :single
-                                                     :selected          :teams
-                                                     :previous-selected :teams}
-
-                                       :select-item (fn [handle {:keys [selected]} _ select]
-                                                      (rc/put! handle assoc :previous-selected selected :selected select))
-
-                                       }
-            ;; --- TEAMS TAB
-            :hook/ui-teams-tab        {:path             [:hook/ui-tournament-page :teams-tab]
-                                       :render           teams-tab/render
-                                       :reactions        [:hook/teams-order :hook/teams]
-                                       :local-state      {:scroll-top    0
-                                                          :client-height 0
-                                                          :scroll-height 0}
-                                       :scroll-to-bottom (fn [handle _ _] (-> handle
-                                                                              (rc/get-element "scroll")
-                                                                              (ut/scroll-elm-to-bottom!)))
-
-                                       :focus-last-team  (fn [{:keys [ctx]} _ {:keys [hook/teams-order]}]
-                                                           (when (seq teams-order)
-                                                             (-> (merge ctx {:team-id (last teams-order)})
-                                                                 (rc/get-handle :hook/ui-team-row)
-                                                                 (rc/dispatch :focus))))}
-
-            :hook/ui-team-row         {:path        [:hook/ui-teams-tab #{:team-id}]
-                                       :render      teams-tab/team-row
-                                       :reactions   [:hook/team]
-
-                                       :update-team (fn [handle {:keys [team-name]} _]
-                                                      (ui-services/dispatch-event
-                                                        {:event-type [:team :update]
-                                                         :ctx        (:ctx handle)
-                                                         :content    {:team-name team-name}}))
-
-                                       :focus       (fn [handle _ _] (-> handle (rc/get-element "team-name") (.focus)))}
+            :hook/group-match         [:hook/group :matches #{:match-id}]})
 
 
-            :hook/ui-enter-team-input {:path        [:hook/ui-teams-tab :enter-team-input]
-                                       :render      teams-tab/enter-team-input
-                                       :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
+;UI - Containers
 
-                                       :create-team (fn [{:keys [ctx] :as handle} {:keys [team-name]} _]
-                                                      (let [start (.getTime (js/Date.))]
-                                                        (ui-services/dispatch-event
-                                                          {:event-type     [:team :create]
-                                                           :ctx            ctx
-                                                           :content        {:team-name team-name}
-                                                           :state-coeffect #(-> % (rc/update handle dissoc :team-name))
-                                                           :post-render    (fn [_]
-                                                                             (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
-                                                                             (-> (rc/get-handle ctx :hook/ui-teams-tab)
-                                                                                 (rc/dispatch :scroll-to-bottom)))})))}
+(def ui-root {:ref       :ui-root
+              :render    pages/ui-root
+              :reactions [:hook/system]})
 
-            ;; --- SETTINGS TAB
-            :hook/ui-settings-tab     {:path        [:hook/ui-tournament-page :settings-tab]
-                                       :render      settings-tab/render
-                                       :local-state {:scroll-top 0}}
-            ;; --- MATCHES TAB
-            :hook/ui-matches-tab      {:path   [:hook/ui-tournament-page :matches-tab]
-                                       :render matches-tab/render}
-            ;; --- RANKING TAB
-            :hook/ui-ranking-tab      {:path   [:hook/ui-tournament-page :ranking-tab]
-                                       :render ranking-tab/render}})
+(def ui-application-page {:ref         :ui-application-page
+                          :local-state {:active-page :ui-front-page}
+                          :reactions   [:hook/application]
+                          :render      pages/ui-application-page})
 
 
-(defn component-hiccup-decorator [result {:keys [handle local-state foreign-states]}]
-  (let [[start end] (split-at 2 result)
-        debug-element [:div {:style {:position   :relative
-                                     :align-self :flex-start
-                                     :display    :table-cell}}
-                       [:button {:class    "debugButton"
-                                 :on-click (fn [_]
-                                             (println "\n-----------------------")
-                                             (println (str "\nHOOK\n" (:hook handle)))
-                                             (println (str "RENDER RESULT\n" (b-ut/pp-str result)))
-                                             (println "HANDLE\n" (b-ut/pp-str handle))
-                                             (println "LOCAL-STATE\n" (b-ut/pp-str local-state))
-                                             (println "FOREIGN-STATE-KEYS\n" (b-ut/pp-str (keys foreign-states))))}
-                        (:hook handle)]]]
-    (-> (concat start [debug-element] end)
-        vec
-        (update-in [1 :style] assoc :border "1px solid #00796B"))))
 
-(defn setup-recontain [state-atom]
-  (swap! state-atom assoc :rc-config
-         (rc/setup {:state-atom                 state-atom
-                    :hooks                      hooks
-                    :debug?                     (system/debug?)
-                    :component-hiccup-decorator (when (system/debug?) component-hiccup-decorator)})))
+(def ui-front-page {:hook              :ui-front-page
+                    :render            pages/ui-front-page
+                    :create-tournament (fn [handle _ _]
+                                         (let [ctx (:ctx handle)
+                                               tournament-id (system/unique-id :tournament)]
+                                           (ui-services/dispatch-event
+                                             {:event-type     [:tournament :create]
+                                              :ctx            (assoc ctx :tournament-id tournament-id)
+                                              :content        {:tournament-id tournament-id}
+                                              :state-coeffect #(-> (rc/update % (rc/get-handle ctx :ui-application-page)
+                                                                              assoc
+                                                                              :active-page
+                                                                              :ui-tournament-page))
+                                              :post-render    (fn [_])})))
+                    })
+
+(def ui-tournament-page {:hook        :ui-tournament-page
+                         :render      pages/tournament-page
+                         :local-state {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
+                                                           :settings {:header "SETTINGS" :content :ui-settings-tab}
+                                                           :matches  {:header "MATCHES" :content :ui-matches-tab}
+                                                           :ranking  {:header "SCORES" :content :ui-ranking-tab}}
+
+                                       :order             [:teams :settings :matches :ranking]
+                                       :selection-type    :single
+                                       :selected          :teams
+                                       :previous-selected :teams}
+
+                         :select-item (fn [handle {:keys [selected]} _ select]
+                                        (rc/put! handle assoc :previous-selected selected :selected select))})
+
+(def ui-teams-tab {:hook             :ui-teams-tab
+                   :render           teams-tab/render
+                   :reactions        [:hook/teams-order :hook/teams]
+                   :local-state      {:scroll-top    0
+                                      :client-height 0
+                                      :scroll-height 0}
+                   :scroll-to-bottom (fn [handle _ _] (-> handle
+                                                          (rc/get-element "scroll")
+                                                          (ut/scroll-elm-to-bottom!)))
+
+                   :focus-last-team  (fn [{:keys [ctx]} _ {:keys [hook/teams-order]}]
+                                       (when (seq teams-order)
+                                         (-> (merge ctx {:team-id (last teams-order)})
+                                             (rc/get-handle :ui-team-row)
+                                             (rc/dispatch :focus))))})
+
+(def ui-team-row {:hook        :ui-team-row
+                  :render      teams-tab/team-row
+                  :reactions   [:hook/team]
+
+                  :update-team (fn [handle {:keys [team-name]} _]
+                                 (ui-services/dispatch-event
+                                   {:event-type [:team :update]
+                                    :ctx        (:ctx handle)
+                                    :content    {:team-name team-name}}))
+
+                  :focus       (fn [handle _ _] (-> handle (rc/get-element "team-name") (.focus)))})
+
+(def ui-enter-team-input {:hook        :ui-enter-team-input
+                          :render      teams-tab/enter-team-input
+                          :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
+
+                          :create-team (fn [{:keys [ctx] :as handle} {:keys [team-name]} _]
+                                         (let [start (.getTime (js/Date.))]
+                                           (ui-services/dispatch-event
+                                             {:event-type     [:team :create]
+                                              :ctx            ctx
+                                              :content        {:team-name team-name}
+                                              :state-coeffect #(-> % (rc/update handle dissoc :team-name))
+                                              :post-render    (fn [_]
+                                                                (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
+                                                                (-> (rc/get-handle ctx :ui-teams-tab)
+                                                                    (rc/dispatch :scroll-to-bottom)))})))})
+
+(def ui-settings-tab {:hook        :ui-settings-tab
+                      :render      settings-tab/render
+                      :local-state {:scroll-top 0}})
+
+(def ui-matches-tab {:hook   :ui-matches-tab
+                     :render matches-tab/render})
+
+(def ui-ranking-tab {:hook   :ui-ranking-tab
+                     :render ranking-tab/render})
+
+
+(def ui-layout [ui-root
+                [ui-application-page #{:application-id}
+                 [ui-front-page]
+                 [ui-tournament-page #{:tournament-id}
+                  [ui-teams-tab
+                   [ui-team-row #{:team-id}]
+                   [ui-enter-team-input]]
+                  [ui-settings-tab]
+                  [ui-matches-tab]
+                  [ui-ranking-tab]]]])
