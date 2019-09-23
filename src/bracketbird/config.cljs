@@ -39,11 +39,11 @@
 
 ;UI - Containers
 
-(def ui-root {:ref       :ui-root
+(def ui-root {:hook      :ui-root
               :render    pages/ui-root
               :reactions [:hook/system]})
 
-(def ui-application-page {:ref         :ui-application-page
+(def ui-application-page {:hook        :ui-application-page
                           :local-state {:active-page :ui-front-page}
                           :reactions   [:hook/application]
                           :render      pages/ui-application-page})
@@ -63,8 +63,7 @@
                                                                               assoc
                                                                               :active-page
                                                                               :ui-tournament-page))
-                                              :post-render    (fn [_])})))
-                    })
+                                              :post-render    (fn [_])})))})
 
 (def ui-tournament-page {:hook        :ui-tournament-page
                          :render      pages/tournament-page

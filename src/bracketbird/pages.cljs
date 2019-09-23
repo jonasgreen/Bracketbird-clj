@@ -1,10 +1,15 @@
 (ns bracketbird.pages
   (:require [bracketbird.styles :as s]
-            [recontain.core :as rc]
-            [bracketbird.ui-services :as ui-services]
-            [bracketbird.system :as system]
-            [bracketbird.system :as system]))
+            [recontain.core :as rc]))
 
+(defn ui-root [handle _ {:keys [hook/system]}]
+  (let [ctx (:ctx handle)
+        app-id (:active-application system)]
+
+    [:div {:class :system}
+     (if app-id
+       [rc/build handle {:application-id app-id} :ui-application-page]
+       [:div "No application"])]))
 
 (defn ui-application-page [handle ls fs]
   (let [{:keys [ctx]} handle
@@ -13,54 +18,30 @@
 
     [:div {:class :application}
      (condp = active-page
-       :ui-front-page ^{:key 1} [rc/build ctx :ui-front-page]
+       :ui-front-page ^{:key 1} [rc/build handle {} :ui-front-page]
        :ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
-                                       [rc/build (merge ctx {:tournament-id tournament-id}) :ui-tournament-page])
+                                       [rc/build handle {:tournament-id tournament-id} :ui-tournament-page])
        [:div "page " active-page " not supported"])]))
 
 
+(defn ui-front-page [handle _ _]
 
-(defn ui-root [handle _ {:keys [hook/system]}]
-  (let [ctx (:ctx handle)
-        app-id (:active-application system)]
+  [:div
+   [:div {:style {:display :flex :justify-content :center :padding-top 30}}
+    ;logo
+    [:div {:style {:width 900}}
+     [:div {:style {:letter-spacing 0.8 :font-size 22}}
+      [:span {:style {:color "lightblue"}} "BRACKET"]
+      [:span {:style {:color "#C9C9C9"}} "BIRD"]]]]
 
-    [:div {:class :system}
-     (if app-id
-       [rc/build (merge ctx {:application-id app-id}) ui-application-page]
-       [:div "No application"])]))
+   [:div {:style {:display :flex :flex-direction :column :align-items :center}}
+    [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
+     "Instant tournaments"]
+    [:button {:class    "largeButton primaryButton"
+              :on-click (fn [_] (rc/dispatch handle :create-tournament))}
 
-
-(defn ui-front-page
-  {:local-state       {}
-   :create-tournament (fn [handle _ _]
-                        (let [ctx (:ctx handle)
-                              tournament-id (system/unique-id :tournament)]
-                          (ui-services/dispatch-event
-                            {:event-type     [:tournament :create]
-                             :ctx            (assoc ctx :tournament-id tournament-id)
-                             :content        {:tournament-id tournament-id}
-                             :state-coeffect #(-> (rc/update % (rc/get-handle ctx :ui-application-page)
-                                                             assoc
-                                                             :active-page
-                                                             :ui-tournament-page))
-                             :post-render    (fn [_])})))
-   :render            (fn [handle _ _]
-                        [:div
-                         [:div {:style {:display :flex :justify-content :center :padding-top 30}}
-                          ;logo
-                          [:div {:style {:width 900}}
-                           [:div {:style {:letter-spacing 0.8 :font-size 22}}
-                            [:span {:style {:color "lightblue"}} "BRACKET"]
-                            [:span {:style {:color "#C9C9C9"}} "BIRD"]]]]
-
-                         [:div {:style {:display :flex :flex-direction :column :align-items :center}}
-                          [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
-                           "Instant tournaments"]
-                          [:button {:class    "largeButton primaryButton"
-                                    :on-click (fn [_] (rc/dispatch handle :create-tournament))}
-
-                           "Create a tournament"]
-                          [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])})
+     "Create a tournament"]
+    [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
 
 (defn tournament-page [handle {:keys [selected order items]} _]
@@ -80,6 +61,6 @@
    (->> items
         (reduce-kv (fn [m k {:keys [content]}]
                      (conj m ^{:key k} [:div {:style (merge {:height :100%} (when-not (= selected k) {:display :none}))}
-                                        [rc/build (:ctx handle) content]]))
+                                        [rc/build handle {} content]]))
                    [])
         seq)])

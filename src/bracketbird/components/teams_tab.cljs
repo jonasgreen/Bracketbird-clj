@@ -58,7 +58,7 @@
             :on-key-down (d/key-handler {[:ENTER] (fn [e] (rc/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                          [:UP]    (fn [e]
                                                     (-> (:ctx handle)
-                                                        (rc/get-handle :hook/ui-teams-tab)
+                                                        (rc/get-handle :ui-teams-tab)
                                                         (rc/dispatch :focus-last-team)))})
 
             :on-key-up   (d/key-handler {[:BACKSPACE] (fn [e] (println "key-up" team-name))})
@@ -171,8 +171,8 @@
             :on-scroll (fn [e] (->> e .-target ut/scroll-data (rc/put! handle merge)))}
 
       (map (fn [team-id index]
-             ^{:key team-id} [rc/build (merge ctx {:team-id team-id}) :hook/ui-team-row index]) teams-order (range (count teams)))]
+             ^{:key team-id} [rc/build handle {:team-id team-id} team-row index]) teams-order (range (count teams)))]
 
      ; input field
      [:div {:style {:padding-left 120 :padding-bottom 20}}
-      [rc/build ctx :hook/ui-enter-team-input]]]))
+      [rc/build handle {} enter-team-input]]]))

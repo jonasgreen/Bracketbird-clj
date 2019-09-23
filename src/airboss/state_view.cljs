@@ -357,7 +357,7 @@
             (list? value) (str "(+) " (count value))
             (vector? value) (if (some coll? value)
                               (str "[+] " (count value))
-                              (str "[" (->> value (map (fn[v] (if (symbol? v) (str "'" v) v)) ) (string/join " ")) "]")
+                              (str "[" (->> value (map (fn [v] (if (symbol? v) (str "'" v) v))) (string/join " ")) "]")
                               )
             (set? value) (str "#{+} " (count value))
             (= LazySeq (type value)) (str "(+) " (count value) " Lazy seq")
@@ -405,6 +405,7 @@
                              [:span (str key-value)]))
     (symbol? key-value) [:span (str "'" key-value)]
     (string? key-value) [:span (str "\"" key-value "\"")]
+    (fn? key-value) [:span "#(...)"]
     :else [:span (str key-value)]))
 
 
@@ -467,7 +468,7 @@
                    :max-height      25
                    :width           "100%"}}
 
-     [:div (if path (str (if small (last path) path)) "")]
+     [:div (if path (str (if small (if (fn? (last path)) "#(...)" (last path)) path)) "")]
      [:div (some (fn [{:keys [name type?]}] (when (type? raw-value) name)) types)]]))
 
 (defn- render-rows-panel [row-models dispatcher {:keys [small] :as opts}]

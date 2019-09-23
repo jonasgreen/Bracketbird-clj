@@ -9,7 +9,8 @@
             [bracketbird.config :as config]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
-            [bedrock.util :as b-ut]))
+            [bedrock.util :as b-ut]
+            [bracketbird.pages :as pages]))
 
 (defn component-hiccup-decorator [result {:keys [handle local-state foreign-states]}]
   (let [[start end] (split-at 2 result)
@@ -31,7 +32,7 @@
 
 
 (defn mount-reagent []
-  (r/render [rc/build {} :hook/ui-root] (js/document.getElementById "system")))
+  (r/render [rc/build nil {} pages/ui-root] (js/document.getElementById "system")))
 
 (defn setup-recontain []
   (swap! state/state assoc :rc-config

@@ -28,12 +28,14 @@
 (defn- ui-hook? [hook]
   (s/ui-hook? (get-hook-value hook)))
 
-(defn- validate [hook given-ctx]
+(defn- validate-ctx [hook given-ctx]
   (let [rq-ctx (:ctx (get-hook-value hook))
         given-ctx-set (reduce-kv (fn [s k v] (if v (conj s k))) #{} given-ctx)]
 
     (when-not (clojure.set/subset? rq-ctx given-ctx-set)
       (throw (js/Error. (str "Missing context for hook " hook ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
+
+(defn- validate-layout [parent-handle hook])
 
 (defn- resolve-path-from-ctx [hook given-ctx]
   (let [{:keys [path ctx]} (get-hook-value hook)]
@@ -47,7 +49,7 @@
             path)))
 
 (defn hook-path [hook ctx]
-  (validate hook ctx)
+  (validate-ctx hook ctx)
   (let [p (resolve-path-from-ctx hook ctx)]
     (if (ui-hook? hook)
       (conj p :_local-state)
@@ -58,7 +60,7 @@
     (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
                {} reactions-map)))
 
-(defn- gui [ctx hook _]
+(defn- gui [parent ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
         ui-container (get-in @config-atom [:hooks hook])
         all-hooks (into [hook] (:reactions ui-container))
@@ -90,7 +92,7 @@
                               (when-let [dm (:did-mount ui-container)]
                                 (let [{:keys [local-state foreign-states]} (get @component-states-atom id)]
                                   (dm handle local-state foreign-states))))
-       :reagent-render      (fn [_ _ opts]
+       :reagent-render      (fn [_ _ _ opts]
                               (debug #(println "RENDER - " hook))
                               (let [
                                     ;dereferences and initializes
@@ -131,12 +133,16 @@
 
 
 (defn build
-  ([ctx hook]
-   (build ctx hook {}))
+  ([handle extra-ctx hook]
+   (build handle extra-ctx hook {}))
 
-  ([ctx hook opts]
-   (validate hook ctx)
-   [gui ctx hook opts]))
+  ([handle extra-ctx hook opts]
+   (let [ctx (merge (:ctx handle) extra-ctx)
+         hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)
+         ]
+     (validate-ctx hook-key ctx)
+     (validate-layout handle hook)
+     [gui handle ctx hook-key opts])))
 
 
 (defn- get-handle-data
@@ -171,7 +177,7 @@
   ([handle sub-id] (-> handle (id sub-id) dom/getElement)))
 
 (defn get-handle [ctx hook]
-  (validate hook ctx)
+  (validate-ctx hook ctx)
   (:handle (get-handle-data ctx hook)))
 
 (defn get-data [handle hook]
