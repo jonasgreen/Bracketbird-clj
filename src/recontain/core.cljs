@@ -66,13 +66,14 @@
         all-hooks (into [hook] (:reactions ui-container))
         all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx))) {} all-hooks)
 
+        foreign-local-state-ids (->> (dissoc all-paths hook)
+                                     keys
+                                     (filter ui-hook?)
+                                     (select-keys all-paths)
+                                     (reduce-kv (fn [m k v] (assoc m k (hash v))) {}))
+
         id (hash (get all-paths hook))
         path (get all-paths hook)
-
-        ;should not be reaction dependent
-        initial-values (reduce (fn [m h] (assoc m h (get-in @config-atom [:hooks h :local-state] {})))
-                               {}
-                               all-hooks)
 
         ; includes state and foreign state
         reactions-map (reduce (fn [m h] (assoc m h (reaction (get-in @state-atom (h all-paths) nil)))) {} all-hooks)
@@ -95,13 +96,29 @@
        :reagent-render      (fn [_ _ _ opts]
                               (debug #(println "RENDER - " hook))
                               (let [
-                                    ;dereferences and initializes
-                                    state-map (resolve-reactions reactions-map initial-values)
+                                    ;dereferences values from state atom
+                                    state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
 
-                                    local-state (get state-map hook)
-                                    foreign-states (dissoc state-map hook)
 
-                                    ;options
+                                    ;handle foreign states first - because they are passed to local-state-fn
+
+                                    ;; foreign local states are found in component cache - because they have been initialized by renderings
+                                    ;; higher up the tree
+                                    foreign-local-states (reduce-kv (fn [m k v] (assoc m k (get-in @component-states-atom [v :local-state])))
+                                                                    {}
+                                                                    foreign-local-state-ids)
+
+                                    foreign-states (-> state-map
+                                                       (dissoc hook)
+                                                       (merge foreign-local-states))
+
+                                    local-state (if-let [ls (get state-map hook)]
+                                                  ls
+                                                  (if-let [ls-fn (get-in @config-atom [:hooks hook :local-state])]
+                                                    (if (map? ls-fn)
+                                                      ls-fn
+                                                      (ls-fn foreign-states))
+                                                    {}))
 
                                     _ (swap! component-states-atom assoc id {:handle         handle
                                                                              :local-state    local-state

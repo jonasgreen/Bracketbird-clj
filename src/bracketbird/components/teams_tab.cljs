@@ -55,8 +55,8 @@
             :type        :text
             :style       s/input-text-field
             :value       team-name
-            :on-key-down (d/key-handler {[:ENTER] (fn [e] (rc/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                         [:UP]    (fn [e]
+            :on-key-down (d/key-handler {[:ENTER] (fn [_] (rc/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                         [:UP]    (fn [_]
                                                     (-> (:ctx handle)
                                                         (rc/get-handle :ui-teams-tab)
                                                         (rc/dispatch :focus-last-team)))})
@@ -66,8 +66,8 @@
             :on-change   #(->> % ut/value (rc/put! handle assoc :team-name))}]
 
    [:button {:class    "primaryButton"
-             :on-click #(rc/dispatch handle :create-team)
-             } "Add Team"]])
+             :on-click #(rc/dispatch handle :create-team)}
+    "Add Team"]])
 
 
 (defn team-row_old [position ctx]
@@ -147,10 +147,10 @@
                                           :else           (fn [])})}]])
 
 
-(defn render [{:keys [ctx id] :as handle} state {:keys [hook/teams-order hook/teams]}]
+(defn render [handle local-state {:keys [hook/teams-order hook/teams]}]
   (let [{:keys [scroll-top
                 scroll-height
-                client-height]} state]
+                client-height]} local-state]
     [:div {:style    (merge
                        {:display        :flex
                         :flex-direction :column
