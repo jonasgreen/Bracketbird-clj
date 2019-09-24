@@ -184,8 +184,7 @@
 
 
 (defn key-handler [fns]
-  (let [{:keys [else]} fns
-        modifier-preds {:SHIFT shift-modifier?
+  (let [modifier-preds {:SHIFT shift-modifier?
                         :ALT   alt-modifier?
                         :CTRL  ctrl-modifier?
                         :META  meta-modifier?}
@@ -201,7 +200,7 @@
                                modifier-preds)
 
             ;find function from fns-map by key-set
-            f (get fns-by-set key-set else)
+            f (get fns-by-set key-set (:else fns))
 
             ;expects exits to be in the form [:STOP-PROPAGATION :PREVENT-DEFAULT]
             exits (when f (f e))]
@@ -210,6 +209,10 @@
           (doall (->> exits
                       (map exits-fns)
                       (map (fn [exit-f] (when exit-f (exit-f e)))))))))))
+
+(defn handle-key [e fns]
+  ((key-handler fns) e))
+
 
 
 ; Reagent

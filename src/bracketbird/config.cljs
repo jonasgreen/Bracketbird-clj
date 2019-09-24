@@ -8,7 +8,8 @@
             [bracketbird.util :as ut]
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.matches-tab :as matches-tab]
-            [bracketbird.components.ranking-tab :as ranking-tab]))
+            [bracketbird.components.ranking-tab :as ranking-tab]
+            [bracketbird.dom :as d]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -100,29 +101,63 @@
                   :render      teams-tab/team-row
                   :reactions   [:hook/team]
 
-                  :update-team (fn [handle {:keys [team-name]} _]
+                  :local-state (fn [{:keys [hook/team]}]
+                                 {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
+
+                  :update-team (fn [h {:keys [team-name]} _]
                                  (ui-services/dispatch-event
                                    {:event-type [:team :update]
-                                    :ctx        (:ctx handle)
+                                    :ctx        (:ctx h)
                                     :content    {:team-name team-name}}))
 
-                  :focus       (fn [handle _ _] (-> handle (rc/get-element "team-name") (.focus)))})
+                  :on-change   (fn [h ls fs v] (rc/put! h assoc :team-name v))
+                  :focus       (fn [h _ _] (-> h (rc/get-element "team-name") (.focus)))})
+
+
 
 (def ui-enter-team-input {:hook        :ui-enter-team-input
                           :render      teams-tab/enter-team-input
                           :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
 
+                          :local-state (fn [{:keys [hook/team]}]
+                                         {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
+
+
                           :create-team (fn [{:keys [ctx] :as handle} {:keys [team-name]} _]
-                                         (let [start (.getTime (js/Date.))]
-                                           (ui-services/dispatch-event
-                                             {:event-type     [:team :create]
-                                              :ctx            ctx
-                                              :content        {:team-name team-name}
-                                              :state-coeffect #(-> % (rc/update handle dissoc :team-name))
-                                              :post-render    (fn [_]
-                                                                (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
-                                                                (-> (rc/get-handle ctx :ui-teams-tab)
-                                                                    (rc/dispatch :scroll-to-bottom)))})))})
+                                         (ui-services/dispatch-event
+                                           {:event-type     [:team :create]
+                                            :ctx            ctx
+                                            :content        {:team-name team-name}
+                                            :state-coeffect #(-> % (rc/update handle dissoc :team-name))
+                                            :post-render    (fn [_]
+                                                              (-> (rc/get-handle ctx :ui-teams-tab)
+                                                                  (rc/dispatch :scroll-to-bottom)))}))
+
+                          :on-key-up   (fn [h {:keys [team-name]} _ e]
+                                         (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? team-name)))
+
+                          :on-key-down (fn [h {:keys [delete-by-backspace?]} fs e]
+                                         (d/handle-key e {[:ENTER]     (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                                          [:UP]        (fn [_] (-> (:ctx h)
+                                                                                   (rc/get-handle :ui-teams-tab)
+                                                                                   (rc/dispatch :focus-last-team)))
+
+                                                          [:BACKSPACE] (fn [e] (when delete-by-backspace?
+                                                                                 (println "delete by backspace")
+                                                                                 (let [last-team (ui-services/get-last-team h)]
+                                                                                   (println "last team" last-team)
+
+                                                                                   #_(ui-services/dispatch-event
+                                                                                       {:event-type  [:team :delete]
+                                                                                        :ctx         (:ctx h)
+                                                                                        :content     {:team-id team-id}
+                                                                                        :post-render (fn [_]
+                                                                                                       (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
+                                                                                                       (-> (rc/get-handle ctx :ui-teams-tab)
+                                                                                                           (rc/dispatch :scroll-to-bottom)))})
+                                                                                   )))}))
+
+                          :on-change   (fn [h ls fs v] (rc/put! h assoc :team-name v))})
 
 (def ui-settings-tab {:hook        :ui-settings-tab
                       :render      settings-tab/render

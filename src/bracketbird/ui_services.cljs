@@ -48,4 +48,6 @@
 
 ;----------------------
 
-
+(defn get-last-team [h]
+  (when-let [team-id (last (rc/get-data h :hook/teams-order))]
+    (rc/get-data h {:team-id team-id} :hook/team)))

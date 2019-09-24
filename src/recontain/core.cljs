@@ -197,8 +197,11 @@
   (validate-ctx hook ctx)
   (:handle (get-handle-data ctx hook)))
 
-(defn get-data [handle hook]
-  (get-in @(state-atom) (hook-path hook (:ctx handle))))
+(defn get-data
+  ([handle hook]
+   (get-data handle {} hook))
+  ([handle extra-ctx hook]
+   (get-in @(state-atom) (hook-path hook (merge (:ctx handle) extra-ctx)))))
 
 (defn ctx
   ([handle] (:ctx handle))

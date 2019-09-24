@@ -55,15 +55,9 @@
             :type        :text
             :style       s/input-text-field
             :value       team-name
-            :on-key-down (d/key-handler {[:ENTER] (fn [_] (rc/dispatch handle :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                         [:UP]    (fn [_]
-                                                    (-> (:ctx handle)
-                                                        (rc/get-handle :ui-teams-tab)
-                                                        (rc/dispatch :focus-last-team)))})
-
-            :on-key-up   (d/key-handler {[:BACKSPACE] (fn [e] (println "key-up" team-name))})
-
-            :on-change   #(->> % ut/value (rc/put! handle assoc :team-name))}]
+            :on-key-down #(rc/dispatch handle :on-key-down %)
+            :on-key-up   #(rc/dispatch handle :on-key-up %)
+            :on-change   #(rc/dispatch handle :on-change (ut/value %))}]
 
    [:button {:class    "primaryButton"
              :on-click #(rc/dispatch handle :create-team)}
