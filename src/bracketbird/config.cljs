@@ -1,6 +1,6 @@
 (ns bracketbird.config
   (:require [recontain.core :as rc]
-            [reagent.core :as r]
+            [clojure.string :as string]
             [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.components.teams-tab :as teams-tab]
@@ -9,7 +9,8 @@
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
-            [bracketbird.dom :as d]))
+            [bracketbird.dom :as d]
+            [reagent.core :as r]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -143,19 +144,17 @@
                                                                                    (rc/dispatch :focus-last-team)))
 
                                                           [:BACKSPACE] (fn [e] (when delete-by-backspace?
-                                                                                 (println "delete by backspace")
-                                                                                 (let [last-team (ui-services/get-last-team h)]
-                                                                                   (println "last team" last-team)
-
-                                                                                   #_(ui-services/dispatch-event
+                                                                                 (let [{:keys [team-name team-id]} (ui-services/get-last-team h)]
+                                                                                   (when (string/blank? team-name)
+                                                                                     (ui-services/dispatch-event
                                                                                        {:event-type  [:team :delete]
-                                                                                        :ctx         (:ctx h)
-                                                                                        :content     {:team-id team-id}
+                                                                                        :ctx         (assoc (:ctx h) :team-id team-id)
                                                                                         :post-render (fn [_]
-                                                                                                       (r/after-render #(println "time: " (- (.getTime (js/Date.)) start)))
-                                                                                                       (-> (rc/get-handle ctx :ui-teams-tab)
-                                                                                                           (rc/dispatch :scroll-to-bottom)))})
-                                                                                   )))}))
+                                                                                                       (-> (:ctx h)
+                                                                                                           (rc/get-handle :ui-teams-tab)
+                                                                                                           (rc/dispatch :scroll-to-bottom)))
+
+                                                                                        })))))}))
 
                           :on-change   (fn [h ls fs v] (rc/put! h assoc :team-name v))})
 

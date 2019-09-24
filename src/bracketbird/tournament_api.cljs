@@ -1,5 +1,6 @@
 (ns bracketbird.tournament-api
-  (:require [bracketbird.system :as system]))
+  (:require [bracketbird.system :as system]
+            [bracketbird.util :as ut]))
 
 
 (def states {[:tournament :not-ready]    {}
@@ -86,5 +87,18 @@
                                          :execute-event  (fn [t {:keys [team-id team-name]}]
                                                            (-> t
                                                                (update :teams assoc-in [team-id :team-name] team-name)
+                                                               (assoc :dirty true)))}
+
+                  [:team :delete]       {:validate-input (fn [ctx m] ())
+                                         :validate-state (fn [ctx m] ())
+                                         ;:event-input    {:name :string}
+                                         :mk-event       (fn [{:keys [tournament-id team-id] :as ctx} m]
+                                                           {:tournament-id tournament-id
+                                                            :team-id       team-id})
+
+                                         :execute-event  (fn [t {:keys [team-id]}]
+                                                           (-> t
+                                                               (update :teams dissoc team-id)
+                                                               (update :teams-order #(->> % (remove (fn[v] (= team-id v))) vec))
                                                                (assoc :dirty true)))}
                   })
