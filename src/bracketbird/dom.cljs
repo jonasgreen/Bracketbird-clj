@@ -184,7 +184,8 @@
 
 
 (defn key-handler [fns]
-  (let [modifier-preds {:SHIFT shift-modifier?
+  (let [{:keys [else]} fns
+        modifier-preds {:SHIFT shift-modifier?
                         :ALT   alt-modifier?
                         :CTRL  ctrl-modifier?
                         :META  meta-modifier?}
@@ -200,7 +201,7 @@
                                modifier-preds)
 
             ;find function from fns-map by key-set
-            f (get fns-by-set key-set (:else fns))
+            f (get fns-by-set key-set else)
 
             ;expects exits to be in the form [:STOP-PROPAGATION :PREVENT-DEFAULT]
             exits (when f (f e))]

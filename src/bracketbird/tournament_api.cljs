@@ -84,7 +84,7 @@
                                                             :team-id       team-id
                                                             :team-name     team-name})
 
-                                         :execute-event  (fn [t {:keys [team-id team-name]}]
+                                         :execute-event  (fn [t {:keys [team-id team-name] :as e}]
                                                            (-> t
                                                                (update :teams assoc-in [team-id :team-name] team-name)
                                                                (assoc :dirty true)))}

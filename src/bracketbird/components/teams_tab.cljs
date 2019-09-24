@@ -46,7 +46,7 @@
 
 
 
-(defn enter-team-input [handle {:keys [team-name]} _]
+(defn enter-team-input [handle {:keys [value]} _]
   [:div {:style {:display     :flex
                  :margin-top  30
                  :align-items :center}}
@@ -54,7 +54,7 @@
             :placeholder "Enter team"
             :type        :text
             :style       s/input-text-field
-            :value       team-name
+            :value       value
             :on-key-down #(rc/dispatch handle :on-key-down %)
             :on-key-up   #(rc/dispatch handle :on-key-up %)
             :on-change   #(rc/dispatch handle :on-change (ut/value %))}]
@@ -122,23 +122,16 @@
                 :on-change   (fn [e] (reset! team-name-state (.. e -target -value)))}]])))
 
 
-(defn team-row [handle {:keys [team-name] :as ls} {:keys [hook/team] :as fs} index]
+(defn team-row [handle {:keys [value] :as ls} {:keys [hook/team] :as fs} index]
   [:div {:style {:display :flex :align-items :center :min-height 30}}
    [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
    [:input {:id          (rc/id handle "team-name")
             :style       (merge s/input-text-field {:min-width 200})
-
-            ;take from local state first
-            :value       (if team-name team-name (:team-name team))
-
-            :on-change   (fn [e] (->> e ut/value (rc/put! handle assoc :team-name)))
-            :on-key-down (ut/key-handler {})
-            :on-key-up   (ut/key-handler {[:BACKSPACE]    (fn [])
-                                          [:ENTER]        (fn [] [:STOP-PROPAGATION])
-                                          [:SHIFT :ENTER] (fn [] [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                          [:UP]           (fn [])
-                                          [:DOWN]         (fn [])
-                                          :else           (fn [])})}]])
+            :value       (if value value (:team-name team))
+            :on-key-down #(rc/dispatch handle :on-key-down %)
+            :on-key-up   #(rc/dispatch handle :on-key-up %)
+            :on-change   #(rc/dispatch handle :on-change (ut/value %))
+            }]])
 
 
 (defn render [handle local-state {:keys [hook/teams-order hook/teams]}]

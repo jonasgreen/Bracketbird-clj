@@ -27,8 +27,6 @@
 
 (defn value [e] (.. e -target -value))
 
-(defn key-handler [fns] (d/key-handler fns))
-
 (defn index-of
   ([item coll] (index-of 0 item coll =))
 

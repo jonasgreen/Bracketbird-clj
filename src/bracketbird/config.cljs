@@ -103,15 +103,23 @@
                   :reactions   [:hook/team]
 
                   :local-state (fn [{:keys [hook/team]}]
+                                 (println "init local state" (:team-name team))
                                  {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
 
-                  :update-team (fn [h {:keys [team-name]} _]
+                  :update-team (fn [h {:keys [value]} _]
                                  (ui-services/dispatch-event
                                    {:event-type [:team :update]
                                     :ctx        (:ctx h)
-                                    :content    {:team-name team-name}}))
+                                    :content    {:team-name value}}))
 
-                  :on-change   (fn [h ls fs v] (rc/put! h assoc :team-name v))
+                  :on-change   (fn [h ls fs v] (rc/put! h assoc :value v))
+
+                  :on-key-down (fn [h {:keys [value]} fs e]
+                                 (d/handle-key e {:ESC (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])}))
+
+                  :on-key-up   (fn [h _ _ e]
+                                 (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+
                   :focus       (fn [h _ _] (-> h (rc/get-element "team-name") (.focus)))})
 
 
@@ -120,22 +128,22 @@
                           :render      teams-tab/enter-team-input
                           :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
 
-                          :local-state (fn [{:keys [hook/team]}]
-                                         {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
+                          :local-state (fn [_]
+                                         {:delete-by-backspace? true})
 
 
-                          :create-team (fn [{:keys [ctx] :as handle} {:keys [team-name]} _]
+                          :create-team (fn [{:keys [ctx] :as handle} {:keys [value]} _]
                                          (ui-services/dispatch-event
                                            {:event-type     [:team :create]
                                             :ctx            ctx
-                                            :content        {:team-name team-name}
-                                            :state-coeffect #(-> % (rc/update handle dissoc :team-name))
+                                            :content        {:team-name value}
+                                            :state-coeffect #(-> % (rc/update handle dissoc :value))
                                             :post-render    (fn [_]
                                                               (-> (rc/get-handle ctx :ui-teams-tab)
                                                                   (rc/dispatch :scroll-to-bottom)))}))
 
-                          :on-key-up   (fn [h {:keys [team-name]} _ e]
-                                         (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? team-name)))
+                          :on-key-up   (fn [h _ _ e]
+                                         (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
 
                           :on-key-down (fn [h {:keys [delete-by-backspace?]} fs e]
                                          (d/handle-key e {[:ENTER]     (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
@@ -152,11 +160,9 @@
                                                                                         :post-render (fn [_]
                                                                                                        (-> (:ctx h)
                                                                                                            (rc/get-handle :ui-teams-tab)
-                                                                                                           (rc/dispatch :scroll-to-bottom)))
+                                                                                                           (rc/dispatch :scroll-to-bottom)))})))))}))
 
-                                                                                        })))))}))
-
-                          :on-change   (fn [h ls fs v] (rc/put! h assoc :team-name v))})
+                          :on-change   (fn [h ls fs v] (rc/put! h assoc :value v))})
 
 (def ui-settings-tab {:hook        :ui-settings-tab
                       :render      settings-tab/render

@@ -179,6 +179,13 @@
 (defn put! [handle & args]
   (swap! (:state-atom @config-atom) #(apply update % handle args)))
 
+(defn delete-local-state [handle]
+  (let [{:keys [id path]} handle
+        parent-path (subvec path 0 (- (count path) 1))]
+    (println "parent path" parent-path)
+    (swap! component-states-atom update-in [id] dissoc :local-state)
+    (swap! (:state-atom @config-atom) update-in parent-path dissoc :_local-state)))
+
 (defn dispatch [handle dispatch-f & args]
   (let [{:keys [hook id]} handle
         h-data (get-handle-data id)
