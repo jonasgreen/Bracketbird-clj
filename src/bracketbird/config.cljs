@@ -10,7 +10,8 @@
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
             [bracketbird.dom :as d]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [bracketbird.rc-util :as rc-util]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -103,7 +104,6 @@
                   :reactions   [:hook/team]
 
                   :local-state (fn [{:keys [hook/team]}]
-                                 (println "init local state" (:team-name team))
                                  {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
 
                   :update-team (fn [h {:keys [value]} _]
@@ -112,13 +112,19 @@
                                     :ctx        (:ctx h)
                                     :content    {:team-name value}}))
 
-                  :on-change   (fn [h ls fs v] (rc/put! h assoc :value v))
+                  :on-change   (fn [h ls fs e] (rc/put! h assoc :value (ut/value e)))
+                  :on-key-down (fn [h _ {:keys [hook/team]} e]
+                                 (d/handle-key e {:ESC  (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
+                                                  :UP   (fn [_] (->> (:team-id team)
+                                                                     (ui-services/previous-team h)
+                                                                     (rc-util/focus h :ui-team-row :team-id)))
 
-                  :on-key-down (fn [h {:keys [value]} fs e]
-                                 (d/handle-key e {:ESC (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])}))
+                                                  :DOWN (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
+                                                                  (if team-to-focus
+                                                                    (rc-util/focus h :ui-team-row :team-id team-to-focus)
+                                                                    (rc-util/focus h :ui-enter-team-input))))}))
 
-                  :on-key-up   (fn [h _ _ e]
-                                 (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+                  :on-key-up   (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
 
                   :focus       (fn [h _ _] (-> h (rc/get-element "team-name") (.focus)))})
 
@@ -126,12 +132,9 @@
 
 (def ui-enter-team-input {:hook        :ui-enter-team-input
                           :render      teams-tab/enter-team-input
-                          :did-mount   (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))
+                          :did-mount   (fn [h _ _] (rc/dispatch h :focus))
 
-                          :local-state (fn [_]
-                                         {:delete-by-backspace? true})
-
-
+                          :local-state (fn [_] {:delete-by-backspace? true})
                           :create-team (fn [{:keys [ctx] :as handle} {:keys [value]} _]
                                          (ui-services/dispatch-event
                                            {:event-type     [:team :create]
@@ -142,9 +145,7 @@
                                                               (-> (rc/get-handle ctx :ui-teams-tab)
                                                                   (rc/dispatch :scroll-to-bottom)))}))
 
-                          :on-key-up   (fn [h _ _ e]
-                                         (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
-
+                          :on-key-up   (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
                           :on-key-down (fn [h {:keys [delete-by-backspace?]} fs e]
                                          (d/handle-key e {[:ENTER]     (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                                           [:UP]        (fn [_] (-> (:ctx h)
@@ -152,7 +153,7 @@
                                                                                    (rc/dispatch :focus-last-team)))
 
                                                           [:BACKSPACE] (fn [e] (when delete-by-backspace?
-                                                                                 (let [{:keys [team-name team-id]} (ui-services/get-last-team h)]
+                                                                                 (let [{:keys [team-name team-id]} (ui-services/last-team h)]
                                                                                    (when (string/blank? team-name)
                                                                                      (ui-services/dispatch-event
                                                                                        {:event-type  [:team :delete]
@@ -161,8 +162,9 @@
                                                                                                        (-> (:ctx h)
                                                                                                            (rc/get-handle :ui-teams-tab)
                                                                                                            (rc/dispatch :scroll-to-bottom)))})))))}))
+                          :on-change   (fn [h ls fs e] (rc/put! h assoc :value (ut/value e)))
 
-                          :on-change   (fn [h ls fs v] (rc/put! h assoc :value v))})
+                          :focus       (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))})
 
 (def ui-settings-tab {:hook        :ui-settings-tab
                       :render      settings-tab/render

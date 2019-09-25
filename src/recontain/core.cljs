@@ -186,15 +186,28 @@
     (swap! component-states-atom update-in [id] dissoc :local-state)
     (swap! (:state-atom @config-atom) update-in parent-path dissoc :_local-state)))
 
-(defn dispatch [handle dispatch-f & args]
+(defn- do-dispatch [{:keys [handle dispatch-f args silently-fail?]}]
   (let [{:keys [hook id]} handle
         h-data (get-handle-data id)
         f (-> @config-atom
               (get-in [:hooks hook])
               (get dispatch-f))]
-    (when-not f (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook))))
-    ;make ui-update available to dispatch functions
-    (apply f (:handle h-data) (:local-state h-data) (:foreign-states h-data) args)))
+
+    (if f
+      (apply f (:handle h-data) (:local-state h-data) (:foreign-states h-data) args)
+      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook)))))))
+
+(defn dispatch [handle dispatch-f & args]
+  (do-dispatch {:handle         handle
+                :dispatch-f     dispatch-f
+                :args           args
+                :silently-fail? false}))
+
+(defn dispatch-silent [handle dispatch-f & args]
+  (do-dispatch {:handle         handle
+                :dispatch-f     dispatch-f
+                :args           args
+                :silently-fail? true}))
 
 (defn get-element
   ([handle] (-> handle :id dom/getElement))
@@ -213,3 +226,4 @@
 (defn ctx
   ([handle] (:ctx handle))
   ([handle extra-ctx] (merge (:ctx handle) extra-ctx)))
+

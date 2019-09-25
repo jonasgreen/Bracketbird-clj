@@ -47,6 +47,18 @@
 (defn update-state [tournament]
   tournament)
 
+(defn last-team [tournament]
+  (when-let [team-id (-> tournament :teams-order last)]
+    (get-in tournament [:teams team-id])))
+
+(defn previous-team [tournament team-id]
+  (when-let [team-id (->> tournament :teams-order (ut/previous team-id))]
+    (get-in tournament [:teams team-id])))
+
+(defn after-team [tournament team-id]
+  (when-let [team-id (->> tournament :teams-order (ut/after team-id))]
+    (get-in tournament [:teams team-id])))
+
 
 (def events-spec {[:tournament :create] {:validate-input (fn [ctx m] ())
                                          :validate-state (fn [ctx m] ())
@@ -99,6 +111,6 @@
                                          :execute-event  (fn [t {:keys [team-id]}]
                                                            (-> t
                                                                (update :teams dissoc team-id)
-                                                               (update :teams-order #(->> % (remove (fn[v] (= team-id v))) vec))
+                                                               (update :teams-order #(->> % (remove (fn [v] (= team-id v))) vec))
                                                                (assoc :dirty true)))}
                   })

@@ -48,6 +48,17 @@
 
 ;----------------------
 
-(defn get-last-team [h]
-  (when-let [team-id (last (rc/get-data h :hook/teams-order))]
-    (rc/get-data h {:team-id team-id} :hook/team)))
+(defn last-team [h]
+  (-> h
+      (rc/get-data :hook/tournament)
+      tournament-api/last-team))
+
+(defn previous-team [h team-id]
+  (-> h
+      (rc/get-data :hook/tournament)
+      (tournament-api/previous-team team-id)))
+
+(defn after-team [h team-id]
+  (-> h
+      (rc/get-data :hook/tournament)
+      (tournament-api/after-team team-id)))

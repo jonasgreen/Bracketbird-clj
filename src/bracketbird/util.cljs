@@ -28,25 +28,35 @@
 (defn value [e] (.. e -target -value))
 
 (defn index-of
-  ([item coll] (index-of 0 item coll =))
+  ([item xs] (index-of 0 item xs =))
 
-  ([item coll condition-fn] (index-of 0 item coll condition-fn))
+  ([item xs condition-fn] (index-of 0 item xs condition-fn))
 
-  ([index item coll condition-fn]
+  ([index item xs condition-fn]
    (cond
-     (empty? coll) -1
-     (condition-fn item (first coll)) index
-     :else (recur (inc index) item (rest coll) condition-fn))))
+     (empty? xs) -1
+     (condition-fn item (first xs)) index
+     :else (recur (inc index) item (rest xs) condition-fn))))
 
+(defn previous [item xs]
+  (let [index (index-of item xs)]
+    (when (> index 0) (nth xs (dec index)))))
 
-(defn cyclic-previous [item coll]
+(defn after [item xs]
+  (let [index (index-of item xs)]
+    (when (and
+            (not= -1 index)
+            (< index (- (count xs) 1)))
+      (nth xs (inc index)))))
+
+(defn cyclic-previous [item xs]
   (cond
-    (nil? item) (last coll)
-    (= item (first coll)) (last coll)
-    :else (nth coll (dec (index-of item coll)))))
+    (nil? item) (last xs)
+    (= item (first xs)) (last xs)
+    :else (nth xs (dec (index-of item xs)))))
 
-(defn cyclic-next [item coll]
+(defn cyclic-next [item cs]
   (cond
-    (nil? item) (first coll)
-    (= item (last coll)) (first coll)
-    :else (nth coll (inc (index-of item coll)))))
+    (nil? item) (first cs)
+    (= item (last cs)) (first cs)
+    :else (nth cs (inc (index-of item cs)))))
