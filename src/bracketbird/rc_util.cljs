@@ -4,13 +4,6 @@
             [bracketbird.util :as ut]))
 
 
-(defn input-handlers [handle]
-  {:on-key-down #(rc/dispatch-silent handle :on-key-down %)
-   :on-key-up   #(rc/dispatch-silent handle :on-key-up %)
-   :on-blur     #(rc/dispatch-silent handle :on-blur %)
-   :on-focus    #(rc/dispatch-silent handle :on-focus %)
-   :on-change   #(rc/dispatch-silent handle :on-change %)})
-
 (defn- put-value [h sub-id k v]
   (rc/put! h assoc (keyword (if-not (string/blank? sub-id)
                               (str sub-id "-" k)
@@ -25,9 +18,10 @@
                 :on-key-down    (fn [_ _ _] ())
                 :on-key-up      (fn [_ _ _] ())
 
-                :on-change      (fn [h sub-id e] (put-value h sub-id "value" (ut/value e)))})
+                :on-change      (fn [h sub-id e] (put-value h sub-id "value" (ut/value e)))
+                :on-click       (fn [_ _ _] ())})
 
-(def standard-bind-events [:on-focus :on-blur :on-mouse-enter :on-mouse-leave :on-key-down :on-key-up :on-change])
+(def standard-bind-events [:on-focus :on-blur :on-mouse-enter :on-mouse-leave :on-key-down :on-key-up :on-change :on-click])
 
 (defn bind-events
   ([opts h]

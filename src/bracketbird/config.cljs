@@ -125,7 +125,7 @@
                                                           (rc-ut/focus h :ui-team-row :team-id team-to-focus)
                                                           (rc-ut/focus h :ui-enter-team-input)))})))
 
-                  :tn-on-key-down    (fn [h {:keys [delete-by-backspace?]} {:keys [hook/team]} e]
+                  :tn-on-key-down (fn [h {:keys [delete-by-backspace?]} {:keys [hook/team]} e]
                                     (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
                                                      :ENTER          (fn [_] (rc/dispatch h :update-team))
                                                      [:SHIFT :ENTER] (fn [e] (ui-services/dispatch-event
@@ -147,48 +147,56 @@
                                                                                  (rc-ut/focus h :ui-enter-team-input))))
                                                      :BACKSPACE      (fn [_] (when delete-by-backspace? (rc/dispatch h :delete-team)) [:STOP-PROPAGATION])}))
 
-                  :tn-on-key-up      (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
-                  :tn-on-blur        (fn [h _ _ e] (rc/dispatch h :update-team))
+                  :tn-on-key-up   (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+                  :tn-on-blur     (fn [h _ _ e] (rc/dispatch h :update-team))
 
                   :focus          (fn [h _ _] (-> h (rc/get-element "tn") (.focus)))})
 
 
 
-(def ui-enter-team-input {:hook        :ui-enter-team-input
-                          :render      teams-tab/enter-team-input
-                          :did-mount   (fn [h _ _] (rc/dispatch h :focus))
+(def ui-enter-team-input {:hook               :ui-enter-team-input
+                          :render             teams-tab/enter-team-input
+                          :did-mount          (fn [h _ _] (rc/dispatch h :focus))
 
-                          :local-state (fn [_] {:delete-by-backspace? true})
-                          :create-team (fn [{:keys [ctx] :as handle} {:keys [value]} _]
-                                         (ui-services/dispatch-event
-                                           {:event-type     [:team :create]
-                                            :ctx            ctx
-                                            :content        {:team-name value}
-                                            :state-coeffect #(-> % (rc/update handle dissoc :value))
-                                            :post-render    (fn [_]
-                                                              (-> (rc/get-handle ctx :ui-teams-tab)
-                                                                  (rc/dispatch :scroll-to-bottom)))}))
+                          :local-state        (fn [_] {:delete-by-backspace? true})
+                          :create-team        (fn [{:keys [ctx] :as handle} {:keys [input-value]} _]
+                                                (ui-services/dispatch-event
+                                                  {:event-type     [:team :create]
+                                                   :ctx            ctx
+                                                   :content        {:team-name input-value}
+                                                   :state-coeffect #(-> % (rc/update handle dissoc :input-value))
+                                                   :post-render    (fn [_]
+                                                                     (-> (rc/get-handle ctx :ui-teams-tab)
+                                                                         (rc/dispatch :scroll-to-bottom)))}))
 
-                          :on-key-up   (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
-                          :on-key-down (fn [h {:keys [delete-by-backspace?]} fs e]
-                                         (d/handle-key e {[:ENTER]     (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
-                                                          [:UP]        (fn [_] (-> (:ctx h)
-                                                                                   (rc/get-handle :ui-teams-tab)
-                                                                                   (rc/dispatch :focus-last-team)))
+                          :input-on-key-up    (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+                          :input-on-key-down  (fn [h {:keys [delete-by-backspace?]} _ e]
+                                                (d/handle-key e {[:ENTER]     (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                                                 [:UP]        (fn [_] (-> (:ctx h)
+                                                                                          (rc/get-handle :ui-teams-tab)
+                                                                                          (rc/dispatch :focus-last-team)))
 
-                                                          [:BACKSPACE] (fn [e] (when delete-by-backspace?
-                                                                                 (let [{:keys [team-name team-id]} (ui-services/last-team h)]
-                                                                                   (when (string/blank? team-name)
-                                                                                     (ui-services/dispatch-event
-                                                                                       {:event-type  [:team :delete]
-                                                                                        :ctx         (assoc (:ctx h) :team-id team-id)
-                                                                                        :post-render (fn [_]
-                                                                                                       (-> (:ctx h)
-                                                                                                           (rc/get-handle :ui-teams-tab)
-                                                                                                           (rc/dispatch :scroll-to-bottom)))})))))}))
-                          :on-change   (fn [h ls fs e] (rc/put! h assoc :value (ut/value e)))
+                                                                 [:BACKSPACE] (fn [e] (when delete-by-backspace?
+                                                                                        (let [{:keys [team-name team-id]} (ui-services/last-team h)]
+                                                                                          (when (string/blank? team-name)
+                                                                                            (ui-services/dispatch-event
+                                                                                              {:event-type  [:team :delete]
+                                                                                               :ctx         (assoc (:ctx h) :team-id team-id)
+                                                                                               :post-render (fn [_]
+                                                                                                              (-> (:ctx h)
+                                                                                                                  (rc/get-handle :ui-teams-tab)
+                                                                                                                  (rc/dispatch :scroll-to-bottom)))})))))}))
 
-                          :focus       (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))})
+                          :button-on-click    (fn [h _ _ _]
+                                                (rc/dispatch h :create-team)
+                                                (rc/dispatch h :focus))
+                          :button-on-key-down (fn [h _ _ e]
+                                                (d/handle-key e {[:ENTER] (fn [_]
+                                                                            (rc/dispatch h :create-team)
+                                                                            (rc/dispatch h :focus)
+                                                                            [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
+
+                          :focus              (fn [handle _ _] (-> handle (rc/get-element "input") (.focus)))})
 
 (def ui-settings-tab {:hook        :ui-settings-tab
                       :render      settings-tab/render

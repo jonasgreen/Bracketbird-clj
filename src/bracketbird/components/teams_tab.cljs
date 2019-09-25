@@ -5,27 +5,26 @@
             [bracketbird.rc-util :as rc-util]))
 
 
-(defn enter-team-input [handle {:keys [value]} _]
+(defn enter-team-input [handle {:keys [input-value]} _]
   [:div {:style {:display     :flex
                  :margin-top  30
                  :align-items :center}}
 
-   [:input (merge {:id          (rc/id handle "input")
-                   :placeholder "Enter team"
-                   :type        :text
-                   :style       s/input-text-field
-                   :value       value}
-                  (rc-util/input-handlers handle))]
+   [:input (-> {:id          (rc/id handle "input")
+                :placeholder "Enter team"
+                :type        :text
+                :style       s/input-text-field
+                :value       input-value}
+               (rc-util/bind-events handle))]
 
-   [:button {:class    "primaryButton"
-             :on-click (fn [e]
-                         (rc/dispatch handle :create-team)
-                         (rc/dispatch handle :focus))}
+   [:button (-> {:id    (rc/id handle "button")
+                 :class "primaryButton"}
+                (rc-util/bind-events handle))
     "Add Team"]])
 
 
 (defn team-row [h {:keys [top-hover? tn-value]} {:keys [hook/team]} index]
-  [:div (-> {:id (rc/id h "top")
+  [:div (-> {:id    (rc/id h "top")
              :style {:display :flex :align-items :center :min-height 30}}
             (rc-util/bind-events h))
    [:div (-> {:id    (rc/id h "icon")
