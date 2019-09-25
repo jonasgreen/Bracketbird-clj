@@ -1,5 +1,6 @@
 (ns bracketbird.rc-util
-  (:require [recontain.core :as rc]))
+  (:require [recontain.core :as rc]
+            [clojure.string :as string]))
 
 
 (defn input-handlers [handle]
@@ -23,5 +24,15 @@
 
   ([handle hook]
    (focus handle hook {})))
+
+(defn has-changed [value org-value]
+  (when value
+    (if (and (string? value) (string? org-value))
+      (if (and (string/blank? value)
+               (string/blank? org-value))
+        false
+        (not= value org-value))
+      (not= value org-value))))
+
 
 

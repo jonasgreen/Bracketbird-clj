@@ -1,8 +1,6 @@
 (ns bracketbird.components.teams-tab
-  (:require [reagent.core :as r]
-            [recontain.core :as rc]
+  (:require [recontain.core :as rc]
             [bracketbird.styles :as s]
-            [bracketbird.dom :as d]
             [bracketbird.util :as ut]
             [bracketbird.rc-util :as rc-util]))
 
@@ -20,7 +18,9 @@
                   (rc-util/input-handlers handle))]
 
    [:button {:class    "primaryButton"
-             :on-click #(rc/dispatch handle :create-team)}
+             :on-click (fn[e]
+                         (rc/dispatch handle :create-team)
+                         (rc/dispatch handle :focus))}
     "Add Team"]])
 
 

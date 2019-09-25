@@ -55,8 +55,12 @@
     (= item (first xs)) (last xs)
     :else (nth xs (dec (index-of item xs)))))
 
-(defn cyclic-next [item cs]
+(defn cyclic-next [item xs]
   (cond
-    (nil? item) (first cs)
-    (= item (last cs)) (first cs)
-    :else (nth cs (inc (index-of item cs)))))
+    (nil? item) (first xs)
+    (= item (last xs)) (first xs)
+    :else (nth xs (inc (index-of item xs)))))
+
+(defn insert [item index xs]
+  (let [[before after] (split-at index xs)]
+    (vec (concat before [item] after))))

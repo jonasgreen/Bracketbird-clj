@@ -74,17 +74,21 @@
                                          :validate-state (fn [ctx m] ())
                                          ;:event-input    {:name :string}
                                          :mk-event       (fn [{:keys [tournament-id] :as ctx}
-                                                              {:keys [team-name] :as m}]
+                                                              {:keys [team-name index] :as m}]
 
                                                            {:tournament-id tournament-id
                                                             :team-id       (system/unique-id :team)
-                                                            :team-name     team-name})
+                                                            :team-name     team-name
+                                                            :index         index})
 
-                                         :execute-event  (fn [t {:keys [team-id team-name]}]
+                                         :execute-event  (fn [t {:keys [team-id team-name index]}]
                                                            (let [team (mk-team team-id team-name)]
                                                              (-> t
-                                                                 (update :teams assoc (:team-id team) team)
-                                                                 (update :teams-order conj (:team-id team))
+                                                                 (update :teams assoc team-id team)
+                                                                 (update :teams-order (fn [items]
+                                                                                        (if index
+                                                                                          (ut/insert team-id index items)
+                                                                                          (conj items team-id))))
                                                                  (assoc :dirty true))))}
                   [:team :update]       {:validate-input (fn [ctx m] ())
                                          :validate-state (fn [ctx m] ())

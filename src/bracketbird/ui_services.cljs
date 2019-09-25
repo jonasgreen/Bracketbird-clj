@@ -1,7 +1,8 @@
 (ns bracketbird.ui-services
   (:require [recontain.core :as rc]
             [bracketbird.tournament-api :as tournament-api]
-            [bracketbird.event-dispatcher :as event-dispatcher]))
+            [bracketbird.event-dispatcher :as event-dispatcher]
+            [bracketbird.util :as ut]))
 
 
 (defn dispatch-event [{:keys [ctx event-type content state-coeffect post-render] :as m}]
@@ -62,3 +63,7 @@
   (-> h
       (rc/get-data :hook/tournament)
       (tournament-api/after-team team-id)))
+
+(defn index-of [h team-id]
+  (->> (rc/get-data h :hook/teams-order)
+       (ut/index-of team-id)))
