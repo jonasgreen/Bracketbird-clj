@@ -170,7 +170,7 @@
 
 (defn id
   ([handle] (:id handle))
-  ([handle sub-id] (str (:id handle) sub-id)))
+  ([handle sub-id] (str (:id handle) "#" sub-id)))
 
 (defn update [state {:keys [id path]} & args]
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle-data id))) (rest args)))]

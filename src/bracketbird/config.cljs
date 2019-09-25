@@ -99,60 +99,58 @@
                                              (rc/get-handle :ui-team-row)
                                              (rc/dispatch :focus))))})
 
-(def ui-team-row {:hook        :ui-team-row
-                  :render      teams-tab/team-row
-                  :reactions   [:hook/team]
+(def ui-team-row {:hook           :ui-team-row
+                  :render         teams-tab/team-row
+                  :reactions      [:hook/team]
 
-                  :local-state (fn [{:keys [hook/team]}]
-                                 {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
+                  :local-state    (fn [{:keys [hook/team]}]
+                                    {:delete-by-backspace? (clojure.string/blank? (:team-name team))})
 
-                  :update-team (fn [h {:keys [value]} {:keys [hook/team]}]
-                                 (when (rc-ut/has-changed value (:team-name team))
-                                   (ui-services/dispatch-event
-                                     {:event-type [:team :update]
-                                      :ctx        (:ctx h)
-                                      :content    {:team-name value}})))
+                  :update-team    (fn [h {:keys [tn-value]} {:keys [hook/team]}]
+                                    (when (rc-ut/has-changed tn-value (:team-name team))
+                                      (ui-services/dispatch-event
+                                        {:event-type [:team :update]
+                                         :ctx        (:ctx h)
+                                         :content    {:team-name tn-value}})))
 
-                  :delete-team (fn [h ls {:keys [hook/team]}]
-                                 (let [team-to-focus (or
-                                                       (ui-services/after-team h (:team-id team))
-                                                       (ui-services/previous-team h (:team-id team)))]
-                                   (ui-services/dispatch-event
-                                     {:event-type  [:team :delete]
-                                      :ctx         (assoc (:ctx h) :team-id (:team-id team))
-                                      :post-render (fn [_]
-                                                     (if team-to-focus
-                                                       (rc-ut/focus h :ui-team-row :team-id team-to-focus)
-                                                       (rc-ut/focus h :ui-enter-team-input)))})))
+                  :delete-team    (fn [h ls {:keys [hook/team]}]
+                                    (let [team-to-focus (or
+                                                          (ui-services/after-team h (:team-id team))
+                                                          (ui-services/previous-team h (:team-id team)))]
+                                      (ui-services/dispatch-event
+                                        {:event-type  [:team :delete]
+                                         :ctx         (assoc (:ctx h) :team-id (:team-id team))
+                                         :post-render (fn [_]
+                                                        (if team-to-focus
+                                                          (rc-ut/focus h :ui-team-row :team-id team-to-focus)
+                                                          (rc-ut/focus h :ui-enter-team-input)))})))
 
-                  :on-change   (fn [h ls fs e] (rc/put! h assoc :value (ut/value e)))
-                  :on-key-down (fn [h {:keys [delete-by-backspace? value]} {:keys [hook/team]} e]
-                                 (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
-                                                  :ENTER          (fn [_] (rc/dispatch h :update-team))
-                                                  [:SHIFT :ENTER] (fn [e] (ui-services/dispatch-event
-                                                                            {:event-type  [:team :create]
-                                                                             :ctx         (:ctx h)
-                                                                             :content     {:team-name ""
-                                                                                           :index     (ui-services/index-of h (:team-id team))}
-                                                                             :post-render (fn [event]
-                                                                                            (-> (:ctx h)
-                                                                                                (assoc :team-id (:team-id event))
-                                                                                                (rc/get-handle :ui-team-row)
-                                                                                                (rc/dispatch :focus)))}))
-                                                  :UP             (fn [_] (->> (:team-id team)
-                                                                               (ui-services/previous-team h)
-                                                                               (rc-ut/focus h :ui-team-row :team-id)))
-                                                  :DOWN           (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
-                                                                            (if team-to-focus
-                                                                              (rc-ut/focus h :ui-team-row :team-id team-to-focus)
-                                                                              (rc-ut/focus h :ui-enter-team-input))))
-                                                  :BACKSPACE      (fn [_] (when delete-by-backspace? (rc/dispatch h :delete-team)) [:STOP-PROPAGATION])}))
+                  :tn-on-key-down    (fn [h {:keys [delete-by-backspace?]} {:keys [hook/team]} e]
+                                    (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
+                                                     :ENTER          (fn [_] (rc/dispatch h :update-team))
+                                                     [:SHIFT :ENTER] (fn [e] (ui-services/dispatch-event
+                                                                               {:event-type  [:team :create]
+                                                                                :ctx         (:ctx h)
+                                                                                :content     {:team-name ""
+                                                                                              :index     (ui-services/index-of h (:team-id team))}
+                                                                                :post-render (fn [event]
+                                                                                               (-> (:ctx h)
+                                                                                                   (assoc :team-id (:team-id event))
+                                                                                                   (rc/get-handle :ui-team-row)
+                                                                                                   (rc/dispatch :focus)))}))
+                                                     :UP             (fn [_] (->> (:team-id team)
+                                                                                  (ui-services/previous-team h)
+                                                                                  (rc-ut/focus h :ui-team-row :team-id)))
+                                                     :DOWN           (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
+                                                                               (if team-to-focus
+                                                                                 (rc-ut/focus h :ui-team-row :team-id team-to-focus)
+                                                                                 (rc-ut/focus h :ui-enter-team-input))))
+                                                     :BACKSPACE      (fn [_] (when delete-by-backspace? (rc/dispatch h :delete-team)) [:STOP-PROPAGATION])}))
 
-                  :on-key-up   (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+                  :tn-on-key-up      (fn [h _ _ e] (rc/put! h assoc :delete-by-backspace? (clojure.string/blank? (ut/value e))))
+                  :tn-on-blur        (fn [h _ _ e] (rc/dispatch h :update-team))
 
-                  :on-blur     (fn [h _ _ e] (rc/dispatch h :update-team))
-
-                  :focus       (fn [h _ _] (-> h (rc/get-element "team-name") (.focus)))})
+                  :focus          (fn [h _ _] (-> h (rc/get-element "tn") (.focus)))})
 
 
 

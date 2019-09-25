@@ -18,19 +18,31 @@
                   (rc-util/input-handlers handle))]
 
    [:button {:class    "primaryButton"
-             :on-click (fn[e]
+             :on-click (fn [e]
                          (rc/dispatch handle :create-team)
                          (rc/dispatch handle :focus))}
     "Add Team"]])
 
 
-(defn team-row [handle {:keys [value]} {:keys [hook/team]} index]
-  [:div {:style {:display :flex :align-items :center :min-height 30}}
+(defn team-row [h {:keys [top-hover? tn-value]} {:keys [hook/team]} index]
+  [:div (-> {:id (rc/id h "top")
+             :style {:display :flex :align-items :center :min-height 30}}
+            (rc-util/bind-events h))
+   [:div (-> {:id    (rc/id h "icon")
+              :style {:display         :flex
+                      :align-items     :center
+                      :height          20
+                      :justify-content :center
+                      :width           80}}
+             (rc-util/bind-events h))
+    (when top-hover?
+      [ut/icon {:style {:font-size 8 :opacity 0.5}} "clear"])]
+   [:div {:style {:width 40}}]
    [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
-   [:input (merge {:id    (rc/id handle "team-name")
-                   :style (merge s/input-text-field {:min-width 200})
-                   :value (if value value (:team-name team))}
-                  (rc-util/input-handlers handle))]])
+   [:input (-> {:id    (rc/id h "tn")
+                :style (merge s/input-text-field {:min-width 200})
+                :value (if tn-value tn-value (:team-name team))}
+               (rc-util/bind-events h))]])
 
 
 (defn render [handle local-state {:keys [hook/teams-order hook/teams]}]
@@ -47,7 +59,6 @@
      ; teams table
      [:div {:id        (rc/id handle "scroll")
             :style     (merge {:padding-top    40
-                               :padding-left   120
                                :max-height     :100%
                                :min-height     :200px
                                :padding-bottom 40

@@ -32,6 +32,7 @@
 
 
 (defn mount-reagent []
+
   (r/render [rc/build nil {} pages/ui-root] (js/document.getElementById "system")))
 
 (defn setup-recontain []
