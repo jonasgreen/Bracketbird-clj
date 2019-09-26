@@ -37,11 +37,12 @@
 
 (defn setup-recontain []
   (swap! state/state assoc :rc-config
-         (rc/setup {:state-atom                 state/state
-                    :data-hooks                 config/hooks
-                    :ui-layout                  config/ui-layout
-                    :debug?                     (system/debug?)
-                    :component-hiccup-decorator (when (system/debug?) component-hiccup-decorator)})))
+         (rc/setup {:clear-container-state-on-unmount? (not system/test?)
+                    :state-atom                        state/state
+                    :data-hooks                        config/hooks
+                    :ui-layout                         config/ui-layout
+                    :debug?                            (system/debug?)
+                    :component-hiccup-decorator        (when (system/debug?) component-hiccup-decorator)})))
 
 (defn main []
   (enable-console-print!)

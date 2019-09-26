@@ -5,43 +5,41 @@
             [bracketbird.rc-util :as rc-util]))
 
 
-(defn enter-team-input [handle {:keys [input-value]} _]
-  [:div {:style {:display     :flex
-                 :margin-top  30
-                 :align-items :center}}
-
-   [:input (-> {:id          (rc/id handle "input")
+(defn enter-team-input [h {:keys [input-value]} _]
+  [:div {:style {:display :flex :margin-top 30 :align-items :center}}
+   [:input (-> {:id          (rc/id h "input")
                 :placeholder "Enter team"
                 :type        :text
                 :style       s/input-text-field
                 :value       input-value}
-               (rc-util/bind-events handle))]
+               (rc-util/bind-events h [:KEY :CHANGE]))]
 
-   [:button (-> {:id    (rc/id handle "button")
-                 :class "primaryButton"}
-                (rc-util/bind-events handle))
+   [:button (-> {:id (rc/id h "button") :class "primaryButton"}
+                (rc-util/bind-events h [:KEY :CLICK]))
     "Add Team"]])
 
 
-(defn team-row [h {:keys [top-hover? tn-value]} {:keys [hook/team]} index]
+(defn team-row [h {:keys [top-hover? delete-icon-hover? input-value]} {:keys [hook/team]} index]
   [:div (-> {:id    (rc/id h "top")
-             :style {:display :flex :align-items :center :min-height 30}}
-            (rc-util/bind-events h))
-   [:div (-> {:id    (rc/id h "icon")
+             :style {:display :flex :align-items :center :min-height 30} }
+            (rc-util/bind-events h :HOVER))
+   [:div (-> {:id    (rc/id h "delete-icon")
               :style {:display         :flex
                       :align-items     :center
                       :height          20
                       :justify-content :center
+                      :cursor (if delete-icon-hover? :pointer :normal)
                       :width           80}}
-             (rc-util/bind-events h))
+             (rc-util/bind-events h [:HOVER :CLICK]))
     (when top-hover?
-      [ut/icon {:style {:font-size 8 :opacity 0.5}} "clear"])]
+      [ut/icon {:style (merge {:font-size 8 :opacity 0.5} (when delete-icon-hover? {:font-weight :bold
+                                                                                    :background :red :color :white :border-radius 8} ))} "clear"])]
    [:div {:style {:width 40}}]
-   [:div {:style {:width 30 :opacity 0.5 :font-size 10}} (inc index)]
-   [:input (-> {:id    (rc/id h "tn")
+   [:div {:style {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10}} (inc index)]
+   [:input (-> {:id    (rc/id h "input")
                 :style (merge s/input-text-field {:min-width 200})
-                :value (if tn-value tn-value (:team-name team))}
-               (rc-util/bind-events h))]])
+                :value (if input-value input-value (:team-name team))}
+               (rc-util/bind-events h [:CHANGE :KEY :FOCUS]))]])
 
 
 (defn render [handle local-state {:keys [hook/teams-order hook/teams]}]

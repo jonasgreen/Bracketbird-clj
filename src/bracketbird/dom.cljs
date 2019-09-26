@@ -11,6 +11,7 @@
 (defonce event-types (js->clj goog.events.EventType :keywordize-keys true))
 (defonce types-to-keys (s/map-invert event-types))
 
+(println types-to-keys)
 
 
 ; focus

@@ -20,6 +20,8 @@
 (defn- debug [f]
   (when (:debug? @config-atom) (f)))
 
+
+
 (defn- get-hook-value [hook]
   (let [hook-value (get-in @config-atom [:hooks hook])]
     (when-not hook-value (throw (js/Error. (str "Unable to find mapping fog hook: " hook " in config"))))
@@ -27,6 +29,17 @@
 
 (defn- ui-hook? [hook]
   (s/ui-hook? (get-hook-value hook)))
+
+(defn- dissoc-path [state path]
+  (if (= 1 (count path))
+    (dissoc state (last path))
+    (update-in state (vec (drop-last path)) dissoc (last path))))
+
+(defn- clear-container-state [handle]
+  (let [{:keys [id path]} handle]
+    (swap! component-states-atom dissoc id)
+    (swap! (:state-atom @config-atom) dissoc-path (drop-last path))))
+
 
 (defn- validate-ctx [hook given-ctx]
   (let [rq-ctx (:ctx (get-hook-value hook))
@@ -88,59 +101,69 @@
                                    vec)}]
 
     (r/create-class
-      {:component-did-mount (fn [_]
-                              (debug #(println "DID MOUNT - " hook))
-                              (when-let [dm (:did-mount ui-container)]
-                                (let [{:keys [local-state foreign-states]} (get @component-states-atom id)]
-                                  (dm handle local-state foreign-states))))
-       :reagent-render      (fn [_ _ _ opts]
-                              (debug #(println "RENDER - " hook))
-                              (let [
-                                    ;dereferences values from state atom
-                                    state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
+      {:component-did-mount    (fn [_]
+                                 ;;todo wrap in try catch
+                                 (debug #(println "DID MOUNT - " hook))
+                                 (when-let [f (:did-mount ui-container)]
+                                   (let [{:keys [ls fs]} (get @component-states-atom id)]
+                                     (f handle ls fs))))
+
+       :component-will-unmount (fn [this]
+                                 (debug #(println "WILL UNMOUNT - " hook))
+                                 (when-let [f (:will-unmount ui-container)]
+                                   (let [{:keys [ls fs]} (get @component-states-atom id)]
+                                     (f handle ls fs)))
+                                 (when (:clear-container-state-on-unmount? @config-atom)
+                                   (clear-container-state handle)))
+
+       :reagent-render         (fn [_ _ _ opts]
+                                 (debug #(println "RENDER - " hook))
+                                 (let [
+                                       ;dereferences values from state atom
+                                       state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
 
 
-                                    ;handle foreign states first - because they are passed to local-state-fn
+                                       ;handle foreign states first - because they are passed to local-state-fn
 
-                                    ;; foreign local states are found in component cache - because they have been initialized by renderings
-                                    ;; higher up the tree
-                                    foreign-local-states (reduce-kv (fn [m k v] (assoc m k (get-in @component-states-atom [v :local-state])))
-                                                                    {}
-                                                                    foreign-local-state-ids)
+                                       ;; foreign local states are found in component cache - because they have been initialized by renderings
+                                       ;; higher up the tree
+                                       foreign-local-states (reduce-kv (fn [m k v] (assoc m k (get-in @component-states-atom [v :local-state])))
+                                                                       {}
+                                                                       foreign-local-state-ids)
 
-                                    foreign-states (-> state-map
-                                                       (dissoc hook)
-                                                       (merge foreign-local-states))
+                                       foreign-states (-> state-map
+                                                          (dissoc hook)
+                                                          (merge foreign-local-states))
 
-                                    local-state (if-let [ls (get state-map hook)]
-                                                  ls
-                                                  (if-let [ls-fn (get-in @config-atom [:hooks hook :local-state])]
-                                                    (if (map? ls-fn)
-                                                      ls-fn
-                                                      (ls-fn foreign-states))
-                                                    {}))
+                                       local-state (if-let [ls (get state-map hook)]
+                                                     ls
+                                                     (if-let [ls-fn (get-in @config-atom [:hooks hook :local-state])]
+                                                       (if (map? ls-fn)
+                                                         ls-fn
+                                                         (ls-fn foreign-states))
+                                                       {}))
 
-                                    _ (swap! component-states-atom assoc id {:handle         handle
-                                                                             :local-state    local-state
-                                                                             :foreign-states foreign-states})
-                                    render (:render ui-container)]
+                                       _ (swap! component-states-atom assoc id {:handle         handle
+                                                                                :local-state    local-state
+                                                                                :foreign-states foreign-states})
+                                       render (:render ui-container)]
 
-                                (if-not render
-                                  [:div (str "No render: " hook ctx)]
+                                   (if-not render
+                                     [:div (str "No render: " hook ctx)]
 
-                                  (let [rendered (render handle local-state foreign-states opts) ;instead of reagent calling render function - we do it
-                                        [elm elm-opts & remaining] rendered
+                                     (let [rendered (render handle local-state foreign-states opts) ;instead of reagent calling render function - we do it
+                                           [elm elm-opts & remaining] rendered
 
-                                        ;insert dom-id
-                                        result (into (if (map? elm-opts)
-                                                       [elm (assoc elm-opts :id id)]
-                                                       [elm {:id id} elm-opts]) remaining)]
+                                           ;insert dom-id
+                                           result (into (if (map? elm-opts)
+                                                          [elm (assoc elm-opts :id id)]
+                                                          [elm {:id id} elm-opts]) remaining)]
 
 
 
-                                    (if-let [decorator (:component-hiccup-decorator @config-atom)]
-                                      (decorator result (get @component-states-atom id))
-                                      result)))))})))
+                                       (if-let [decorator (:component-hiccup-decorator @config-atom)]
+                                         (decorator result (get @component-states-atom id))
+                                         result)))))})))
 
 
 (defn mk-id [ctx hook]
@@ -180,11 +203,11 @@
   (swap! (:state-atom @config-atom) #(apply update % handle args)))
 
 (defn delete-local-state [handle]
-  (let [{:keys [id path]} handle
-        parent-path (subvec path 0 (- (count path) 1))]
-    (println "parent path" parent-path)
-    (swap! component-states-atom update-in [id] dissoc :local-state)
-    (swap! (:state-atom @config-atom) update-in parent-path dissoc :_local-state)))
+  (let [{:keys [id path]} handle]
+    (swap! component-states-atom dissoc-path [id :local-state])
+    (swap! (:state-atom @config-atom) dissoc-path path)))
+
+
 
 (defn- do-dispatch [{:keys [handle dispatch-f args silently-fail?]}]
   (let [{:keys [hook id]} handle
@@ -216,6 +239,9 @@
 (defn get-handle [ctx hook]
   (validate-ctx hook ctx)
   (:handle (get-handle-data ctx hook)))
+
+(defn get-local-state [id]
+  (-> id get-handle-data :local-state))
 
 (defn get-data
   ([handle hook]
