@@ -20,7 +20,7 @@
                handler (if (system/test?) test-server http-server)]
            (go (while true
                  (let [packet (<! out)]
-                   (.log js/console (str "handle-outgoing: " packet))
+                   ;(.log js/console (str "handle-outgoing: " packet))
                    (handler packet))))
            out))
 

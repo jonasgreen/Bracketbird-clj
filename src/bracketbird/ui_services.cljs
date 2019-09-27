@@ -14,7 +14,6 @@
   ;else create event and execute it
   ;return handle to ui to see state of event - or let state be reflected in data model entity
 
-  (println "Ui-services:" m)
 
   (let [{:keys [validate-input validate-state mk-event]} (get tournament-api/events-spec event-type)
 

@@ -8,7 +8,7 @@
 
     [:div {:class :system}
      (if app-id
-       [rc/build handle {:application-id app-id} :ui-application-page]
+       [rc/container handle {:application-id app-id} :ui-application-page]
        [:div "No application"])]))
 
 (defn ui-application-page [handle ls fs]
@@ -18,9 +18,9 @@
 
     [:div {:class :application}
      (condp = active-page
-       :ui-front-page ^{:key 1} [rc/build handle {} :ui-front-page]
+       :ui-front-page ^{:key 1} [rc/container handle {} :ui-front-page]
        :ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
-                                       [rc/build handle {:tournament-id tournament-id} :ui-tournament-page])
+                                       [rc/container handle {:tournament-id tournament-id} :ui-tournament-page])
        [:div "page " active-page " not supported"])]))
 
 
@@ -61,6 +61,6 @@
    (->> items
         (reduce-kv (fn [m k {:keys [content]}]
                      (conj m ^{:key k} [:div {:style (merge {:height :100%} (when-not (= selected k) {:display :none}))}
-                                        [rc/build handle {} content]]))
+                                        [rc/container handle {} content]]))
                    [])
         seq)])

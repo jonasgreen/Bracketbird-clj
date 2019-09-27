@@ -3,12 +3,17 @@
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [goog.dom :as dom]
             [reagent.core :as r]
-            [recontain.setup :as s]))
+            [recontain.setup :as s]
+            [clojure.string :as string]
+            [bracketbird.dom :as d]
+            [bracketbird.util :as ut]))
 
 
 (defonce component-states-atom (atom {}))
 (defonce config-atom (atom {}))
 
+
+(declare ui)
 
 (defn setup [config]
   (reset! component-states-atom {})
@@ -24,7 +29,7 @@
 
 (defn- get-hook-value [hook]
   (let [hook-value (get-in @config-atom [:hooks hook])]
-    (when-not hook-value (throw (js/Error. (str "Unable to find mapping fog hook: " hook " in config"))))
+    (when-not hook-value (throw (js/Error. (str "Unable to find mapping for hook: " hook " in config"))))
     hook-value))
 
 (defn- ui-hook? [hook]
@@ -68,10 +73,28 @@
       (conj p :_local-state)
       p)))
 
-(defn- resolve-reactions [reactions-map initial-values]
-  (let [initial (fn [v hook] (if v v (get initial-values hook)))]
-    (reduce-kv (fn [m h r] (assoc m h (initial (deref r) h)))
-               {} reactions-map)))
+;; Can be optimized if necessary
+(defn- decorate-rc-ui-options [result h ls fs]
+  (clojure.walk/prewalk
+    (fn [form]
+      (if (and (vector? form) (= (first form) ui))
+        (let [ui-fn (first form)
+              elm (second form)
+              opts (nth form 2)]
+
+          (when-not (keyword? elm)
+            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n First element should be a keyword (:div :button etc.)."))))
+          (when-not (map? opts)
+            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n Second element should be a hiccup options map."))))
+          (when-not (:id opts)
+            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n Options must contain an id that is unique in the context of the wrapping 'Container'."))))
+
+          (into [ui-fn elm (assoc opts
+                             :rc_handle h
+                             :rc_local-state ls
+                             :rc_foreign-state fs)] (subvec form 3)))
+        form))
+    result))
 
 (defn- gui [parent ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
@@ -151,15 +174,9 @@
                                    (if-not render
                                      [:div (str "No render: " hook ctx)]
 
-                                     (let [rendered (render handle local-state foreign-states opts) ;instead of reagent calling render function - we do it
-                                           [elm elm-opts & remaining] rendered
-
-                                           ;insert dom-id
-                                           result (into (if (map? elm-opts)
-                                                          [elm (assoc elm-opts :id id)]
-                                                          [elm {:id id} elm-opts]) remaining)]
-
-
+                                     ;instead of reagent calling render function - we do it
+                                     (let [result (-> (render handle local-state foreign-states opts)
+                                                      (decorate-rc-ui-options handle local-state foreign-states))]
 
                                        (if-let [decorator (:component-hiccup-decorator @config-atom)]
                                          (decorator result (get @component-states-atom id))
@@ -171,18 +188,7 @@
 
 ;;;; API
 
-
-(defn build
-  ([handle extra-ctx hook]
-   (build handle extra-ctx hook {}))
-
-  ([handle extra-ctx hook opts]
-   (let [ctx (merge (:ctx handle) extra-ctx)
-         hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)
-         ]
-     (validate-ctx hook-key ctx)
-     (validate-layout handle hook)
-     [gui handle ctx hook-key opts])))
+(defn element-id [handle sub-id] (str (:id handle) "#" sub-id))
 
 
 (defn- get-handle-data
@@ -191,9 +197,6 @@
   ([id]
    (get @component-states-atom id)))
 
-(defn id
-  ([handle] (:id handle))
-  ([handle sub-id] (str (:id handle) "#" sub-id)))
 
 (defn update [state {:keys [id path]} & args]
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle-data id))) (rest args)))]
@@ -232,9 +235,7 @@
                 :args           args
                 :silently-fail? true}))
 
-(defn get-element
-  ([handle] (-> handle :id dom/getElement))
-  ([handle sub-id] (-> handle (id sub-id) dom/getElement)))
+(defn get-element [handle sub-id] (-> handle (element-id sub-id) dom/getElement))
 
 (defn get-handle [ctx hook]
   (validate-ctx hook ctx)
@@ -253,3 +254,110 @@
   ([handle] (:ctx handle))
   ([handle extra-ctx] (merge (:ctx handle) extra-ctx)))
 
+(defn has-changed [value org-value]
+  (when value
+    (if (and (string? value) (string? org-value))
+      (if (and (string/blank? value)
+               (string/blank? org-value))
+        false
+        (not= value org-value))
+      (not= value org-value))))
+
+(defn focus
+  ([handle hook ctx-id ctx-value]
+   (when-let [ctx-value (if (map? ctx-value) (get ctx-value ctx-id) ctx-value)]
+     (focus handle hook {ctx-id ctx-value})))
+
+  ([handle hook extra-ctx]
+   (-> (:ctx handle)
+       (merge extra-ctx)
+       (get-handle hook)
+       (dispatch :focus)))
+
+  ([handle hook]
+   (focus handle hook {})))
+
+
+
+; event
+
+(defn- bound-name [sub-id value-name]
+  (let [resolved-name (if (keyword? value-name) (name value-name) value-name)]
+    (keyword (if-not (string/blank? sub-id)
+               (str sub-id "-" resolved-name)
+               resolved-name))))
+
+(defn- put-value [h sub-id k v]
+  (put! h assoc (bound-name sub-id k) v))
+
+(def event-handler-fns {:on-focus       (fn [h sub-id ls e]
+                                          (put-value h sub-id "focus?" true))
+
+                        :on-blur        (fn [h sub-id ls e]
+                                          (put-value h sub-id "focus?" false))
+
+                        :on-mouse-enter (fn [h sub-id ls e]
+                                          (put-value h sub-id "hover?" true))
+
+                        :on-mouse-leave (fn [h sub-id ls e]
+                                          (put-value h sub-id "hover?" false))
+
+                        :on-key-down    (fn [h sub-id ls e]
+                                          (let [dob (bound-name sub-id "delete-on-backspace?")]
+                                            (d/handle-key e {[:BACKSPACE]
+                                                             (fn [_]
+                                                               (when (get ls dob)
+                                                                 (dispatch-silent h (bound-name sub-id "delete-on-backspace"))) [:STOP-PROPAGATION])})))
+                        :on-key-up      (fn [h sub-id _ e]
+                                          (when (= "text" (.-type (.-target e)))
+                                            (put-value h sub-id "delete-on-backspace?" (clojure.string/blank? (ut/value e)))))
+
+                        :on-change      (fn [h sub-id ls e]
+                                          (put-value h sub-id "value" (ut/value e)))
+
+                        :on-click       (fn [_ _ _ _] ())})
+
+(def events-shorts->event-handlers {:focus  [:on-focus :on-blur]
+                                    :hover  [:on-mouse-enter :on-mouse-leave]
+                                    :change [:on-change]
+                                    :click  [:on-click]
+                                    :key    [:on-key-down :on-key-up]})
+
+
+(defn bind-events
+  [{:keys [rc_handle rc_local-state events] :as opts}]
+  (let [h rc_handle
+        ls rc_local-state
+        sub-id (:id opts)]
+    (->> (if (sequential? events) events [events])
+         ; resolve event to handlers
+         (map (fn [e] (if-let [handlers (e events-shorts->event-handlers)]
+                        handlers
+                        (e event-handler-fns))))
+         flatten
+         ; resolve handlers
+         (reduce (fn [m k]
+                   (when-let [f (get event-handler-fns k)]
+                     (assoc m k (fn [e]
+                                  (f h sub-id ls e)
+                                  (dispatch-silent h (bound-name sub-id k) e)))))
+                 opts))))
+
+
+
+(defn ui [element {:keys [rc_handle id] :as opts} & children]
+  (into [element (-> opts
+                     bind-events
+                     (merge (when id {:id (element-id rc_handle id)}))
+                     (dissoc :events :rc_handle :rc_local-state :rc_foreign-state))] (vec children)))
+
+(defn container
+  ([handle extra-ctx hook]
+   (container handle extra-ctx hook {}))
+
+  ([handle extra-ctx hook opts]
+   (let [ctx (merge (:ctx handle) extra-ctx)
+         hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)]
+     (validate-ctx hook-key ctx)
+     (validate-layout handle hook)
+     [gui handle ctx hook-key opts])))

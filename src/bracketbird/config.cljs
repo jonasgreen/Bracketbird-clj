@@ -9,9 +9,7 @@
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
-            [bracketbird.dom :as d]
-            [reagent.core :as r]
-            [bracketbird.rc-util :as rc-ut]))
+            [bracketbird.dom :as d]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -107,7 +105,7 @@
                                                {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
 
                   :update-team               (fn [h {:keys [input-value]} {:keys [hook/team]}]
-                                               (when (rc-ut/has-changed input-value (:team-name team))
+                                               (when (rc/has-changed input-value (:team-name team))
                                                  (ui-services/dispatch-event
                                                    {:event-type [:team :update]
                                                     :ctx        (:ctx h)
@@ -122,11 +120,11 @@
                                                     :ctx         (assoc (:ctx h) :team-id (:team-id team))
                                                     :post-render (fn [_]
                                                                    (if team-to-focus
-                                                                     (rc-ut/focus h :ui-team-row :team-id team-to-focus)
-                                                                     (rc-ut/focus h :ui-enter-team-input)))})))
+                                                                     (rc/focus h :ui-team-row :team-id team-to-focus)
+                                                                     (rc/focus h :ui-enter-team-input)))})))
                   :focus                     (fn [h _ _] (-> h (rc/get-element "input") (.focus)))
 
-                  :delete-icon-on-click     (fn[h _ _ e] (rc/dispatch h :delete-team))
+                  :delete-icon-on-click      (fn [h _ _ e] (rc/dispatch h :delete-team))
                   :input-on-key-down         (fn [h _ {:keys [hook/team]} e]
                                                (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
                                                                 :ENTER          (fn [_] (rc/dispatch h :update-team))
@@ -142,11 +140,11 @@
                                                                                                               (rc/dispatch :focus)))}))
                                                                 :UP             (fn [_] (->> (:team-id team)
                                                                                              (ui-services/previous-team h)
-                                                                                             (rc-ut/focus h :ui-team-row :team-id)))
+                                                                                             (rc/focus h :ui-team-row :team-id)))
                                                                 :DOWN           (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
                                                                                           (if team-to-focus
-                                                                                            (rc-ut/focus h :ui-team-row :team-id team-to-focus)
-                                                                                            (rc-ut/focus h :ui-enter-team-input))))}))
+                                                                                            (rc/focus h :ui-team-row :team-id team-to-focus)
+                                                                                            (rc/focus h :ui-enter-team-input))))}))
 
                   :input-delete-on-backspace (fn [h _ _ e] (rc/dispatch h :delete-team))
                   :input-on-blur             (fn [h _ _ e] (rc/dispatch h :update-team))})
@@ -176,7 +174,8 @@
                                                                                              (rc/get-handle :ui-teams-tab)
                                                                                              (rc/dispatch :focus-last-team)))}))
 
-                          :input-delete-on-backspace (fn [h _ _ _] (let [{:keys [team-name team-id]} (ui-services/last-team h)]
+                          :input-delete-on-backspace (fn [h _ _ _] (let [{:keys [team-name team-id] :as t} (ui-services/last-team h)]
+                                                                     (println "LAST TEAM "t)
                                                                      (when (string/blank? team-name)
                                                                        (ui-services/dispatch-event
                                                                          {:event-type  [:team :delete]

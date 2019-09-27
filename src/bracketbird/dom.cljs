@@ -8,10 +8,8 @@
 (defonce key-to-codes (js->clj goog.events.KeyCodes :keywordize-keys true))
 (defonce codes-to-keys (s/map-invert key-to-codes))
 
-(defonce event-types (js->clj goog.events.EventType :keywordize-keys true))
-(defonce types-to-keys (s/map-invert event-types))
-
-(println types-to-keys)
+;(defonce event-types (js->clj goog.events.EventType :keywordize-keys true))
+;(defonce types-to-keys (s/map-invert event-types))
 
 
 ; focus
