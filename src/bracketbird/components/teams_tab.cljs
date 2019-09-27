@@ -69,8 +69,8 @@
             :on-scroll (fn [e] (->> e .-target ut/scroll-data (rc/put! handle merge)))}
 
       (map (fn [team-id index]
-             ^{:key team-id} [rc/container handle {:team-id team-id} team-row index]) teams-order (range (count teams)))]
+             ^{:key team-id} [rc/container {:team-id team-id} team-row index]) teams-order (range (count teams)))]
 
      ; input field
      [:div {:style {:padding-left 120 :padding-bottom 20}}
-      [rc/container handle {} enter-team-input]]]))
+      [rc/container {} enter-team-input]]]))

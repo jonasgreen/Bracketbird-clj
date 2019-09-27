@@ -174,8 +174,7 @@
                                                                                              (rc/get-handle :ui-teams-tab)
                                                                                              (rc/dispatch :focus-last-team)))}))
 
-                          :input-delete-on-backspace (fn [h _ _ _] (let [{:keys [team-name team-id] :as t} (ui-services/last-team h)]
-                                                                     (println "LAST TEAM "t)
+                          :input-delete-on-backspace (fn [h _ _ _] (when-let [{:keys [team-name team-id] :as t} (ui-services/last-team h)]
                                                                      (when (string/blank? team-name)
                                                                        (ui-services/dispatch-event
                                                                          {:event-type  [:team :delete]
@@ -203,7 +202,6 @@
 
 (def ui-ranking-tab {:hook   :ui-ranking-tab
                      :render ranking-tab/render})
-
 
 (def ui-layout [ui-root
                 [ui-application-page #{:application-id}

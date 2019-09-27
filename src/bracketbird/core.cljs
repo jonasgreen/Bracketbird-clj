@@ -9,8 +9,7 @@
             [bracketbird.config :as config]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
-            [bedrock.util :as b-ut]
-            [bracketbird.pages :as pages]))
+            [bedrock.util :as b-ut]))
 
 (defn component-hiccup-decorator [result {:keys [handle local-state foreign-states]}]
   (let [[start end] (split-at 2 result)
@@ -32,7 +31,7 @@
 
 
 (defn mount-reagent []
-  (r/render [rc/container nil {} pages/ui-root] (js/document.getElementById "system")))
+  (r/render [rc/container {} :ui-root] (js/document.getElementById "system")))
 
 (defn setup-recontain []
   (swap! state/state assoc :rc-config
@@ -75,7 +74,11 @@
   (events/listen js/window "keydown" (fn [e] (when (d/key-and-modifier? :D d/alt-modifier? e)
                                                (.stopPropagation e)
                                                (.preventDefault e)
-                                               (swap! state/state update-in [:system :debug?] not))))
+                                               (swap! state/state update-in [:system :debug?] not)
+                                               (r/unmount-component-at-node (dom-helper/getElement "system"))
+                                               (setup-recontain)
+                                               (mount-reagent)
+                                               )))
   )
 
 (defn ^:after-load on-js-reload []

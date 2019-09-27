@@ -3,24 +3,22 @@
             [recontain.core :as rc]))
 
 (defn ui-root [handle _ {:keys [hook/system]}]
-  (let [ctx (:ctx handle)
-        app-id (:active-application system)]
+  (let [app-id (:active-application system)]
 
     [:div {:class :system}
      (if app-id
-       [rc/container handle {:application-id app-id} :ui-application-page]
+       [rc/container {:application-id app-id} :ui-application-page]
        [:div "No application"])]))
 
 (defn ui-application-page [handle ls fs]
-  (let [{:keys [ctx]} handle
-        {:keys [active-page]} ls
+  (let [{:keys [active-page]} ls
         {:keys [hook/application]} fs]
 
     [:div {:class :application}
      (condp = active-page
-       :ui-front-page ^{:key 1} [rc/container handle {} :ui-front-page]
+       :ui-front-page ^{:key 1} [rc/container {} :ui-front-page]
        :ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
-                                       [rc/container handle {:tournament-id tournament-id} :ui-tournament-page])
+                                       [rc/container {:tournament-id tournament-id} :ui-tournament-page])
        [:div "page " active-page " not supported"])]))
 
 
@@ -61,6 +59,6 @@
    (->> items
         (reduce-kv (fn [m k {:keys [content]}]
                      (conj m ^{:key k} [:div {:style (merge {:height :100%} (when-not (= selected k) {:display :none}))}
-                                        [rc/container handle {} content]]))
+                                        [rc/container {} content]]))
                    [])
         seq)])

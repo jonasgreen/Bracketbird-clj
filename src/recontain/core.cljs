@@ -13,7 +13,7 @@
 (defonce config-atom (atom {}))
 
 
-(declare ui)
+(declare ui container)
 
 (defn setup [config]
   (reset! component-states-atom {})
@@ -73,30 +73,62 @@
       (conj p :_local-state)
       p)))
 
+
+(defn- decorate-ui [form h ls fs]
+  (let [ui-fn (first form)
+        elm (second form)
+        opts (nth form 2)]
+
+    (when-not (keyword? elm)
+      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. First element should be a keyword (:div :button etc.). Hiccup: " form))))
+    (when-not (map? opts)
+      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. Second element should be a hiccup options map. Hiccup: " form))))
+    (when-not (:id opts)
+      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. Options should contain an id that is unique in the context of the containers render function. Hiccup: " form))))
+
+    (-> (into [ui-fn elm (assoc opts
+                           :rc_handle h
+                           :rc_local-state ls
+                           :rc_foreign-state fs)] (subvec form 3))
+        (with-meta (meta form)))))
+
+
+
+(defn- decorate-container [form h ls fs]
+  (let [container-fn (first form)
+        additional-ctx (second form)
+        hook (nth form 2)]
+
+    (let [hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)]
+
+      (when-not (map? additional-ctx)
+        (throw (js/Error. (str "Rendering " (:hook h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
+      (when-not hook
+        (throw (js/Error. (str "Render function of " (:hook h) " contains invalid recontain/container structure: Second element should be either a keyword referencing the container in config or the render function of the container. Hiccup: " form))))
+
+      (let [ctx (merge additional-ctx (:ctx h))]
+        (try
+          (validate-ctx hook-key ctx)
+          (validate-layout h hook-key)
+          (catch :default e (throw (js/Error (str "Error while rendering " (:hook h) ". " e)))))
+
+
+        (-> (into [container-fn (assoc ctx :rc_handle h) hook-key] (subvec form 3))
+            (with-meta (meta form)))))))
+
 ;; Can be optimized if necessary
-(defn- decorate-rc-ui-options [result h ls fs]
+(defn- decorate-result [result h ls fs]
   (clojure.walk/prewalk
     (fn [form]
-      (if (and (vector? form) (= (first form) ui))
-        (let [ui-fn (first form)
-              elm (second form)
-              opts (nth form 2)]
-
-          (when-not (keyword? elm)
-            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n First element should be a keyword (:div :button etc.)."))))
-          (when-not (map? opts)
-            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n Second element should be a hiccup options map."))))
-          (when-not (:id opts)
-            (throw (js/Error. (str "Component " h " contains invalid recontain/ui structure: " form ".\n Options must contain an id that is unique in the context of the wrapping 'Container'."))))
-
-          (into [ui-fn elm (assoc opts
-                             :rc_handle h
-                             :rc_local-state ls
-                             :rc_foreign-state fs)] (subvec form 3)))
+      (if (vector? form)
+        (cond
+          (= (first form) ui) (decorate-ui form h ls fs)
+          (= (first form) container) (decorate-container form h ls fs)
+          :else form)
         form))
     result))
 
-(defn- gui [parent ctx hook _]
+(defn- gui [handle ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
         ui-container (get-in @config-atom [:hooks hook])
         all-hooks (into [hook] (:reactions ui-container))
@@ -174,9 +206,10 @@
                                    (if-not render
                                      [:div (str "No render: " hook ctx)]
 
+
                                      ;instead of reagent calling render function - we do it
                                      (let [result (-> (render handle local-state foreign-states opts)
-                                                      (decorate-rc-ui-options handle local-state foreign-states))]
+                                                      (decorate-result handle local-state foreign-states))]
 
                                        (if-let [decorator (:component-hiccup-decorator @config-atom)]
                                          (decorator result (get @component-states-atom id))
@@ -345,19 +378,21 @@
 
 
 
+;; TODO - support direct calls instead of lazy hiccup
 (defn ui [element {:keys [rc_handle id] :as opts} & children]
   (into [element (-> opts
                      bind-events
                      (merge (when id {:id (element-id rc_handle id)}))
+
+                     ;:events :rc_handle :rc_local-state :rc_foreign-state is set during decoration when rendering previous container
                      (dissoc :events :rc_handle :rc_local-state :rc_foreign-state))] (vec children)))
 
-(defn container
-  ([handle extra-ctx hook]
-   (container handle extra-ctx hook {}))
 
-  ([handle extra-ctx hook opts]
-   (let [ctx (merge (:ctx handle) extra-ctx)
-         hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)]
-     (validate-ctx hook-key ctx)
-     (validate-layout handle hook)
-     [gui handle ctx hook-key opts])))
+;; TODO - support direct calls instead of lazy hiccup
+(defn container
+  ([ctx hook]
+   (container ctx hook {}))
+
+  ([ctx hook optional-value]
+   ;rc_handle is set during decoration when rendering previous container
+   [gui (:rc_handle ctx) (dissoc ctx :rc_handle) hook optional-value]))
