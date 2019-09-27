@@ -69,7 +69,7 @@
 (def ui-tournament-page {:hook        :ui-tournament-page
                          :render      pages/tournament-page
                          :local-state {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
-                                                           :settings {:header "SETTINGS" :content :ui-settings-tab}
+                                                           :settings {:header "SETTINGS" :content settings-tab/render}
                                                            :matches  {:header "MATCHES" :content :ui-matches-tab}
                                                            :ranking  {:header "SCORES" :content :ui-ranking-tab}}
 
@@ -84,11 +84,8 @@
 (def ui-teams-tab {:hook             :ui-teams-tab
                    :render           teams-tab/render
                    :reactions        [:hook/teams-order :hook/teams]
-                   :local-state      {:scroll-top    0
-                                      :client-height 0
-                                      :scroll-height 0}
                    :scroll-to-bottom (fn [handle _ _] (-> handle
-                                                          (rc/get-element "scroll")
+                                                          (rc/get-element "table")
                                                           (ut/scroll-elm-to-bottom!)))
 
                    :focus-last-team  (fn [{:keys [ctx]} _ {:keys [hook/teams-order]}]
@@ -194,8 +191,7 @@
                                                                                    [:STOP-PROPAGATION :PREVENT-DEFAULT])}))})
 
 (def ui-settings-tab {:hook        :ui-settings-tab
-                      :render      settings-tab/render
-                      :local-state {:scroll-top 0}})
+                      :render      settings-tab/render})
 
 (def ui-matches-tab {:hook   :ui-matches-tab
                      :render matches-tab/render})

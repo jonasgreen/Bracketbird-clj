@@ -13,8 +13,9 @@
 
 
 (defn scroll-to-bottom [scroll-data]
-  (let [{:keys [scroll-height client-height]} scroll-data]
-    (assoc scroll-data :scroll-top (- scroll-height client-height))))
+  (let [{:keys [scroll-height client-height]} scroll-data
+        scroll-top (- scroll-height client-height)]
+    (assoc scroll-data :scroll-top scroll-top)))
 
 (defn update-scroll-top! [element scroll-data]
   (set! (.-scrollTop element) (:scroll-top scroll-data)))

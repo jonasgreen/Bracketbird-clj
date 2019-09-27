@@ -4,9 +4,11 @@
             [recontain.core :as rc]))
 
 
-(defn render [handle {:keys [scroll-top]} _]
-  [:div {:style     (merge s/tournament-tab-content-style (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
-         :on-scroll (fn [e] (->> e .-target ut/scroll-data (rc/put! handle merge)))}
+(defn render [handle {:keys [table-scroll-top]} _]
+  [rc/ui :div {:id     "table"
+               :style  (merge s/tournament-tab-content-style
+                              (when (< 0 table-scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
+               :events [:scroll]}
 
    [:div "assafasdf"]
    [:div "settings-ssss"]

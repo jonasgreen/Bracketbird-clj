@@ -46,31 +46,26 @@
                   :events [:change :key :focus]}]])
 
 
-(defn render [handle local-state {:keys [hook/teams-order hook/teams]}]
-  (let [{:keys [scroll-top
-                scroll-height
-                client-height]} local-state]
-    [:div {:style    (merge
-                       {:display        :flex
-                        :flex-direction :column
-                        :height         :100%}
-                       (when (< 0 scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
-           :on-click (fn [e] ())}
+(defn render [h {:keys [table-scroll-top table-scroll-bottom]} {:keys [hook/teams-order hook/teams]}]
+  [:div {:style (merge
+                  {:display        :flex
+                   :flex-direction :column
+                   :height         :100%}
+                  (when (< 0 table-scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))}
 
-     ; teams table
-     [:div {:id        (rc/element-id handle "scroll")
-            :style     (merge {:padding-top    40
-                               :max-height     :100%
-                               :min-height     :200px
-                               :padding-bottom 40
-                               :overflow-y     :auto}
-                              (when (not= (+ scroll-top client-height)
-                                          scroll-height) {:border-bottom "1px solid rgba(241,241,241,1)"}))
-            :on-scroll (fn [e] (->> e .-target ut/scroll-data (rc/put! handle merge)))}
+   ; teams table
+   [rc/ui :div {:id     "table"
+                :style  (merge {:padding-top    40
+                                :max-height     :100%
+                                :min-height     :200px
+                                :padding-bottom 40
+                                :overflow-y     :auto}
+                               (when (< 0 table-scroll-bottom) {:border-bottom "1px solid rgba(241,241,241,1)"}))
+                :events [:scroll]}
 
-      (map (fn [team-id index]
-             ^{:key team-id} [rc/container {:team-id team-id} team-row index]) teams-order (range (count teams)))]
+    (map (fn [team-id index]
+           ^{:key team-id} [rc/container {:team-id team-id} team-row index]) teams-order (range (count teams)))]
 
-     ; input field
-     [:div {:style {:padding-left 120 :padding-bottom 20}}
-      [rc/container {} enter-team-input]]]))
+   ; input field
+   [:div {:style {:padding-left 120 :padding-bottom 20}}
+    [rc/container {} enter-team-input]]])

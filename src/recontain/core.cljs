@@ -348,13 +348,28 @@
                         :on-change      (fn [h sub-id ls e]
                                           (put-value h sub-id "value" (ut/value e)))
 
-                        :on-click       (fn [_ _ _ _] ())})
+                        :on-click       (fn [_ _ _ _] ())
+
+
+                        :on-scroll      (fn [h sub-id _ e] (let [t (.-target e)
+                                                                 scroll-top (.-scrollTop t)
+                                                                 scroll-height (.-scrollHeight t)
+                                                                 client-height (.-clientHeight t)]
+
+                                                             (put! h assoc
+                                                                   (bound-name sub-id "scroll-top") scroll-top
+                                                                   (bound-name sub-id "scroll-height") scroll-height
+                                                                   (bound-name sub-id "client-height") client-height
+                                                                   (bound-name sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))
+
+                        })
 
 (def events-shorts->event-handlers {:focus  [:on-focus :on-blur]
                                     :hover  [:on-mouse-enter :on-mouse-leave]
                                     :change [:on-change]
                                     :click  [:on-click]
-                                    :key    [:on-key-down :on-key-up]})
+                                    :key    [:on-key-down :on-key-up]
+                                    :scroll [:on-scroll]})
 
 
 (defn bind-events
