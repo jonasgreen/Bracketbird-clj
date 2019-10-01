@@ -9,6 +9,7 @@
             [bracketbird.config :as config]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
+            [restyle.core :as rs]
             [bedrock.util :as b-ut]))
 
 (defn component-hiccup-decorator [result {:keys [handle local-state foreign-states]}]
@@ -44,11 +45,12 @@
 
 (defn main []
   (enable-console-print!)
-  (swap! state/state assoc :system {:debug?             false
-                                    :active-application nil
-                                    :test               (or
-                                                          (= (.. js/window -location -hostname) "localhost")
-                                                          (= (.. js/window -location -hash) "#test"))})
+  (swap! state/state assoc
+         :system {:debug?             false
+                  :active-application nil
+                  :test               (or
+                                        (= (.. js/window -location -hostname) "localhost")
+                                        (= (.. js/window -location -hash) "#test"))})
 
   (setup-recontain)
 

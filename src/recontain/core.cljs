@@ -15,6 +15,7 @@
 
 (declare ui container)
 
+
 (defn setup [config]
   (reset! component-states-atom {})
   (reset! config-atom (s/resolve-config config))
@@ -99,7 +100,9 @@
         additional-ctx (second form)
         hook (nth form 2)]
 
-    (let [hook-key (if (fn? hook) (get (:render-to-hook @config-atom) hook) hook)]
+    (let [hook-key (if (fn? hook)
+                     (get (:render-to-hook @config-atom) hook)
+                     hook)]
 
       (when-not (map? additional-ctx)
         (throw (js/Error. (str "Rendering " (:hook h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
@@ -131,7 +134,7 @@
 (defn- gui [handle ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
         ui-container (get-in @config-atom [:hooks hook])
-        all-hooks (into [hook] (:reactions ui-container))
+        all-hooks (into [hook] (:subscribe ui-container))
         all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx))) {} all-hooks)
 
         foreign-local-state-ids (->> (dissoc all-paths hook)
@@ -173,8 +176,7 @@
 
        :reagent-render         (fn [_ _ _ opts]
                                  (debug #(println "RENDER - " hook))
-                                 (let [
-                                       ;dereferences values from state atom
+                                 (let [;dereferences values from state atom
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
 
 
@@ -197,6 +199,7 @@
                                                          ls-fn
                                                          (ls-fn foreign-states))
                                                        {}))
+
 
                                        _ (swap! component-states-atom assoc id {:handle         handle
                                                                                 :local-state    local-state

@@ -23,7 +23,6 @@
 
 
 (defn ui-front-page [handle _ _]
-
   [:div
    [:div {:style {:display :flex :justify-content :center :padding-top 30}}
     ;logo
@@ -40,6 +39,7 @@
 
      "Create a tournament"]
     [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
+
 
 
 (defn tournament-page [handle {:keys [selected order items]} _]

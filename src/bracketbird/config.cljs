@@ -42,11 +42,11 @@
 
 (def ui-root {:hook      :ui-root
               :render    pages/ui-root
-              :reactions [:hook/system]})
+              :subscribe [:hook/system]})
 
 (def ui-application-page {:hook        :ui-application-page
                           :local-state {:active-page :ui-front-page}
-                          :reactions   [:hook/application]
+                          :subscribe   [:hook/application]
                           :render      pages/ui-application-page})
 
 
@@ -83,7 +83,7 @@
 
 (def ui-teams-tab {:hook             :ui-teams-tab
                    :render           teams-tab/render
-                   :reactions        [:hook/teams-order :hook/teams]
+                   :subscribe        [:hook/teams-order :hook/teams]
                    :scroll-to-bottom (fn [handle _ _] (-> handle
                                                           (rc/get-element "table")
                                                           (ut/scroll-elm-to-bottom!)))
@@ -96,7 +96,7 @@
 
 (def ui-team-row {:hook                      :ui-team-row
                   :render                    teams-tab/team-row
-                  :reactions                 [:hook/team]
+                  :subscribe                 [:hook/team]
 
                   :local-state               (fn [{:keys [hook/team]}]
                                                {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
@@ -181,8 +181,11 @@
                                                                                              (rc/get-handle :ui-teams-tab)
                                                                                              (rc/dispatch :scroll-to-bottom)))}))))
                           :button-on-click           (fn [h _ _ _]
-                                                       (rc/dispatch h :create-team)
-                                                       (rc/dispatch h :focus))
+                                                       #_(rc/dispatch h :create-team)
+                                                       #_(rc/dispatch h :focus)
+                                                       (swap! restyle.core/styles assoc :left (gensym))
+                                                       (println restyle.core/styles)
+                                                       )
 
                           :button-on-key-down        (fn [h _ _ e]
                                                        (d/handle-key e {[:ENTER] (fn [_]
@@ -190,8 +193,8 @@
                                                                                    (rc/dispatch h :focus)
                                                                                    [:STOP-PROPAGATION :PREVENT-DEFAULT])}))})
 
-(def ui-settings-tab {:hook        :ui-settings-tab
-                      :render      settings-tab/render})
+(def ui-settings-tab {:hook   :ui-settings-tab
+                      :render settings-tab/render})
 
 (def ui-matches-tab {:hook   :ui-matches-tab
                      :render matches-tab/render})
