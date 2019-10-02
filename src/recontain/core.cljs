@@ -11,6 +11,7 @@
 
 (defonce component-states-atom (atom {}))
 (defonce config-atom (atom {}))
+(defonce rerender-atom (r/atom 0))
 
 
 (declare ui container)
@@ -21,7 +22,7 @@
   (reset! config-atom (s/resolve-config config))
   @config-atom)
 
-(defn- state-atom [] (:state-atom @config-atom))
+(defn- get-state-atom [] (:state-atom @config-atom))
 
 (defn- debug [f]
   (when (:debug? @config-atom) (f)))
@@ -30,7 +31,11 @@
 
 (defn- get-hook-value [hook]
   (let [hook-value (get-in @config-atom [:hooks hook])]
-    (when-not hook-value (throw (js/Error. (str "Unable to find mapping for hook: " hook " in config"))))
+    (when-not hook-value
+      (do
+        (println "CONFIG-ATOM" @config-atom)
+        (throw (js/Error. (str "Unable to find mapping for hook: " hook " in config")))))
+
     hook-value))
 
 (defn- ui-hook? [hook]
@@ -131,6 +136,11 @@
         form))
     result))
 
+
+(defn force-render-all []
+  (swap! rerender-atom inc)
+  (println "rerender" rerender-atom))
+
 (defn- gui [handle ctx hook _]
   (let [state-atom (get @config-atom :state-atom)
         ui-container (get-in @config-atom [:hooks hook])
@@ -146,8 +156,12 @@
         id (hash (get all-paths hook))
         path (get all-paths hook)
 
+        rerender-action (reaction @rerender-atom)
+
         ; includes state and foreign state
         reactions-map (reduce (fn [m h] (assoc m h (reaction (get-in @state-atom (h all-paths) nil)))) {} all-hooks)
+
+        styling (reaction (get-in @state-atom [:styles]))
 
         handle {:id            id
                 :ctx           ctx
@@ -177,6 +191,9 @@
        :reagent-render         (fn [_ _ _ opts]
                                  (debug #(println "RENDER - " hook))
                                  (let [;dereferences values from state atom
+                                       rerender-count @rerender-action
+                                       _ (println "render" rerender-count)
+                                       _ (debug #(println "RERENDER-COUNT" rerender-count))
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
 
 
@@ -284,7 +301,7 @@
   ([handle hook]
    (get-data handle {} hook))
   ([handle extra-ctx hook]
-   (get-in @(state-atom) (hook-path hook (merge (:ctx handle) extra-ctx)))))
+   (get-in @(get-state-atom) (hook-path hook (merge (:ctx handle) extra-ctx)))))
 
 (defn ctx
   ([handle] (:ctx handle))

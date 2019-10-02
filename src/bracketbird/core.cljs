@@ -1,4 +1,5 @@
 (ns ^:figwheel-hooks bracketbird.core
+  (:require-macros [reagent.ratom :refer [reaction]])
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
             [goog.events :as events]
@@ -34,6 +35,10 @@
 (defn mount-reagent []
   (r/render [rc/container {} :ui-root] (js/document.getElementById "system")))
 
+(defn setup-styles []
+  (rs/setup bracketbird.style/styles)
+  (swap! state/state assoc :styles bracketbird.style/styles))
+
 (defn setup-recontain []
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
@@ -42,6 +47,20 @@
                     :ui-layout                         config/ui-layout
                     :debug?                            (system/debug?)
                     :component-hiccup-decorator        (when (system/debug?) component-hiccup-decorator)})))
+
+(defn- reload-ui []
+  (setup-styles)
+  (r/unmount-component-at-node (dom-helper/getElement "system"))
+  (setup-recontain)
+  (let [start (.getTime (js/Date.))]
+    (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
+    (mount-reagent)))
+
+(defn- styles []
+  (let [styles @(reaction (get-in @state/state [:styles]))]
+    (rs/setup styles)
+    (rc/force-render-all)
+    styles))
 
 (defn main []
   (enable-console-print!)
@@ -52,6 +71,7 @@
                                         (= (.. js/window -location -hostname) "localhost")
                                         (= (.. js/window -location -hash) "#test"))})
 
+  (setup-styles)
   (setup-recontain)
 
   (let [app-id (system/unique-id :application)]
@@ -63,6 +83,7 @@
   (airboss/load-state-viewer state/state)
   (airboss/load-design-viewer)
 
+  (r/track! styles)
 
   (swap! state/state update :system assoc
          :window-height (.-innerHeight js/window)
@@ -76,16 +97,12 @@
   (events/listen js/window "keydown" (fn [e] (when (d/key-and-modifier? :D d/alt-modifier? e)
                                                (.stopPropagation e)
                                                (.preventDefault e)
-                                               (swap! state/state update-in [:system :debug?] not)
-                                               (r/unmount-component-at-node (dom-helper/getElement "system"))
-                                               (setup-recontain)
-                                               (mount-reagent)
-                                               )))
+                                               (r/after-render reload-ui)
+                                               (swap! state/state update-in [:system :debug?] not))))
   )
 
+
+
+
 (defn ^:after-load on-js-reload []
-  (r/unmount-component-at-node (dom-helper/getElement "system"))
-  (setup-recontain)
-  (let [start (.getTime (js/Date.))]
-    (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (mount-reagent)))
+  (reload-ui))

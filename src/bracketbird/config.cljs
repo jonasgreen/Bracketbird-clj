@@ -181,11 +181,8 @@
                                                                                              (rc/get-handle :ui-teams-tab)
                                                                                              (rc/dispatch :scroll-to-bottom)))}))))
                           :button-on-click           (fn [h _ _ _]
-                                                       #_(rc/dispatch h :create-team)
-                                                       #_(rc/dispatch h :focus)
-                                                       (swap! restyle.core/styles assoc :left (gensym))
-                                                       (println restyle.core/styles)
-                                                       )
+                                                       (rc/dispatch h :create-team)
+                                                       (rc/dispatch h :focus))
 
                           :button-on-key-down        (fn [h _ _ e]
                                                        (d/handle-key e {[:ENTER] (fn [_]

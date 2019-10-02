@@ -1,11 +1,12 @@
 (ns bracketbird.pages
-  (:require [bracketbird.styles :as s]
-            [recontain.core :as rc]))
+  (:require [bracketbird.style :as s]
+            [recontain.core :as rc]
+            [restyle.core :as rs]))
 
 (defn ui-root [handle _ {:keys [hook/system]}]
   (let [app-id (:active-application system)]
 
-    [:div {:class :system}
+    [:div
      (if app-id
        [rc/container {:application-id app-id} :ui-application-page]
        [:div "No application"])]))
@@ -14,7 +15,7 @@
   (let [{:keys [active-page]} ls
         {:keys [hook/application]} fs]
 
-    [:div {:class :application}
+    [:div
      (condp = active-page
        :ui-front-page ^{:key 1} [rc/container {} :ui-front-page]
        :ui-tournament-page ^{:key 2} (let [tournament-id (-> application :tournaments keys first)]
@@ -44,15 +45,14 @@
 
 (defn tournament-page [handle {:keys [selected order items]} _]
   ;page
-  [:div {:style s/tournament-page-style}
+  [:div {:style (rs/style s/tournament-page-style)}
 
-   [:div {:style {:position :fixed :top 20 :right 200}}]
    ;menu
-   [:div {:style s/menu-panel-style}
+   [:div {:style (rs/style s/menu-panel-style)}
     (map (fn [k]
            (let [selected? (= selected k)]
              ^{:key k} [:span {:on-click (fn [] (rc/dispatch handle :select-item k))
-                               :style    (merge s/menu-item-style (when selected? {:opacity 1 :cursor :auto}))}
+                               :style    (rs/style (merge  s/menu-item-style (when selected? {:opacity 1 :cursor :auto})))}
                         (get-in items [k :header])])) order)]
 
    ;content - show and hide by css display. If slow only mount elements that has been shown (to gain initially loading speed).

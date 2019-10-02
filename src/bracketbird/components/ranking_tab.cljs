@@ -1,5 +1,5 @@
 (ns bracketbird.components.ranking-tab
-  (:require [bracketbird.styles :as s]))
+  (:require [bracketbird.style :as s]))
 
 
 

@@ -1,5 +1,5 @@
 (ns bracketbird.components.settings-tab
-  (:require [bracketbird.styles :as s]
+  (:require [bracketbird.style :as s]
             [bracketbird.util :as ut]
             [recontain.core :as rc]))
 

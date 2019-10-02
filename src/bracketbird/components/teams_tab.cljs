@@ -1,11 +1,12 @@
 (ns bracketbird.components.teams-tab
   (:require [recontain.core :as rc]
-            [bracketbird.styles :as s]
-            [bracketbird.util :as ut]))
+            [bracketbird.style :as s]
+            [bracketbird.util :as ut]
+            [restyle.core :as rs]))
 
 
 (defn enter-team-input [h {:keys [input-value] :as _} _]
-  [:div {:style {:display :flex :margin-top 30 :align-items :center}}
+  [:div {:style (rs/style :enter-team-input)}
    [rc/ui :input {:id          "input"
                   :placeholder "Enter team"
                   :type        :text
@@ -17,28 +18,23 @@
                    :class  "primaryButton"
                    :events [:key :click]} "Add Team"]])
 
-
 (defn team-row [h {:keys [top-hover? delete-icon-hover? input-value]} {:keys [hook/team]} index]
+  #_[:top
+   [:icon-panel
+    [:icon]]
+   [:empty-space]
+   [:seeding]
+   [:input {:type :text :value "adsf"}]]
   [rc/ui :div {:id     "top"
-               :style  {:display :flex :align-items :center :min-height 30}
+               :style  (rs/style :teams-row)
                :events [:hover]}
 
    [rc/ui :div {:id     "delete-icon"
-                :style  {:display         :flex
-                         :align-items     :center
-                         :height          20
-                         :justify-content :center
-                         :cursor          (if delete-icon-hover? :pointer :normal)
-                         :width           80}
-                :events [:hover :click]}
-    (when top-hover?
-      [ut/icon {:style (merge
-                         {:font-size 8 :opacity 0.5}
-                         (when delete-icon-hover?
-                           {:font-weight :bold
-                            :background  :red :color :white :border-radius 8}))} "clear"])]
+                :style  (rs/style :teams-row-icons {:icon-hover? delete-icon-hover? :row-hover? top-hover?})
+                :events [:hover :click] }
+    [ut/icon {:style (rs/style :teams-row-delete-icon {:icon-hover? delete-icon-hover? :row-hover? top-hover?})} "clear"]]
 
-   [:div {:style {:width 40}}]
+   [:div {:style (rs/style {:width [:page-padding]})}]
    [:div {:style {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10}} (inc index)]
    [rc/ui :input {:id     "input"
                   :style  (merge s/input-text-field {:min-width 200})
@@ -47,25 +43,15 @@
 
 
 (defn render [h {:keys [table-scroll-top table-scroll-bottom]} {:keys [hook/teams-order hook/teams]}]
-  [:div {:style (merge
-                  {:display        :flex
-                   :flex-direction :column
-                   :height         :100%}
-                  (when (< 0 table-scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))}
+  [:div {:style (rs/style :tab-content {:scroll-top table-scroll-top})}
 
    ; teams table
    [rc/ui :div {:id     "table"
-                :style  (merge {:padding-top    40
-                                :max-height     :100%
-                                :min-height     :200px
-                                :padding-bottom 40
-                                :overflow-y     :auto}
-                               (when (< 0 table-scroll-bottom) {:border-bottom "1px solid rgba(241,241,241,1)"}))
+                :style  (rs/style :teams-table {:scroll-bottom table-scroll-bottom})
                 :events [:scroll]}
 
     (map (fn [team-id index]
            ^{:key team-id} [rc/container {:team-id team-id} team-row index]) teams-order (range (count teams)))]
 
    ; input field
-   [:div {:style {:padding-left 120 :padding-bottom 20}}
-    [rc/container {} enter-team-input]]])
+   [rc/container {} enter-team-input]])

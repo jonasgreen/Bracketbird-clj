@@ -1,5 +1,5 @@
 (ns bracketbird.components.matches-tab
-  (:require [bracketbird.styles :as s]))
+  (:require [bracketbird.style :as s]))
 
 
 
