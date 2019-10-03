@@ -192,7 +192,6 @@
                                  (debug #(println "RENDER - " hook))
                                  (let [;dereferences values from state atom
                                        rerender-count @rerender-action
-                                       _ (println "render" rerender-count)
                                        _ (debug #(println "RERENDER-COUNT" rerender-count))
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
 
@@ -241,7 +240,7 @@
 
 ;;;; API
 
-(defn element-id [handle sub-id] (str (:id handle) "#" sub-id))
+(defn element-id [handle sub-id] (str (:id handle) "#" (if (keyword? sub-id) (name sub-id) sub-id)))
 
 
 (defn- get-handle-data
@@ -271,7 +270,6 @@
         f (-> @config-atom
               (get-in [:hooks hook])
               (get dispatch-f))]
-
     (if f
       (apply f (:handle h-data) (:local-state h-data) (:foreign-states h-data) args)
       (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook)))))))
@@ -334,14 +332,13 @@
 
 ; event
 
-(defn- bound-name [sub-id value-name]
-  (let [resolved-name (if (keyword? value-name) (name value-name) value-name)]
-    (keyword (if-not (string/blank? sub-id)
-               (str sub-id "-" resolved-name)
-               resolved-name))))
+(defn- name-in-local-state [sub-id value-name]
+  (keyword (if-not (string/blank? sub-id)
+             (str (name sub-id) "-" (name value-name))
+             (name value-name))))
 
 (defn- put-value [h sub-id k v]
-  (put! h assoc (bound-name sub-id k) v))
+  (put! h assoc (name-in-local-state sub-id k) v))
 
 (def event-handler-fns {:on-focus       (fn [h sub-id ls e]
                                           (put-value h sub-id "focus?" true))
@@ -356,11 +353,11 @@
                                           (put-value h sub-id "hover?" false))
 
                         :on-key-down    (fn [h sub-id ls e]
-                                          (let [dob (bound-name sub-id "delete-on-backspace?")]
+                                          (let [dob (name-in-local-state sub-id "delete-on-backspace?")]
                                             (d/handle-key e {[:BACKSPACE]
                                                              (fn [_]
                                                                (when (get ls dob)
-                                                                 (dispatch-silent h (bound-name sub-id "delete-on-backspace"))) [:STOP-PROPAGATION])})))
+                                                                 (dispatch-silent h [sub-id :delete-on-backspace])) [:STOP-PROPAGATION])})))
                         :on-key-up      (fn [h sub-id _ e]
                                           (when (= "text" (.-type (.-target e)))
                                             (put-value h sub-id "delete-on-backspace?" (clojure.string/blank? (ut/value e)))))
@@ -377,10 +374,10 @@
                                                                  client-height (.-clientHeight t)]
 
                                                              (put! h assoc
-                                                                   (bound-name sub-id "scroll-top") scroll-top
-                                                                   (bound-name sub-id "scroll-height") scroll-height
-                                                                   (bound-name sub-id "client-height") client-height
-                                                                   (bound-name sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))
+                                                                   (name-in-local-state sub-id "scroll-top") scroll-top
+                                                                   (name-in-local-state sub-id "scroll-height") scroll-height
+                                                                   (name-in-local-state sub-id "client-height") client-height
+                                                                   (name-in-local-state sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))
 
                         })
 
@@ -408,7 +405,7 @@
                    (when-let [f (get event-handler-fns k)]
                      (assoc m k (fn [e]
                                   (f h sub-id ls e)
-                                  (dispatch-silent h (bound-name sub-id k) e)))))
+                                  (dispatch-silent h [sub-id k] e)))))
                  opts))))
 
 
