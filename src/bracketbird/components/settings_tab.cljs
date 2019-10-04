@@ -5,7 +5,8 @@
 
 
 (defn render [handle {:keys [table-scroll-top]} _]
-  [rc/ui :div {:id     :table
+  [:div]
+  #_[rc/ui :div {:id     :table
                :style  (merge s/tournament-tab-content-style
                               (when (< 0 table-scroll-top) {:border-top "1px solid rgba(241,241,241,1)"}))
                :events [:scroll]}

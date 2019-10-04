@@ -35,7 +35,6 @@
                   :value  (if input-value input-value (:team-name team))
                   :events [:change :key :focus]}]])
 
-
 (defn render [h {:keys [table-scroll-top table-scroll-bottom]} {:keys [hook/teams-order hook/teams]}]
   [:div {:style (rs/style :tab-content {:scroll-top table-scroll-top})}
 

@@ -6,15 +6,20 @@
             [recontain.setup :as s]
             [clojure.string :as string]
             [bracketbird.dom :as d]
-            [bracketbird.util :as ut]))
+            [bracketbird.util :as ut]
+            [restyle.core :as rs]))
 
 
 (defonce component-states-atom (atom {}))
 (defonce config-atom (atom {}))
 (defonce rerender-atom (r/atom 0))
 
+(def ^:dynamic *current-container* nil)
+(def ^:dynamic *passed-values* nil)
 
-(declare ui container)
+
+
+(declare ui container bind-events element-id)
 
 
 (defn setup [config]
@@ -27,13 +32,10 @@
 (defn- debug [f]
   (when (:debug? @config-atom) (f)))
 
-
-
 (defn- get-hook-value [hook]
   (let [hook-value (get-in @config-atom [:hooks hook])]
     (when-not hook-value
       (do
-        (println "CONFIG-ATOM" @config-atom)
         (throw (js/Error. (str "Unable to find mapping for hook: " hook " in config")))))
 
     hook-value))
@@ -80,26 +82,6 @@
       p)))
 
 
-(defn- decorate-ui [form h ls fs]
-  (let [ui-fn (first form)
-        elm (second form)
-        opts (nth form 2)]
-
-    (when-not (keyword? elm)
-      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. First element should be a keyword (:div :button etc.). Hiccup: " form))))
-    (when-not (map? opts)
-      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. Second element should be a hiccup options map. Hiccup: " form))))
-    (when-not (:id opts)
-      (throw (js/Error. (str "Render of " (:hook h) " calls recontain/ui wrongly. Options should contain an id that is unique in the context of the containers render function. Hiccup: " form))))
-
-    (-> (into [ui-fn elm (assoc opts
-                           :rc_handle h
-                           :rc_local-state ls
-                           :rc_foreign-state fs)] (subvec form 3))
-        (with-meta (meta form)))))
-
-
-
 (defn- decorate-container [form h ls fs]
   (let [container-fn (first form)
         additional-ctx (second form)
@@ -124,17 +106,53 @@
         (-> (into [container-fn (assoc ctx :rc_handle h) hook-key] (subvec form 3))
             (with-meta (meta form)))))))
 
-;; Can be optimized if necessary
-(defn- decorate-result [result h ls fs]
-  (clojure.walk/prewalk
-    (fn [form]
-      (if (vector? form)
-        (cond
-          (= (first form) ui) (decorate-ui form h ls fs)
-          (= (first form) container) (decorate-container form h ls fs)
-          :else form)
-        form))
-    result))
+(defn do-bind-options [h ls fs {:keys [id] :as opts}]
+  (let [style-fn (:style (get-hook-value (:hook h)))
+        passed-keys (->> opts keys (filter namespace))
+        passed-values (select-keys opts passed-keys)
+        ls-with-passed-values (merge ls passed-values)
+        style-config (when style-fn (get (style-fn h ls-with-passed-values fs) id))]
+    (-> (apply dissoc opts passed-keys)
+        (assoc :id (element-id h id))
+        (bind-events id h ls passed-values)
+        (assoc :style (rs/style (or style-config (:style opts) {}))))))
+
+
+(defn bind-options [opts]
+  (let [{:keys [handle local-state foreign-state]} *current-container*]
+    (do-bind-options handle local-state foreign-state (if (keyword? opts) {:id opts} opts))))
+
+(defn- decorate-hiccup-result [form h ls fs]
+  (cond
+    (and (vector? form) (= (first form) container))
+    (decorate-container form h ls fs)
+
+    ;;vector of special form with ::keyword
+    (and (vector? form) (keyword? (first form)) (namespace (first form)))
+    (let [local-id (keyword (name (first form)))
+          opts (-> (if (map? (second form)) (second form) {}) (assoc :id local-id))
+          elm (if (:elm opts) (:elm opts) :div)
+
+          ;decorate children
+          children (->> (if (map? (second form)) (nnext form) (next form))
+                        (map (fn [c] (decorate-hiccup-result c h ls fs)))
+                        vec)]
+
+      (-> [elm (do-bind-options h ls fs (dissoc opts :elm))]
+          (into children)
+          ;preserve meta
+          (with-meta (meta form))))
+
+    (vector? form)
+    (let [v (->> form (map (fn [c] (decorate-hiccup-result c h ls fs))) vec)]
+      ;preserve meta
+      (with-meta v (meta form)))
+
+    (sequential? form)
+    (->> form (map (fn [c] (decorate-hiccup-result c h ls fs))))
+
+    :else form))
+
 
 
 (defn force-render-all []
@@ -225,10 +243,13 @@
                                    (if-not render
                                      [:div (str "No render: " hook ctx)]
 
-
                                      ;instead of reagent calling render function - we do it
-                                     (let [result (-> (render handle local-state foreign-states opts)
-                                                      (decorate-result handle local-state foreign-states))]
+                                     (let [result1 (binding [*current-container* {:handle         handle
+                                                                                  :local-state    local-state
+                                                                                  :foreign-states foreign-states}]
+                                                     (render handle local-state foreign-states opts))
+
+                                           result (doall (decorate-hiccup-result result1 handle local-state foreign-states))]
 
                                        (if-let [decorator (:component-hiccup-decorator @config-atom)]
                                          (decorator result (get @component-states-atom id))
@@ -271,7 +292,7 @@
               (get-in [:hooks hook])
               (get dispatch-f))]
     (if f
-      (apply f (:handle h-data) (:local-state h-data) (:foreign-states h-data) args)
+      (apply f (:handle h-data) (merge (:local-state h-data) *passed-values*) (:foreign-states h-data) args)
       (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook)))))))
 
 (defn dispatch [handle dispatch-f & args]
@@ -286,7 +307,8 @@
                 :args           args
                 :silently-fail? true}))
 
-(defn get-element [handle sub-id] (-> handle (element-id sub-id) dom/getElement))
+(defn get-element [handle sub-id]
+  (-> handle (element-id sub-id) dom/getElement))
 
 (defn get-handle [ctx hook]
   (validate-ctx hook ctx)
@@ -389,35 +411,32 @@
                                     :scroll [:on-scroll]})
 
 
+
 (defn bind-events
-  [{:keys [rc_handle rc_local-state events] :as opts}]
-  (let [h rc_handle
-        ls rc_local-state
-        sub-id (:id opts)]
-    (->> (if (sequential? events) events [events])
-         ; resolve event to handlers
-         (map (fn [e] (if-let [handlers (e events-shorts->event-handlers)]
-                        handlers
-                        (e event-handler-fns))))
-         flatten
-         ; resolve handlers
-         (reduce (fn [m k]
-                   (when-let [f (get event-handler-fns k)]
-                     (assoc m k (fn [e]
-                                  (f h sub-id ls e)
-                                  (dispatch-silent h [sub-id k] e)))))
-                 opts))))
+  [opts local-id h ls passed-values]
+  (->> event-handler-fns
+       (reduce-kv (fn [m k v]
+                    (assoc m k (fn [e]
+                                 ;only execute locally
+                                 (when (or (= (.-target e) (.-currentTarget e))
+                                           (= k :on-mouse-enter)
+                                           (= k :on-mouse-leave))
+                                   (v h local-id ls e)
+                                   (binding [*passed-values* passed-values]
+                                     (dispatch-silent h [local-id k] e))))))
+                  opts)))
+
 
 
 
 ;; TODO - support direct calls instead of lazy hiccup
 (defn ui [element {:keys [rc_handle id] :as opts} & children]
-  (into [element (-> opts
-                     bind-events
-                     (merge (when id {:id (element-id rc_handle id)}))
+  #_(into [element (-> opts
+                       bind-events
+                       (merge (when id {:id (element-id rc_handle id)}))
 
-                     ;:events :rc_handle :rc_local-state :rc_foreign-state is set during decoration when rendering previous container
-                     (dissoc :events :rc_handle :rc_local-state :rc_foreign-state))] (vec children)))
+                       ;:events :rc_handle :rc_local-state :rc_foreign-state is set during decoration when rendering previous container
+                       (dissoc :events :rc_handle :rc_local-state :rc_foreign-state))] (vec children)))
 
 
 ;; TODO - support direct calls instead of lazy hiccup

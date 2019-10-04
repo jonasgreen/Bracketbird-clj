@@ -1,17 +1,15 @@
 (ns bracketbird.config
   (:require [recontain.core :as rc]
             [clojure.string :as string]
-            [bracketbird.pages :as pages]
             [bracketbird.ui-services :as ui-services]
-            [bracketbird.components.teams-tab :as teams-tab]
             [bracketbird.system :as system]
             [bracketbird.util :as ut]
             [bracketbird.components.settings-tab :as settings-tab]
             [bracketbird.components.matches-tab :as matches-tab]
             [bracketbird.components.ranking-tab :as ranking-tab]
             [bracketbird.dom :as d]
-            [restyle.core :as rs]
-            [bracketbird.style :as s]))
+            [bracketbird.style :as s]
+            [restyle.core :as rs]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -96,18 +94,17 @@
                                               :post-render    (fn [_])})))})
 
 (def ui-tournament-page {:hook                  :ui-tournament-page
-                         :render                (fn [handle {:keys [selected order items]} _]
+                         :render                (fn [_ {:keys [order items]} _]
                                                   [::page
-                                                   [::menu (map (fn [k] ^{:key k} [::menu-item {:item k} (get-in items [k :header])]) order)]
-                                                   ;content - show and hide by css display. If slow only mount elements that has been shown (to gain initially loading speed).
+                                                   [::menu (map (fn [k] ^{:key k} [::menu-item {:current/item k} (get-in items [k :header])]) order)]
                                                    (->> items
                                                         (reduce-kv (fn [m k {:keys [content]}]
-                                                                     (conj m ^{:key k} [:content-holder {:item k} [rc/container {} content]]))
+                                                                     (conj m ^{:key k} [::content-holder {:current/item k} [rc/container {} content]]))
                                                                    [])
                                                         seq)])
 
 
-                         :style                 (fn [h {:keys [selected order items item]} _]
+                         :style                 (fn [h {:keys [selected order items current/item]} _]
                                                   {:page           {:height         "100vh"
                                                                     :display        :flex
                                                                     :flex-direction :column}
@@ -128,7 +125,9 @@
 
                                                    :content-holder (merge {:height :100%} (when-not (= selected item) {:display :none}))})
 
-                         [:menu-item :on-click] (fn [h {:keys [item]} _ e] (rc/dispatch h :select-item item))
+                         [:menu-item :on-click] (fn [h {:keys [current/item]} _ e]
+                                                  (println "current item" item)
+                                                  (rc/dispatch h :select-item item))
 
                          :local-state           {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
                                                                      :settings {:header "SETTINGS" :content settings-tab/render}
@@ -144,7 +143,28 @@
                                                   (rc/put! handle assoc :previous-selected selected :selected select))})
 
 (def ui-teams-tab {:hook             :ui-teams-tab
-                   :render           teams-tab/render
+                   :render           (fn [h ls {:keys [hook/teams-order hook/teams]}]
+                                       [::tab-content
+                                        [::table
+                                         (map (fn [team-id index]
+                                                ^{:key team-id} [rc/container {:team-id team-id} :ui-team-row index]) teams-order (range (count teams)))]
+
+                                        ; input field
+                                        [rc/container {} :ui-enter-team-input]])
+
+                   :style            (fn [h {:keys [table-scroll-top table-scroll-bottom]} fs]
+                                       {:tab-content (merge {:display        :flex
+                                                             :flex-direction :column
+                                                             :height         :100%}
+                                                            (when (< 0 table-scroll-top) {:border-top [:border]}))
+
+                                        :table       (merge {:padding-top    [:layout-unit]
+                                                             :max-height     :100%
+                                                             :min-height     :200px
+                                                             :padding-bottom [:layout-unit]
+                                                             :overflow-y     :auto}
+                                                            (when (< 0 table-scroll-bottom) {:border-bottom [:border]}))})
+
                    :subscribe        [:hook/teams-order :hook/teams]
                    :scroll-to-bottom (fn [handle _ _] (-> handle
                                                           (rc/get-element :table)
@@ -156,84 +176,97 @@
                                              (rc/get-handle :ui-team-row)
                                              (rc/dispatch :focus))))})
 
-(def ui-team-row {:hook                         :ui-team-row
-                  :subscribe                    [:hook/team]
-
-                  :local-state                  (fn [{:keys [hook/team]}]
-                                                  {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
-
-                  :update-team                  (fn [h {:keys [input-value]} {:keys [hook/team]}]
-                                                  (when (rc/has-changed input-value (:team-name team))
-                                                    (ui-services/dispatch-event
-                                                      {:event-type [:team :update]
-                                                       :ctx        (:ctx h)
-                                                       :content    {:team-name input-value}})))
-
-                  :delete-team                  (fn [h ls {:keys [hook/team]}]
-                                                  (let [team-to-focus (or
-                                                                        (ui-services/after-team h (:team-id team))
-                                                                        (ui-services/previous-team h (:team-id team)))]
-                                                    (ui-services/dispatch-event
-                                                      {:event-type  [:team :delete]
-                                                       :ctx         (assoc (:ctx h) :team-id (:team-id team))
-                                                       :post-render (fn [_]
-                                                                      (if team-to-focus
-                                                                        (rc/focus h :ui-team-row :team-id team-to-focus)
-                                                                        (rc/focus h :ui-enter-team-input)))})))
-                  :focus                        (fn [h _ _] (-> h (rc/get-element :team-name) (.focus)))
 
 
 
-                  :render                       (fn [h {:keys [input-value]} {:keys [hook/team]} index]
-                                                  [:row
-                                                   [:icons
-                                                    [:delete-icon {:elm ut/icon} "clear"]]
-                                                   [:space]
-                                                   [:seeding (inc index)]
-                                                   [:team-name {:elm   :input
-                                                                :type  :text
-                                                                :value (if input-value input-value (:team-name team))}]])
+(def ui-team-row {:hook                             :ui-team-row
+                  :subscribe                        [:hook/team]
 
-                  :style                        (fn [h {:keys [delete-icon-hover? top-hover?]} _ index]
-                                                  {:row         {:display :flex :align-items :center :min-height [:row-height]}
+                  :local-state                      (fn [{:keys [hook/team]}]
+                                                      {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
 
-                                                   :icons       {:display         :flex
-                                                                 :align-items     :center
-                                                                 :height          [:row-height]
-                                                                 :justify-content :center
-                                                                 :cursor          (if delete-icon-hover? :pointer :normal)
-                                                                 :width           [:app-padding]}
+                  :render                           (fn [h {:keys [team-name-value] :as ls} {:keys [hook/team]} index]
+                                                      [::row
+                                                       [::icons
+                                                        [ut/icon (rc/bind-options :delete-icon) "clear"]]
+                                                       [::space]
+                                                       [::seeding (inc index)]
+                                                       [::team-name {:elm   :input
+                                                                     :type  :text
+                                                                     :value (if team-name-value team-name-value (:team-name team))}]])
 
-                                                   :delete-icon {:icon-hover? delete-icon-hover? :row-hover? top-hover?}
-                                                   :space       {:width [:page-padding]}
-                                                   :seeding     {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10}
-                                                   :team-name       (merge s/input-text-field {:min-width 200})})
+                  :style                            (fn [h {:keys [icons-hover? row-hover?]} _]
+                                                      {:row         {:display :flex :align-items :center :min-height [:row-height]}
+
+                                                       :icons       {:display         :flex
+                                                                     :align-items     :center
+                                                                     :height          [:row-height]
+                                                                     :justify-content :center
+                                                                     :cursor          (if icons-hover? :pointer :normal)
+                                                                     :width           [:app-padding]}
+
+                                                       :delete-icon (merge {:font-size 8 :opacity 0.5 :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
+                                                                           (when-not row-hover?
+                                                                             {:color :transparent})
+
+                                                                           (when icons-hover?
+                                                                             {:font-weight   :bold
+                                                                              :background    :red
+                                                                              :color         :white
+                                                                              :font-size     10
+                                                                              :border-radius 8}))
+                                                       :space       {:width [:page-padding]}
+                                                       :seeding     {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10}
+                                                       :team-name   (merge s/input-text-field {:min-width 200})})
 
 
-                  [:delete-icon :on-click]      (fn [h _ _ e] (rc/dispatch h :delete-team))
+                  :update-team                      (fn [h {:keys [team-name-value]} {:keys [hook/team]}]
+                                                      (when (rc/has-changed team-name-value (:team-name team))
+                                                        (ui-services/dispatch-event
+                                                          {:event-type [:team :update]
+                                                           :ctx        (:ctx h)
+                                                           :content    {:team-name team-name-value}})))
+
+                  :delete-team                      (fn [h ls {:keys [hook/team]}]
+                                                      (let [team-to-focus (or
+                                                                            (ui-services/after-team h (:team-id team))
+                                                                            (ui-services/previous-team h (:team-id team)))]
+                                                        (ui-services/dispatch-event
+                                                          {:event-type  [:team :delete]
+                                                           :ctx         (assoc (:ctx h) :team-id (:team-id team))
+                                                           :post-render (fn [_]
+                                                                          (if team-to-focus
+                                                                            (rc/focus h :ui-team-row :team-id team-to-focus)
+                                                                            (rc/focus h :ui-enter-team-input)))})))
+                  :focus                            (fn [h _ _] (-> h (rc/get-element :team-name) (.focus)))
+
+
+
+
+                  [:delete-icon :on-click]          (fn [h _ _ e] (rc/dispatch h :delete-team))
 
 
 
                   [:team-name :on-key-down]         (fn [h _ {:keys [hook/team]} e]
-                                                  (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
-                                                                   :ENTER          (fn [_] (rc/dispatch h :update-team))
-                                                                   [:SHIFT :ENTER] (fn [e] (ui-services/dispatch-event
-                                                                                             {:event-type  [:team :create]
-                                                                                              :ctx         (:ctx h)
-                                                                                              :content     {:team-name ""
-                                                                                                            :index     (ui-services/index-of h (:team-id team))}
-                                                                                              :post-render (fn [event]
-                                                                                                             (-> (:ctx h)
-                                                                                                                 (assoc :team-id (:team-id event))
-                                                                                                                 (rc/get-handle :ui-team-row)
-                                                                                                                 (rc/dispatch :focus)))}))
-                                                                   :UP             (fn [_] (->> (:team-id team)
-                                                                                                (ui-services/previous-team h)
-                                                                                                (rc/focus h :ui-team-row :team-id)))
-                                                                   :DOWN           (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
-                                                                                             (if team-to-focus
-                                                                                               (rc/focus h :ui-team-row :team-id team-to-focus)
-                                                                                               (rc/focus h :ui-enter-team-input))))}))
+                                                      (d/handle-key e {:ESC            (fn [e] (rc/delete-local-state h) [:STOP-PROPAGATION])
+                                                                       :ENTER          (fn [_] (rc/dispatch h :update-team))
+                                                                       [:SHIFT :ENTER] (fn [e] (ui-services/dispatch-event
+                                                                                                 {:event-type  [:team :create]
+                                                                                                  :ctx         (:ctx h)
+                                                                                                  :content     {:team-name ""
+                                                                                                                :index     (ui-services/index-of h (:team-id team))}
+                                                                                                  :post-render (fn [event]
+                                                                                                                 (-> (:ctx h)
+                                                                                                                     (assoc :team-id (:team-id event))
+                                                                                                                     (rc/get-handle :ui-team-row)
+                                                                                                                     (rc/dispatch :focus)))}))
+                                                                       :UP             (fn [_] (->> (:team-id team)
+                                                                                                    (ui-services/previous-team h)
+                                                                                                    (rc/focus h :ui-team-row :team-id)))
+                                                                       :DOWN           (fn [_] (let [team-to-focus (ui-services/after-team h (:team-id team))]
+                                                                                                 (if team-to-focus
+                                                                                                   (rc/focus h :ui-team-row :team-id team-to-focus)
+                                                                                                   (rc/focus h :ui-enter-team-input))))}))
 
                   [:team-name :delete-on-backspace] (fn [h _ _ e] (rc/dispatch h :delete-team))
                   [:team-name :on-blur]             (fn [h _ _ e] (rc/dispatch h :update-team))})
@@ -241,7 +274,25 @@
 
 
 (def ui-enter-team-input {:hook                         :ui-enter-team-input
-                          :render                       teams-tab/enter-team-input
+
+                          :render                       (fn [h {:keys [input-value] :as _} _]
+                                                          [::row
+                                                           [::input {:placeholder "Enter team"
+                                                                     :type        :text
+                                                                     :elm         :input
+                                                                     :value       input-value}]
+
+                                                           [::button {:class "primaryButton"} "Add Team"]])
+
+                          :style                        (fn [h ls fs]
+                                                          {:row   {:padding-left [+ :app-padding :page-padding]
+                                                                   :display      :flex
+                                                                   :min-height   [:app-padding]
+                                                                   :align-items  :center}
+
+                                                           :input {:border  :none
+                                                                   :padding 0}})
+
                           :did-mount                    (fn [h _ _] (rc/dispatch h :focus))
 
                           :local-state                  (fn [_] {:input-delete-on-backspace? true})

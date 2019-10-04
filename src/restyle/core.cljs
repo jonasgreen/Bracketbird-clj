@@ -31,8 +31,6 @@
 
 
 (defn resolve-style [styles value params]
-
-
   (cond (keyword? value)
         (do
           (when-let [fv (get styles value)]
