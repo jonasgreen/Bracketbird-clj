@@ -136,7 +136,7 @@
 
 
                          :local-state             (fn [_] {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
-                                                                               :settings {:header "SETTINGS" :content settings-tab/render}
+                                                                               :settings {:header "SETTINGS" :content :ui-settings-tab}
                                                                                :matches  {:header "MATCHES" :content :ui-matches-tab}
                                                                                :ranking  {:header "SCORES" :content :ui-ranking-tab}}
 
@@ -225,7 +225,9 @@
                   [:space :style]                   (fn [_] {:width [:page-padding]})
                   [:seeding :style]                 (fn [_] {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10})
 
-                  [:team-name :style]               (fn [_] (merge s/input-text-field {:min-width 200}))
+                  [:team-name :style]               (fn [_] {:border    :none
+                                                             :padding   0
+                                                             :min-width 200})
                   [:team-name :on-key-down]         (fn [h e]
                                                       (d/handle-key e {:ESC            (fn [_] (rc/delete-local-state h) [:STOP-PROPAGATION])
                                                                        :ENTER          (fn [_] (rc/dispatch h :update-team))
@@ -336,13 +338,13 @@
                                                                                       [:STOP-PROPAGATION :PREVENT-DEFAULT])}))})
 
 (def ui-settings-tab {:hook   :ui-settings-tab
-                      :render settings-tab/render})
+                      :render (fn [_] [:div "settings tab"])})
 
 (def ui-matches-tab {:hook   :ui-matches-tab
-                     :render matches-tab/render})
+                     :render (fn [_] [:div "matches-tab"])})
 
 (def ui-ranking-tab {:hook   :ui-ranking-tab
-                     :render ranking-tab/render})
+                     :render (fn [_] [:div "scores-tab"])})
 
 (def ui-layout [ui-root
                 [ui-application-page #{:application-id}
