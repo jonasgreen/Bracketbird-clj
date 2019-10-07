@@ -427,6 +427,15 @@
                   opts)))
 
 
+(defn ls [& ks]
+  (if (seq ks)
+    (get-in (:local-state *current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
+    (:local-state *current-container*)))
+
+(defn fs [& ks]
+  (if (seq ks)
+    (get-in (:foreign-states *current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
+    (:foreign-states *current-container*)))
 
 
 ;; TODO - support direct calls instead of lazy hiccup
