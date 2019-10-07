@@ -4,11 +4,7 @@
             [bracketbird.ui-services :as ui-services]
             [bracketbird.system :as system]
             [bracketbird.util :as ut]
-            [bracketbird.components.settings-tab :as settings-tab]
-            [bracketbird.components.matches-tab :as matches-tab]
-            [bracketbird.components.ranking-tab :as ranking-tab]
-            [bracketbird.dom :as d]
-            [bracketbird.style :as s]))
+            [bracketbird.dom :as d]))
 
 (def hooks {:hook/system              [:system]
             :hook/applications        [:applications]
@@ -97,8 +93,9 @@
                          :render                  (fn [_]
                                                     (let [{:keys [items order]} (rc/ls)]
                                                       [::page
-                                                       [::menu (map (fn [k] ^{:key k} [::menu-item {:current/item k
-                                                                                                    :events       [:click]} (get-in items [k :header])]) order)]
+                                                       [::menu (map (fn [k] ^{:key k}
+                                                                      [::menu-item {:current/item k
+                                                                                    :events       [:click]} (get-in items [k :header])]) order)]
                                                        (->> items
                                                             (reduce-kv (fn [m k {:keys [content]}]
                                                                          (conj m ^{:key k} [::content-holder {:current/item k} [rc/container {} content]]))
