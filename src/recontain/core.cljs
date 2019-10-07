@@ -107,11 +107,17 @@
             (with-meta (meta form)))))))
 
 (defn do-bind-options [h ls fs {:keys [id] :as opts}]
-  (let [style-fn (:style (get-hook-value (:hook h)))
+  (let [style-fn (get (get-hook-value (:hook h)) [id :style])
         passed-keys (->> opts keys (filter namespace))
         passed-values (select-keys opts passed-keys)
         ls-with-passed-values (merge ls passed-values)
-        style-config (when style-fn (get (style-fn h ls-with-passed-values fs) id))]
+
+        style-config (when style-fn
+                       (binding [*current-container* {:handle         h
+                                                      :local-state    ls-with-passed-values
+                                                      :foreign-states fs}]
+                         (style-fn h)))
+        ]
     (-> (apply dissoc opts passed-keys)
         (assoc :id (element-id h id))
         (bind-events id h ls passed-values)
@@ -195,8 +201,7 @@
                                  ;;todo wrap in try catch
                                  (debug #(println "DID MOUNT - " hook))
                                  (when-let [f (:did-mount ui-container)]
-                                   (let [{:keys [ls fs]} (get @component-states-atom id)]
-                                     (f handle ls fs))))
+                                   (f handle)))
 
        :component-will-unmount (fn [this]
                                  (debug #(println "WILL UNMOUNT - " hook))
@@ -229,11 +234,8 @@
                                        local-state (if-let [ls (get state-map hook)]
                                                      ls
                                                      (if-let [ls-fn (get-in @config-atom [:hooks hook :local-state])]
-                                                       (if (map? ls-fn)
-                                                         ls-fn
-                                                         (ls-fn foreign-states))
+                                                       (ls-fn foreign-states)
                                                        {}))
-
 
                                        _ (swap! component-states-atom assoc id {:handle         handle
                                                                                 :local-state    local-state
@@ -244,12 +246,11 @@
                                      [:div (str "No render: " hook ctx)]
 
                                      ;instead of reagent calling render function - we do it
-                                     (let [result1 (binding [*current-container* {:handle         handle
-                                                                                  :local-state    local-state
-                                                                                  :foreign-states foreign-states}]
-                                                     (render handle local-state foreign-states opts))
-
-                                           result (doall (decorate-hiccup-result result1 handle local-state foreign-states))]
+                                     (let [result (binding [*current-container* {:handle         handle
+                                                                                 :local-state    local-state
+                                                                                 :foreign-states foreign-states}]
+                                                    (-> (render handle opts)
+                                                        (decorate-hiccup-result handle local-state foreign-states)))]
 
                                        (if-let [decorator (:component-hiccup-decorator @config-atom)]
                                          (decorator result (get @component-states-atom id))
@@ -287,23 +288,24 @@
 
 (defn- do-dispatch [{:keys [handle dispatch-f args silently-fail?]}]
   (let [{:keys [hook id]} handle
-        h-data (get-handle-data id)
         f (-> @config-atom
               (get-in [:hooks hook])
               (get dispatch-f))]
+
     (if f
-      (apply f (:handle h-data) (merge (:local-state h-data) *passed-values*) (:foreign-states h-data) args)
+      (binding [*current-container* (update-in (get-handle-data id) [:local-state] merge *passed-values*)]
+        (apply f handle args))
       (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook)))))))
 
-(defn dispatch [handle dispatch-f & args]
-  (do-dispatch {:handle         handle
-                :dispatch-f     dispatch-f
+(defn dispatch [h f & args]
+  (do-dispatch {:handle         h
+                :dispatch-f     f
                 :args           args
                 :silently-fail? false}))
 
-(defn dispatch-silent [handle dispatch-f & args]
-  (do-dispatch {:handle         handle
-                :dispatch-f     dispatch-f
+(defn dispatch-silent [h f & args]
+  (do-dispatch {:handle         h
+                :dispatch-f     f
                 :args           args
                 :silently-fail? true}))
 
@@ -362,16 +364,16 @@
 (defn- put-value [h sub-id k v]
   (put! h assoc (name-in-local-state sub-id k) v))
 
-(def event-handler-fns {:on-focus       (fn [h sub-id ls e]
+(def event-handler-fns {:on-focus       (fn [h sub-id _ _]
                                           (put-value h sub-id "focus?" true))
 
-                        :on-blur        (fn [h sub-id ls e]
+                        :on-blur        (fn [h sub-id _ _]
                                           (put-value h sub-id "focus?" false))
 
-                        :on-mouse-enter (fn [h sub-id ls e]
+                        :on-mouse-enter (fn [h sub-id _ _]
                                           (put-value h sub-id "hover?" true))
 
-                        :on-mouse-leave (fn [h sub-id ls e]
+                        :on-mouse-leave (fn [h sub-id _ _]
                                           (put-value h sub-id "hover?" false))
 
                         :on-key-down    (fn [h sub-id ls e]
@@ -384,7 +386,7 @@
                                           (when (= "text" (.-type (.-target e)))
                                             (put-value h sub-id "delete-on-backspace?" (clojure.string/blank? (ut/value e)))))
 
-                        :on-change      (fn [h sub-id ls e]
+                        :on-change      (fn [h sub-id _ e]
                                           (put-value h sub-id "value" (ut/value e)))
 
                         :on-click       (fn [_ _ _ _] ())
@@ -410,21 +412,28 @@
                                     :key    [:on-key-down :on-key-up]
                                     :scroll [:on-scroll]})
 
-
-
 (defn bind-events
-  [opts local-id h ls passed-values]
-  (->> event-handler-fns
-       (reduce-kv (fn [m k v]
-                    (assoc m k (fn [e]
-                                 ;only execute locally
-                                 (when (or (= (.-target e) (.-currentTarget e))
-                                           (= k :on-mouse-enter)
-                                           (= k :on-mouse-leave))
-                                   (v h local-id ls e)
-                                   (binding [*passed-values* passed-values]
-                                     (dispatch-silent h [local-id k] e))))))
-                  opts)))
+  [{:keys [events] :as opts} local-id h ls passed-values]
+  (if events
+    (->> (if (sequential? events) events [events])
+         ; resolve event to handlers
+         (map (fn [e] (if-let [handlers (e events-shorts->event-handlers)]
+                        handlers
+                        (e event-handler-fns))))
+         flatten
+         ; resolve handlers
+         (reduce (fn [m k]
+                   (when-let [f (get event-handler-fns k)]
+                     (assoc m k (fn [e]
+                                  (f h local-id ls e)
+                                  (binding [*passed-values* passed-values]
+                                    (dispatch-silent h [local-id k] e))))))
+                 opts))
+    opts))
+
+
+
+
 
 
 (defn ls [& ks]
@@ -433,10 +442,10 @@
     (:local-state *current-container*)))
 
 (defn fs [& ks]
+  (println "FS" (:foreign-states *current-container*))
   (if (seq ks)
     (get-in (:foreign-states *current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
     (:foreign-states *current-container*)))
-
 
 ;; TODO - support direct calls instead of lazy hiccup
 (defn ui [element {:keys [rc_handle id] :as opts} & children]
