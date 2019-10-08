@@ -19,7 +19,7 @@
 
 
 
-(declare ui container bind-events element-id)
+(declare container bind-events element-id)
 
 
 (defn setup [config]
@@ -162,13 +162,13 @@
 
 
 (defn force-render-all []
-  (swap! rerender-atom inc)
-  (println "rerender" rerender-atom))
+  (swap! rerender-atom inc))
 
-(defn- gui [handle ctx hook _]
+(defn- resolve-container-config [ctx hook]
   (let [state-atom (get @config-atom :state-atom)
-        ui-container (get-in @config-atom [:hooks hook])
-        all-hooks (into [hook] (:subscribe ui-container))
+        config (get-in @config-atom [:hooks hook])
+
+        all-hooks (into [hook] (:subscribe config))
         all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx))) {} all-hooks)
 
         foreign-local-state-ids (->> (dissoc all-paths hook)
@@ -178,45 +178,58 @@
                                      (reduce-kv (fn [m k v] (assoc m k (hash v))) {}))
 
         id (hash (get all-paths hook))
-        path (get all-paths hook)
+        path (get all-paths hook)]
 
-        rerender-action (reaction @rerender-atom)
+    {:load-config-count       @rerender-atom
+     :container-config        config
+     :id                      id
+     :path                    path
+     :all-hooks               all-hooks
+     :all-paths               all-paths
+     :reactions               (reduce (fn [m h] (assoc m h (reaction (get-in @state-atom (h all-paths) nil)))) {} all-hooks)
+     :foreign-local-state-ids foreign-local-state-ids
+     }))
 
-        ; includes state and foreign state
-        reactions-map (reduce (fn [m h] (assoc m h (reaction (get-in @state-atom (h all-paths) nil)))) {} all-hooks)
+(defn- mk-handle [parent-handle ctx hook {:keys [id path all-paths]}]
+  {:parent-handle parent-handle
+   :id            id
+   :ctx           ctx
+   :path          path
+   :hook          hook
+   :foreign-paths (-> all-paths
+                      (dissoc hook)
+                      vals
+                      vec)})
 
-        styling (reaction (get-in @state-atom [:styles]))
-
-        handle {:id            id
-                :ctx           ctx
-                :path          path
-                :hook          hook
-                :foreign-paths (-> all-paths
-                                   (dissoc hook)
-                                   vals
-                                   vec)}]
+(defn- gui [parent-handle ctx hook _]
+  (let [cfg (reaction (resolve-container-config ctx hook))
+        org-handle (mk-handle parent-handle ctx hook @cfg)]
 
     (r/create-class
       {:component-did-mount    (fn [_]
                                  ;;todo wrap in try catch
                                  (debug #(println "DID MOUNT - " hook))
-                                 (when-let [f (:did-mount ui-container)]
-                                   (f handle)))
+                                 (when-let [f (:did-mount (:container-config @cfg))]
+                                   (f org-handle)))
 
        :component-will-unmount (fn [this]
                                  (debug #(println "WILL UNMOUNT - " hook))
-                                 (when-let [f (:will-unmount ui-container)]
-                                   (let [{:keys [ls fs]} (get @component-states-atom id)]
-                                     (f handle ls fs)))
+                                 (when-let [f (:will-unmount (:container-config @cfg))]
+                                   (f org-handle))
                                  (when (:clear-container-state-on-unmount? @config-atom)
-                                   (clear-container-state handle)))
+                                   (clear-container-state org-handle)))
 
        :reagent-render         (fn [_ _ _ opts]
                                  (debug #(println "RENDER - " hook))
-                                 (let [;dereferences values from state atom
-                                       rerender-count @rerender-action
-                                       _ (debug #(println "RERENDER-COUNT" rerender-count))
-                                       state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} reactions-map)
+                                 (let [config @cfg
+                                       lc-count (:load-config-count config)
+                                       _ (debug #(println "RERENDER-COUNT" lc-count))
+
+                                       container-config (:container-config config)
+                                       id (:id config)
+                                       foreign-local-state-ids (:foreign-local-state-ids config)
+                                       state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} (:reactions config))
+                                       handle (mk-handle parent-handle ctx hook config)
 
 
                                        ;handle foreign states first - because they are passed to local-state-fn
@@ -240,7 +253,7 @@
                                        _ (swap! component-states-atom assoc id {:handle         handle
                                                                                 :local-state    local-state
                                                                                 :foreign-states foreign-states})
-                                       render (:render ui-container)]
+                                       render (:render container-config)]
 
                                    (if-not render
                                      [:div (str "No render: " hook ctx)]
@@ -442,19 +455,9 @@
     (:local-state *current-container*)))
 
 (defn fs [& ks]
-  (println "FS" (:foreign-states *current-container*))
   (if (seq ks)
     (get-in (:foreign-states *current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
     (:foreign-states *current-container*)))
-
-;; TODO - support direct calls instead of lazy hiccup
-(defn ui [element {:keys [rc_handle id] :as opts} & children]
-  #_(into [element (-> opts
-                       bind-events
-                       (merge (when id {:id (element-id rc_handle id)}))
-
-                       ;:events :rc_handle :rc_local-state :rc_foreign-state is set during decoration when rendering previous container
-                       (dissoc :events :rc_handle :rc_local-state :rc_foreign-state))] (vec children)))
 
 
 ;; TODO - support direct calls instead of lazy hiccup

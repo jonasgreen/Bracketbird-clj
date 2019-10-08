@@ -4,7 +4,7 @@
             [airboss.core :as airboss]
             [goog.events :as events]
             [goog.dom :as dom-helper]
-
+            [bracketbird.style :as styles]
             [bracketbird.state :as state]
             [bracketbird.system :as system]
             [bracketbird.config :as config]
@@ -36,8 +36,8 @@
   (r/render [rc/container {} :ui-root] (js/document.getElementById "system")))
 
 (defn setup-styles []
-  (rs/setup bracketbird.style/styles)
-  (swap! state/state assoc :styles bracketbird.style/styles))
+  (rs/setup styles/styles)
+  (swap! state/state assoc :styles styles/styles))
 
 (defn setup-recontain []
   (swap! state/state assoc :rc-config
@@ -50,11 +50,10 @@
 
 (defn- reload-ui []
   (setup-styles)
-  (r/unmount-component-at-node (dom-helper/getElement "system"))
   (setup-recontain)
   (let [start (.getTime (js/Date.))]
     (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (mount-reagent)))
+    (rc/force-render-all)))
 
 (defn- styles []
   (let [styles @(reaction (get-in @state/state [:styles]))]
@@ -89,7 +88,8 @@
          :window-height (.-innerHeight js/window)
          :window-width (.-innerWidth js/window))
 
-  (events/listen js/window "resize" (fn [e] (swap! state/state update :system assoc
+  (events/listen js/window "resize" (fn [e] (rc/force-render-all)
+                                      #_(swap! state/state update :system assoc
                                                    :window-height (.-innerHeight (.-target e))
                                                    :window-width (.-innerWidth (.-target e)))))
 

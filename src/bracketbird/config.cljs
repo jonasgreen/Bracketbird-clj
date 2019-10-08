@@ -1,4 +1,5 @@
 (ns bracketbird.config
+  (:require-macros [reagent.ratom :refer [reaction]])
   (:require [recontain.core :as rc]
             [clojure.string :as string]
             [bracketbird.ui-services :as ui-services]
@@ -122,7 +123,6 @@
                                                             (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto})))
 
                          [:menu-item :on-click]   (fn [h _]
-                                                    (println "current item" (rc/ls))
                                                     (rc/dispatch h :select-item (rc/ls :current/item)))
 
 
