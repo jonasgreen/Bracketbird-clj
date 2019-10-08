@@ -12,6 +12,8 @@
              ; layout
              :layout-unit       40
 
+             :seeding-width     30
+
              :app-padding       [* 2 :layout-unit]
 
              :page-padding      [:layout-unit]

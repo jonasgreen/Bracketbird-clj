@@ -220,7 +220,7 @@
                                                                       :border-radius 8})))
 
                   [:space :style]                   (fn [_] {:width [:page-padding]})
-                  [:seeding :style]                 (fn [_] {:display :flex :align-items :center :width 30 :opacity 0.5 :font-size 10})
+                  [:seeding :style]                 (fn [_] {:display :flex :align-items :center :width [:seeding-width] :opacity 0.5 :font-size 10})
 
                   [:team-name :style]               (fn [_] {:border    :none
                                                              :padding   0
@@ -273,7 +273,7 @@
 
 
 (def ui-enter-team-input {:hook                         :ui-enter-team-input
-
+                          :subscribe                    [:hook/teams-order]
                           :render                       (fn [_]
                                                           [::row
                                                            [::input {:placeholder "Enter team"
@@ -285,7 +285,7 @@
                                                            [::button {:class  "primaryButton"
                                                                       :events [:key :click]} "Add Team"]])
 
-                          [:row :style]                 (fn [_] {:padding-left [+ :app-padding :page-padding]
+                          [:row :style]                 (fn [_] {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams-order)) :seeding-width)]
                                                                  :display      :flex
                                                                  :min-height   [:app-padding]
                                                                  :align-items  :center})
@@ -297,6 +297,7 @@
                           :did-mount                    (fn [h] (rc/dispatch h :focus))
 
                           :local-state                  (fn [_] {:input-delete-on-backspace? true})
+
                           :create-team                  (fn [{:keys [ctx] :as h}]
                                                           (ui-services/dispatch-event
                                                             {:event-type     [:team :create]
