@@ -8,7 +8,6 @@
             [bracketbird.util :as ut]
             [bracketbird.dom :as d]))
 
-
 (defn- add-path [ctx hook & hks]
   (->> (conj hks hook)
        (reduce (fn [m h] (assoc m h (state/path h ctx))) {})))
@@ -151,7 +150,7 @@
                                                         (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]})))
 
                    :scroll-to-bottom     (fn [h] (-> h
-                                                     (rc/get-element :table)
+                                                     (rc/get-dom-element :table)
                                                      (ut/scroll-elm-to-bottom!)))
 
                    :focus-last-team      (fn [{:keys [ctx]}]
@@ -240,7 +239,7 @@
                                                                           (if team-to-focus
                                                                             (rc/focus h :ui-team-row :team-id team-to-focus)
                                                                             (rc/focus h :ui-enter-team-input)))})))
-                  :focus                            (fn [h] (-> h (rc/get-element :team-name) (.focus)))})
+                  :focus                            (fn [h] (-> h (rc/get-dom-element :team-name) (.focus)))})
 
 (def ui-enter-team-input {:hook                         :ui-enter-team-input
                           :ctx                          [:application-id :tournament-id]
@@ -294,7 +293,7 @@
                                                              :post-render    (fn [_]
                                                                                (-> (rc/get-handle ctx :ui-teams-tab)
                                                                                    (rc/dispatch :scroll-to-bottom)))}))
-                          :focus                        (fn [h] (-> h (rc/get-element :input) (.focus)))})
+                          :focus                        (fn [h] (-> h (rc/get-dom-element :input) (.focus)))})
 
 (def ui-settings-tab {:hook   :ui-settings-tab
                       :ctx    [:application-id :tournament-id]
