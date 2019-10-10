@@ -3,7 +3,7 @@
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [goog.dom :as dom]
             [reagent.core :as r]
-            [recontain.setup :as s]
+            [clojure.data :as data]
             [clojure.string :as string]
             [bracketbird.dom :as d]
             [bracketbird.util :as ut]
@@ -12,36 +12,31 @@
 
 (defonce component-states-atom (atom {}))
 (defonce config-atom (atom {}))
-(defonce rerender-atom (r/atom 0))
+(defonce container-configurations (atom {}))
 
 (def ^:dynamic *current-container* nil)
 (def ^:dynamic *passed-values* nil)
 
 
 
-(declare container bind-events element-id)
-
+(declare container bind-events element-id mk-id)
 
 (defn setup [config]
   (reset! component-states-atom {})
-  (reset! config-atom (s/resolve-config config))
+  (reset! config-atom (assoc config :anonymous-count 0))
+  (reset! container-configurations (reduce (fn [m v] (assoc m (:hook v) v)) {} (:containers config)))
   @config-atom)
-
-(defn- get-state-atom [] (:state-atom @config-atom))
 
 (defn- debug [f]
   (when (:debug? @config-atom) (f)))
 
 (defn- get-hook-value [hook]
-  (let [hook-value (get-in @config-atom [:hooks hook])]
+  (let [hook-value (get @container-configurations hook)]
     (when-not hook-value
       (do
         (throw (js/Error. (str "Unable to find mapping for hook: " hook " in config")))))
 
     hook-value))
-
-(defn- ui-hook? [hook]
-  (s/ui-hook? (get-hook-value hook)))
 
 (defn- dissoc-path [state path]
   (if (= 1 (count path))
@@ -61,50 +56,54 @@
     (when-not (clojure.set/subset? rq-ctx given-ctx-set)
       (throw (js/Error. (str "Missing context for hook " hook ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
 
-(defn- validate-layout [parent-handle hook])
+(defn- next-anonymous-hook []
+  (keyword (->> (swap! config-atom update-in [:anonymous-count] inc)
+                :anonymous-count
+                (str "rc-"))))
 
-(defn- resolve-path-from-ctx [hook given-ctx]
-  (let [{:keys [path ctx]} (get-hook-value hook)]
-    (reduce (fn [v p]
-              (if (set? p)
-                (if-let [ctx-value (get given-ctx (first p))]
-                  (conj v ctx-value)
-                  (throw (js/Error. (str "Missing context " p " for hook " hook ". Given ctx: " given-ctx ". Required ctx: " ctx))))
-                (conj v p)))
-            []
-            path)))
+(defn- ensure-container-configuration! [c optional-value]
+  (cond
+    (keyword? c)
+    (do (when-not (get @container-configurations c)
+          (throw (js/Error. (str "No container configuration found for " c ". Either add configuration or pass configuration to function instead."))))
+        c)
 
-(defn hook-path [hook ctx]
-  (validate-ctx hook ctx)
-  (let [p (resolve-path-from-ctx hook ctx)]
-    (if (ui-hook? hook)
-      (conj p :_local-state)
-      p)))
+    (map? c)
+    (let [hook (or (:hook c) (next-anonymous-hook))]
+      (if-not (get @container-configurations hook)
+        (if-not (:render c)
+          (throw (js/Error. (str "Container configuration does not contain a render function.")))
+          (do
+            (swap! container-configurations assoc hook (assoc c :hook hook))
+            hook))
+        hook))
 
+    (fn? c)
+    (let [hook (next-anonymous-hook)]
+      (swap! container-configurations assoc hook {:hook   hook
+                                                  :render (fn [_] (if optional-value (c optional-value) (c)))})
+      hook)
 
-(defn- decorate-container [form h ls fs]
+    :else (throw (js/Error. (str "Wrong parameters passed to recontain.core/container " c)))))
+
+(defn- decorate-container [form h]
   (let [container-fn (first form)
         additional-ctx (second form)
-        hook (nth form 2)]
+        hook (ensure-container-configuration! (nth form 2) (when (< 3 (count form)) (nth form 3)))]
 
-    (let [hook-key (if (fn? hook)
-                     (get (:render-to-hook @config-atom) hook)
-                     hook)]
+    (when-not (map? additional-ctx)
+      (throw (js/Error. (str "Rendering " (:hook h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
+    (when-not hook
+      (throw (js/Error. (str "Render function of " (:hook h) " contains invalid recontain/container structure: Second element should be either a keyword referencing the container in config or the render function of the container. Hiccup: " form))))
 
-      (when-not (map? additional-ctx)
-        (throw (js/Error. (str "Rendering " (:hook h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
-      (when-not hook
-        (throw (js/Error. (str "Render function of " (:hook h) " contains invalid recontain/container structure: Second element should be either a keyword referencing the container in config or the render function of the container. Hiccup: " form))))
-
-      (let [ctx (merge additional-ctx (:ctx h))]
-        (try
-          (validate-ctx hook-key ctx)
-          (validate-layout h hook-key)
-          (catch :default e (throw (js/Error (str "Error while rendering " (:hook h) ". " e)))))
+    (let [ctx (merge additional-ctx (:ctx h))]
+      (try
+        (validate-ctx hook ctx)
+        (catch :default e (throw (js/Error (str "Error while rendering " (:hook h) ". " e)))))
 
 
-        (-> (into [container-fn (assoc ctx :rc_handle h) hook-key] (subvec form 3))
-            (with-meta (meta form)))))))
+      (-> (into [container-fn (assoc ctx :rc_parent-container-id (:id h)) hook] (subvec form 3))
+          (with-meta (meta form))))))
 
 (defn do-bind-options [h ls fs {:keys [id] :as opts}]
   (let [style-fn (get (get-hook-value (:hook h)) [id :style])
@@ -123,7 +122,6 @@
         (bind-events id h ls passed-values)
         (assoc :style (rs/style (or style-config (:style opts) {}))))))
 
-
 (defn bind-options [opts]
   (let [{:keys [handle local-state foreign-state]} *current-container*]
     (do-bind-options handle local-state foreign-state (if (keyword? opts) {:id opts} opts))))
@@ -131,7 +129,7 @@
 (defn- decorate-hiccup-result [form h ls fs]
   (cond
     (and (vector? form) (= (first form) container))
-    (decorate-container form h ls fs)
+    (decorate-container form h)
 
     ;;vector of special form with ::keyword
     (and (vector? form) (keyword? (first form)) (namespace (first form)))
@@ -160,77 +158,84 @@
     :else form))
 
 
-
-(defn force-render-all []
-  (swap! rerender-atom inc))
-
-(defn- resolve-container-config [ctx hook]
+(defn- resolve-container-instance [parent-handle ctx hook]
   (let [state-atom (get @config-atom :state-atom)
-        config (get-in @config-atom [:hooks hook])
+        cfg (get @container-configurations hook)
 
-        all-hooks (into [hook] (:subscribe config))
-        all-paths (reduce (fn [m h] (assoc m h (hook-path h ctx))) {} all-hooks)
+        ;create path from parent-path, ctx and hook. Use diff in ctx
+        path (let [context-p (->> (first (data/diff ctx (:ctx parent-handle))) keys sort (map ctx) (reduce str))
+                   p (-> (into [] (drop-last (:path parent-handle)))
+                         (into [hook context-p :_local-state]))]
+               (->> p
+                    (remove nil?)
+                    (remove string/blank?)
+                    vec))
 
-        foreign-local-state-ids (->> (dissoc all-paths hook)
-                                     keys
-                                     (filter ui-hook?)
-                                     (select-keys all-paths)
-                                     (reduce-kv (fn [m k v] (assoc m k (hash v))) {}))
+        ;id of hook instance
+        id (mk-id ctx hook)
 
-        id (hash (get all-paths hook))
-        path (get all-paths hook)]
+        foreign-state-paths (if-let [f (:foreign-state cfg)]
+                              (f ctx)
+                              {})
 
-    {:load-config-count       @rerender-atom
-     :container-config        config
-     :id                      id
-     :path                    path
-     :all-hooks               all-hooks
-     :all-paths               all-paths
-     :reactions               (reduce (fn [m h] (assoc m h (reaction (get-in @state-atom (h all-paths) nil)))) {} all-hooks)
-     :foreign-local-state-ids foreign-local-state-ids
-     }))
+        foreign-local-state-ids (reduce-kv (fn [m k v] (when (keyword? v) (assoc m k (mk-id ctx v))))
+                                           {}
+                                           foreign-state-paths)
 
-(defn- mk-handle [parent-handle ctx hook {:keys [id path all-paths]}]
-  {:parent-handle parent-handle
-   :id            id
-   :ctx           ctx
-   :path          path
-   :hook          hook
-   :foreign-paths (-> all-paths
-                      (dissoc hook)
-                      vals
-                      vec)})
+        foreign-local-state-paths (reduce-kv (fn [m k v] (assoc m k (get-in @component-states-atom [v :path])))
+                                             {}
+                                             foreign-local-state-ids)
 
-(defn- gui [parent-handle ctx hook _]
-  (let [cfg (reaction (resolve-container-config ctx hook))
-        org-handle (mk-handle parent-handle ctx hook @cfg)]
+        all-state-paths (-> foreign-state-paths
+                            (merge foreign-local-state-paths)
+                            (assoc hook path))]
+
+
+
+    (merge cfg {:parent-handle           parent-handle
+                :id                      id
+                :path                    path
+                :all-paths               all-state-paths
+                :reactions               (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom v nil)))) {} all-state-paths)
+                :foreign-local-state-ids foreign-local-state-ids})))
+
+(defn- mk-handle [parent-handle ctx {:keys [id path hook all-paths]}]
+  {:parent-handle-id (:id parent-handle)
+   :id               id
+   :ctx              ctx
+   :path             path
+   :hook             hook
+   :foreign-paths    (-> all-paths
+                         (dissoc hook)
+                         vals
+                         vec)})
+
+(defn- gui [parent-handle ctx container-hook _]
+  (let [cfg (reaction (resolve-container-instance parent-handle ctx container-hook))
+        org-handle (mk-handle parent-handle ctx @cfg)]
 
     (r/create-class
       {:component-did-mount    (fn [_]
-                                 ;;todo wrap in try catch
-                                 (debug #(println "DID MOUNT - " hook))
-                                 (when-let [f (:did-mount (:container-config @cfg))]
-                                   (f org-handle)))
+                                 (let [{:keys [hook did-mount]} @cfg]
+                                   ;;todo wrap in try catch
+                                   (debug #(println "DID MOUNT - " hook))
+                                   (when did-mount (did-mount org-handle))))
 
-       :component-will-unmount (fn [this]
-                                 (debug #(println "WILL UNMOUNT - " hook))
-                                 (when-let [f (:will-unmount (:container-config @cfg))]
-                                   (f org-handle))
-                                 (when (:clear-container-state-on-unmount? @config-atom)
-                                   (clear-container-state org-handle)))
+       :component-will-unmount (fn [_]
+                                 (let [{:keys [hook will-mount]} @cfg]
+                                   (debug #(println "WILL UNMOUNT - " hook))
+                                   (when will-mount (will-mount org-handle))
+                                   (when (:clear-container-state-on-unmount? @config-atom)
+                                     (clear-container-state org-handle))))
 
        :reagent-render         (fn [_ _ _ opts]
-                                 (debug #(println "RENDER - " hook))
-                                 (let [config @cfg
-                                       lc-count (:load-config-count config)
-                                       _ (debug #(println "RERENDER-COUNT" lc-count))
+                                 (let [{:keys [hook] :as config} @cfg
+                                       _ (debug #(println "RENDER - " hook))
 
-                                       container-config (:container-config config)
                                        id (:id config)
                                        foreign-local-state-ids (:foreign-local-state-ids config)
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} (:reactions config))
-                                       handle (mk-handle parent-handle ctx hook config)
-
+                                       handle (mk-handle parent-handle ctx config)
 
                                        ;handle foreign states first - because they are passed to local-state-fn
 
@@ -246,17 +251,17 @@
 
                                        local-state (if-let [ls (get state-map hook)]
                                                      ls
-                                                     (if-let [ls-fn (get-in @config-atom [:hooks hook :local-state])]
+                                                     (if-let [ls-fn (:local-state (get @container-configurations hook))]
                                                        (ls-fn foreign-states)
                                                        {}))
 
                                        _ (swap! component-states-atom assoc id {:handle         handle
                                                                                 :local-state    local-state
                                                                                 :foreign-states foreign-states})
-                                       render (:render container-config)]
+                                       render (:render config)]
 
                                    (if-not render
-                                     [:div (str "No render: " hook ctx)]
+                                     [:div (str "No render: " config)]
 
                                      ;instead of reagent calling render function - we do it
                                      (let [result (binding [*current-container* {:handle         handle
@@ -271,18 +276,19 @@
 
 
 (defn mk-id [ctx hook]
-  (hash (hook-path hook ctx)))
+  (let [ctx-id (->> (get @container-configurations hook)
+                    :ctx
+                    (select-keys ctx)
+                    hash)]
+    (->> (str hook "@" ctx-id))))
+
 
 ;;;; API
 
 (defn element-id [handle sub-id] (str (:id handle) "#" (if (keyword? sub-id) (name sub-id) sub-id)))
 
 
-(defn- get-handle-data
-  ([ctx hook]
-   (get-handle-data (mk-id ctx hook)))
-  ([id]
-   (get @component-states-atom id)))
+(defn- get-handle-data [id] (get @component-states-atom id))
 
 
 (defn update [state {:keys [id path]} & args]
@@ -301,8 +307,8 @@
 
 (defn- do-dispatch [{:keys [handle dispatch-f args silently-fail?]}]
   (let [{:keys [hook id]} handle
-        f (-> @config-atom
-              (get-in [:hooks hook])
+        f (-> @container-configurations
+              (get hook)
               (get dispatch-f))]
 
     (if f
@@ -327,20 +333,7 @@
 
 (defn get-handle [ctx hook]
   (validate-ctx hook ctx)
-  (:handle (get-handle-data ctx hook)))
-
-(defn get-local-state [id]
-  (-> id get-handle-data :local-state))
-
-(defn get-data
-  ([handle hook]
-   (get-data handle {} hook))
-  ([handle extra-ctx hook]
-   (get-in @(get-state-atom) (hook-path hook (merge (:ctx handle) extra-ctx)))))
-
-(defn ctx
-  ([handle] (:ctx handle))
-  ([handle extra-ctx] (merge (:ctx handle) extra-ctx)))
+  (:handle (get-handle-data (mk-id ctx hook))))
 
 (defn has-changed [value org-value]
   (when value
@@ -444,11 +437,6 @@
                  opts))
     opts))
 
-
-
-
-
-
 (defn ls [& ks]
   (if (seq ks)
     (get-in (:local-state *current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
@@ -460,11 +448,17 @@
     (:foreign-states *current-container*)))
 
 
-;; TODO - support direct calls instead of lazy hiccup
-(defn container
-  ([ctx hook]
-   (container ctx hook {}))
 
-  ([ctx hook optional-value]
-   ;rc_handle is set during decoration when rendering previous container
-   [gui (:rc_handle ctx) (dissoc ctx :rc_handle) hook optional-value]))
+
+(defn container
+  ([ctx c]
+   (container ctx c {}))
+
+  ([ctx c optional-value]
+   (let [parent-handle-id (:rc_parent-container-id ctx)
+         parent-handle (:handle (get @component-states-atom parent-handle-id))
+
+         ;:rc_parent-container-id is set during decoration when rendering previous container
+         new-ctx (-> (:ctx parent-handle) (merge ctx) (dissoc :rc_parent-container-id))]
+
+     [gui parent-handle new-ctx c optional-value])))

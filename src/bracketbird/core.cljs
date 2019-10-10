@@ -3,7 +3,6 @@
   (:require [reagent.core :as r]
             [airboss.core :as airboss]
             [goog.events :as events]
-            [goog.dom :as dom-helper]
             [bracketbird.style :as styles]
             [bracketbird.state :as state]
             [bracketbird.system :as system]
@@ -43,8 +42,17 @@
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
-                    :data-hooks                        config/hooks
-                    :ui-layout                         config/ui-layout
+                    :containers                        [config/ui-root
+                                                        config/ui-application-page
+                                                        config/ui-front-page
+                                                        config/ui-tournament-page
+                                                        config/ui-teams-tab
+                                                        config/ui-team-row
+                                                        config/ui-enter-team-input
+                                                        config/ui-settings-tab
+                                                        config/ui-matches-tab
+                                                        config/ui-ranking-tab]
+
                     :debug?                            (system/debug?)
                     :component-hiccup-decorator        (when (system/debug?) component-hiccup-decorator)})))
 
@@ -53,13 +61,8 @@
   (setup-recontain)
   (let [start (.getTime (js/Date.))]
     (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (rc/force-render-all)))
-
-(defn- styles []
-  (let [styles @(reaction (get-in @state/state [:styles]))]
-    (rs/setup styles)
-    (rc/force-render-all)
-    styles))
+    (r/force-update-all)
+    #_(rc/force-render-all)))
 
 (defn main []
   (enable-console-print!)
@@ -82,16 +85,15 @@
   (airboss/load-state-viewer state/state)
   (airboss/load-design-viewer)
 
-  (r/track! styles)
-
   (swap! state/state update :system assoc
          :window-height (.-innerHeight js/window)
          :window-width (.-innerWidth js/window))
 
-  (events/listen js/window "resize" (fn [e] (rc/force-render-all)
+  (events/listen js/window "resize" (fn [e]
+                                      #_(rc/force-render-all)
                                       #_(swap! state/state update :system assoc
-                                                   :window-height (.-innerHeight (.-target e))
-                                                   :window-width (.-innerWidth (.-target e)))))
+                                               :window-height (.-innerHeight (.-target e))
+                                               :window-width (.-innerWidth (.-target e)))))
 
 
   (events/listen js/window "keydown" (fn [e] (when (d/key-and-modifier? :D d/alt-modifier? e)
@@ -101,7 +103,7 @@
                                                (swap! state/state update-in [:system :debug?] not))))
   )
 
-
+;(println "asdf")
 
 
 (defn ^:after-load on-js-reload []

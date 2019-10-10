@@ -4,60 +4,46 @@
             [clojure.string :as string]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.system :as system]
+            [bracketbird.state :as state]
             [bracketbird.util :as ut]
             [bracketbird.dom :as d]))
 
-(def hooks {:hook/system              [:system]
-            :hook/applications        [:applications]
-            :hook/application         [:applications #{:application-id}]
-            :hook/tournament          [:hook/application :tournaments #{:tournament-id}]
 
-            :hook/teams               [:hook/tournament :teams]
-            :hook/teams-order         [:hook/tournament :teams-order]
-            :hook/team                [:hook/tournament :teams #{:team-id}]
+(defn- add-path [ctx hook & hks]
+  (->> (conj hks hook)
+       (reduce (fn [m h] (assoc m h (state/path h ctx))) {})))
 
-            :hook/stages              [:hook/tournament :stages]
-            :hook/stages-order        [:hook/tournament :stages-order]
-            :hook/stage               [:hook/tournament :stages #{:stage-id}]
+(def ui-root {:hook          :ui-root
+              :foreign-state (fn [ctx]
+                               (add-path ctx :hook/system))
 
-            ;notice these are matches in a given stage
-            :hook/stage-matches       [:hook/stage :matches]
-            :hook/stage-matches-order [:hook/stage :matches :matches-order]
-            :hook/stage-match         [:hook/stage :matches #{:match-id}]
+              :render        (fn [_]
+                               (let [app-id (rc/fs [:hook/system :active-application])]
+                                 [:div
+                                  (if app-id
+                                    [rc/container {:application-id app-id} :ui-application-page]
+                                    [:div "No application"])]))})
 
-            :hook/groups              [:hook/stage :groups]
-            :hook/groups-order        [:hook/stage :groups-order]
-            :hook/group               [:hook/stage :groups #{:group-id}]
+(def ui-application-page {:hook          :ui-application-page
+                          :ctx           [:application-id]
+                          :local-state   (fn [_] {:active-page :ui-front-page})
+                          :foreign-state (fn [ctx] (add-path ctx :hook/application))
 
-            :hook/group-matches       [:hook/group :matches]
-            :hook/group-matches-order [:hook/group :matches :matches-order]
-            :hook/group-match         [:hook/group :matches #{:match-id}]})
+                          :render        (fn [_]
+                                           (condp = (rc/ls :active-page)
+                                             :ui-front-page ^{:key 1} [rc/container {} :ui-front-page]
+                                             :ui-tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
+                                                                             [rc/container {:tournament-id tournament-id} :ui-tournament-page])
+                                             [:div "page " (rc/ls :active-page) " not supported"]))})
 
 
-;UI - Containers
-
-(def ui-root {:hook      :ui-root
-              :render    (fn [_]
-                           (let [app-id (rc/fs [:hook/system :active-application])]
-                             [:div
-                              (if app-id
-                                [rc/container {:application-id app-id} :ui-application-page]
-                                [:div "No application"])]))
-
-              :subscribe [:hook/system]})
-
-(def ui-application-page {:hook        :ui-application-page
-                          :local-state (fn [_] {:active-page :ui-front-page})
-                          :subscribe   [:hook/application]
-                          :render      (fn [_]
-                                         (condp = (rc/ls :active-page)
-                                           :ui-front-page ^{:key 1} [rc/container {} :ui-front-page]
-                                           :ui-tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
-                                                                           [rc/container {:tournament-id tournament-id} :ui-tournament-page])
-                                           [:div "page " (rc/ls :active-page) " not supported"]))})
-
+(defn test-a []
+  [::row {:events [:hover]
+          :style {:background (if (rc/ls :row-hover?) :red :blue)}} "TEST"])
 
 (def ui-front-page {:hook              :ui-front-page
+                    :ctx               [:application-id]
+
                     :render            (fn [h]
                                          [:div
                                           [:div {:style {:display :flex :justify-content :center :padding-top 30}}
@@ -74,6 +60,7 @@
                                                      :on-click (fn [_] (rc/dispatch h :create-tournament))}
 
                                             "Create a tournament"]
+                                           [rc/container {} test-a]
                                            [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
                     :create-tournament (fn [h]
@@ -90,6 +77,16 @@
                                               :post-render    (fn [_])})))})
 
 (def ui-tournament-page {:hook                    :ui-tournament-page
+                         :ctx                     [:application-id :tournament-id]
+                         :local-state             (fn [_] {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
+                                                                               :settings {:header "SETTINGS" :content :ui-settings-tab}
+                                                                               :matches  {:header "MATCHES" :content :ui-matches-tab}
+                                                                               :ranking  {:header "SCORES" :content :ui-ranking-tab}}
+
+                                                           :order             [:teams :settings :matches :ranking]
+                                                           :selection-type    :single
+                                                           :selected          :teams
+                                                           :previous-selected :teams})
 
                          :render                  (fn [_]
                                                     (let [{:keys [items order]} (rc/ls)]
@@ -130,22 +127,12 @@
                                                     (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
                                                                              {:display :none})))
 
-
-
-                         :local-state             (fn [_] {:items             {:teams    {:header "TEAMS" :content :ui-teams-tab}
-                                                                               :settings {:header "SETTINGS" :content :ui-settings-tab}
-                                                                               :matches  {:header "MATCHES" :content :ui-matches-tab}
-                                                                               :ranking  {:header "SCORES" :content :ui-ranking-tab}}
-
-                                                           :order             [:teams :settings :matches :ranking]
-                                                           :selection-type    :single
-                                                           :selected          :teams
-                                                           :previous-selected :teams})
-
                          :select-item             (fn [h select]
                                                     (rc/put! h assoc :previous-selected (rc/ls :selected) :selected select))})
 
 (def ui-teams-tab {:hook                 :ui-teams-tab
+                   :ctx                  [:application-id :tournament-id]
+                   :foreign-state        (fn [ctx] (add-path ctx :hook/teams-order :hook/teams))
 
                    :render               (fn [_]
                                            (let [{:keys [hook/teams-order hook/teams]} (rc/fs)]
@@ -168,8 +155,6 @@
                                                          :overflow-y     :auto}
                                                         (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]})))
 
-
-                   :subscribe            [:hook/teams-order :hook/teams]
                    :scroll-to-bottom     (fn [h] (-> h
                                                      (rc/get-element :table)
                                                      (ut/scroll-elm-to-bottom!)))
@@ -182,11 +167,10 @@
 
 
 (def ui-team-row {:hook                             :ui-team-row
-                  :subscribe                        [:hook/team]
-
+                  :ctx                              [:application-id :tournament-id :team-id]
+                  :foreign-state                    (fn [ctx] (add-path ctx :hook/team))
                   :local-state                      (fn [{:keys [hook/team]}]
                                                       {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
-
                   :render                           (fn [_ index]
                                                       [::row {:events [:hover]}
                                                        [::icons {:events [:hover]}
@@ -197,7 +181,6 @@
                                                                      :type   :text
                                                                      :value  (or (rc/ls :team-name-value) (rc/fs [:hook/team :team-name]))
                                                                      :events [:key :focus :change]}]])
-
                   [:row :style]                     (fn [_] {:display :flex :align-items :center :min-height [:row-height]})
                   [:icons :style]                   (fn [_] {:display         :flex
                                                              :align-items     :center
@@ -205,8 +188,6 @@
                                                              :justify-content :center
                                                              :cursor          (if (rc/ls :icons-hover?) :pointer :normal)
                                                              :width           [:app-padding]})
-
-
                   [:delete-icon :on-click]          (fn [h _] (rc/dispatch h :delete-team))
                   [:delete-icon :style]             (fn [_] (merge {:font-size 8 :opacity 0.5 :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
                                                                    (when-not (rc/ls :row-hover?)
@@ -218,10 +199,8 @@
                                                                       :color         :white
                                                                       :font-size     10
                                                                       :border-radius 8})))
-
                   [:space :style]                   (fn [_] {:width [:page-padding]})
                   [:seeding :style]                 (fn [_] {:display :flex :align-items :center :width [:seeding-width] :opacity 0.5 :font-size 10})
-
                   [:team-name :style]               (fn [_] {:border    :none
                                                              :padding   0
                                                              :min-width 200})
@@ -245,7 +224,6 @@
                                                                                                  (if team-to-focus
                                                                                                    (rc/focus h :ui-team-row :team-id team-to-focus)
                                                                                                    (rc/focus h :ui-enter-team-input))))}))
-
                   [:team-name :delete-on-backspace] (fn [h _] (rc/dispatch h :delete-team))
                   [:team-name :on-blur]             (fn [h _] (rc/dispatch h :update-team))
 
@@ -255,7 +233,6 @@
                                                           {:event-type [:team :update]
                                                            :ctx        (:ctx h)
                                                            :content    {:team-name (rc/ls :team-name-value)}})))
-
                   :delete-team                      (fn [h]
                                                       (let [team-id (rc/fs [:hook/team :team-id])
                                                             team-to-focus (or
@@ -270,10 +247,11 @@
                                                                             (rc/focus h :ui-enter-team-input)))})))
                   :focus                            (fn [h] (-> h (rc/get-element :team-name) (.focus)))})
 
-
-
 (def ui-enter-team-input {:hook                         :ui-enter-team-input
-                          :subscribe                    [:hook/teams-order]
+                          :ctx                          [:application-id :tournament-id]
+                          :local-state                  (fn [_] {:input-delete-on-backspace? true})
+                          :foreign-state                (fn [ctx] (add-path ctx :hook/teams))
+
                           :render                       (fn [_]
                                                           [::row
                                                            [::input {:placeholder "Enter team"
@@ -281,41 +259,19 @@
                                                                      :type        :text
                                                                      :elm         :input
                                                                      :value       (rc/ls :input-value)}]
-
                                                            [::button {:class  "primaryButton"
                                                                       :events [:key :click]} "Add Team"]])
-
-                          [:row :style]                 (fn [_] {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams-order)) :seeding-width)]
+                          [:row :style]                 (fn [_] {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
                                                                  :display      :flex
                                                                  :min-height   [:app-padding]
                                                                  :align-items  :center})
-
                           [:input :style]               (fn [_] {:border  :none
                                                                  :padding 0})
-
-
-                          :did-mount                    (fn [h] (rc/dispatch h :focus))
-
-                          :local-state                  (fn [_] {:input-delete-on-backspace? true})
-
-                          :create-team                  (fn [{:keys [ctx] :as h}]
-                                                          (ui-services/dispatch-event
-                                                            {:event-type     [:team :create]
-                                                             :ctx            ctx
-                                                             :content        {:team-name (rc/ls :input-value)}
-                                                             :state-coeffect #(-> % (rc/update h dissoc :input-value))
-                                                             :post-render    (fn [_]
-                                                                               (-> (rc/get-handle ctx :ui-teams-tab)
-                                                                                   (rc/dispatch :scroll-to-bottom)))}))
-
-                          :focus                        (fn [h] (-> h (rc/get-element :input) (.focus)))
-
                           [:input :on-key-down]         (fn [h e]
                                                           (d/handle-key e {[:ENTER] (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                                                            [:UP]    (fn [_] (-> (:ctx h)
                                                                                                 (rc/get-handle :ui-teams-tab)
                                                                                                 (rc/dispatch :focus-last-team)))}))
-
                           [:input :delete-on-backspace] (fn [h _] (when-let [{:keys [team-name team-id]} (ui-services/last-team h)]
                                                                     (when (string/blank? team-name)
                                                                       (ui-services/dispatch-event
@@ -328,29 +284,31 @@
                           [:button :on-click]           (fn [h _]
                                                           (rc/dispatch h :create-team)
                                                           (rc/dispatch h :focus))
-
                           [:button :on-key-down]        (fn [h e]
                                                           (d/handle-key e {[:ENTER] (fn [_]
                                                                                       (rc/dispatch h :create-team)
                                                                                       (rc/dispatch h :focus)
-                                                                                      [:STOP-PROPAGATION :PREVENT-DEFAULT])}))})
+                                                                                      [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
+                          :did-mount                    (fn [h] (rc/dispatch h :focus))
+                          :create-team                  (fn [{:keys [ctx] :as h}]
+                                                          (ui-services/dispatch-event
+                                                            {:event-type     [:team :create]
+                                                             :ctx            ctx
+                                                             :content        {:team-name (rc/ls :input-value)}
+                                                             :state-coeffect #(-> % (rc/update h dissoc :input-value))
+                                                             :post-render    (fn [_]
+                                                                               (-> (rc/get-handle ctx :ui-teams-tab)
+                                                                                   (rc/dispatch :scroll-to-bottom)))}))
+                          :focus                        (fn [h] (-> h (rc/get-element :input) (.focus)))})
 
 (def ui-settings-tab {:hook   :ui-settings-tab
+                      :ctx    [:application-id :tournament-id]
                       :render (fn [_] [:div "settings tab"])})
 
 (def ui-matches-tab {:hook   :ui-matches-tab
+                     :ctx    [:application-id :tournament-id]
                      :render (fn [_] [:div "matches-tab"])})
 
 (def ui-ranking-tab {:hook   :ui-ranking-tab
+                     :ctx    [:application-id :tournament-id]
                      :render (fn [_] [:div "scores-tab"])})
-
-(def ui-layout [ui-root
-                [ui-application-page #{:application-id}
-                 [ui-front-page]
-                 [ui-tournament-page #{:tournament-id}
-                  [ui-teams-tab
-                   [ui-team-row #{:team-id}]
-                   [ui-enter-team-input]]
-                  [ui-settings-tab]
-                  [ui-matches-tab]
-                  [ui-ranking-tab]]]])
