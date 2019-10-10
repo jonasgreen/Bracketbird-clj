@@ -1,5 +1,4 @@
 (ns recontain.core
-  (:refer-clojure :exclude [update])
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [goog.dom :as dom]
             [reagent.core :as r]
@@ -13,11 +12,13 @@
 (defonce component-states-atom (atom {}))
 (defonce config-atom (atom {}))
 (defonce container-configurations (atom {}))
+(defonce reload-configuration-count (r/atom 0))
 
 (def ^:dynamic *current-container* nil)
 (def ^:dynamic *passed-values* nil)
 
-
+(defn reload-configurations []
+  (swap! reload-configuration-count inc))
 
 (declare container bind-events element-id mk-id)
 
@@ -48,6 +49,9 @@
     (swap! component-states-atom dissoc id)
     (swap! (:state-atom @config-atom) dissoc-path (drop-last path))))
 
+(defn force-reload []
+  ()
+  )
 
 (defn- validate-ctx [hook given-ctx]
   (let [rq-ctx (:ctx (get-hook-value hook))
@@ -194,6 +198,7 @@
 
     (merge cfg {:parent-handle           parent-handle
                 :id                      id
+                :reload-conf-count       @reload-configuration-count
                 :path                    path
                 :all-paths               all-state-paths
                 :reactions               (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom v nil)))) {} all-state-paths)
@@ -291,12 +296,12 @@
 (defn- get-handle-data [id] (get @component-states-atom id))
 
 
-(defn update [state {:keys [id path]} & args]
+(defn update! [state {:keys [id path]} & args]
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle-data id))) (rest args)))]
     (update-in state path upd)))
 
 (defn put! [handle & args]
-  (swap! (:state-atom @config-atom) #(apply update % handle args)))
+  (swap! (:state-atom @config-atom) #(apply update! % handle args)))
 
 (defn delete-local-state [handle]
   (let [{:keys [id path]} handle]

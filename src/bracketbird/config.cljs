@@ -37,10 +37,6 @@
                                              [:div "page " (rc/ls :active-page) " not supported"]))})
 
 
-(defn test-a []
-  [::row {:events [:hover]
-          :style {:background (if (rc/ls :row-hover?) :red :blue)}} "TEST"])
-
 (def ui-front-page {:hook              :ui-front-page
                     :ctx               [:application-id]
 
@@ -60,7 +56,6 @@
                                                      :on-click (fn [_] (rc/dispatch h :create-tournament))}
 
                                             "Create a tournament"]
-                                           [rc/container {} test-a]
                                            [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
                     :create-tournament (fn [h]
@@ -70,10 +65,10 @@
                                              {:event-type     [:tournament :create]
                                               :ctx            (assoc ctx :tournament-id tournament-id)
                                               :content        {:tournament-id tournament-id}
-                                              :state-coeffect #(-> (rc/update % (rc/get-handle ctx :ui-application-page)
-                                                                              assoc
-                                                                              :active-page
-                                                                              :ui-tournament-page))
+                                              :state-coeffect #(-> (rc/update! % (rc/get-handle ctx :ui-application-page)
+                                                                               assoc
+                                                                               :active-page
+                                                                               :ui-tournament-page))
                                               :post-render    (fn [_])})))})
 
 (def ui-tournament-page {:hook                    :ui-tournament-page
@@ -295,7 +290,7 @@
                                                             {:event-type     [:team :create]
                                                              :ctx            ctx
                                                              :content        {:team-name (rc/ls :input-value)}
-                                                             :state-coeffect #(-> % (rc/update h dissoc :input-value))
+                                                             :state-coeffect #(-> % (rc/update! h dissoc :input-value))
                                                              :post-render    (fn [_]
                                                                                (-> (rc/get-handle ctx :ui-teams-tab)
                                                                                    (rc/dispatch :scroll-to-bottom)))}))

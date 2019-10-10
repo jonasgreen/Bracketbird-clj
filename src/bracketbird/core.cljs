@@ -61,8 +61,8 @@
   (setup-recontain)
   (let [start (.getTime (js/Date.))]
     (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (r/force-update-all)
-    #_(rc/force-render-all)))
+    ;(r/force-update-all)
+    (rc/reload-configurations)))
 
 (defn main []
   (enable-console-print!)
