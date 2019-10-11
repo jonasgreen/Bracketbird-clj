@@ -55,10 +55,6 @@
 (defn get-data [ctx hook]
   (->> (path hook ctx) (get-in @state)))
 
-#_(defn generate-data-path [hook-value data-hooks]
-    (let [p (:path hook-value)
-          parent-hook-value (get data-hooks (first p))]
-
-      (if parent-hook-value                                 ;; parent ref
-        (into (generate-data-path parent-hook-value data-hooks) (vec (rest p)))
-        p)))
+(defn path-map [ctx hook & hks]
+  (->> (conj hks hook)
+       (reduce (fn [m h] (assoc m h (path h ctx))) {})))

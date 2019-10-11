@@ -6,7 +6,11 @@
             [bracketbird.style :as styles]
             [bracketbird.state :as state]
             [bracketbird.system :as system]
-            [bracketbird.config :as config]
+            [bracketbird.config.application :as application-config]
+            [bracketbird.config.matches-page :as matches-page-config]
+            [bracketbird.config.ranking-page :as ranking-page-config]
+            [bracketbird.config.settings-page :as setting-page-config]
+            [bracketbird.config.teams-page :as teams-page-config]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]
@@ -32,7 +36,7 @@
 
 
 (defn mount-reagent []
-  (r/render [rc/container {} :ui-root] (js/document.getElementById "system")))
+  (r/render [rc/container {} :root] (js/document.getElementById "system")))
 
 (defn setup-styles []
   (rs/setup styles/styles)
@@ -42,16 +46,19 @@
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
-                    :containers                        [config/ui-root
-                                                        config/ui-application-page
-                                                        config/ui-front-page
-                                                        config/ui-tournament-page
-                                                        config/ui-teams-tab
-                                                        config/ui-team-row
-                                                        config/ui-enter-team-input
-                                                        config/ui-settings-tab
-                                                        config/ui-matches-tab
-                                                        config/ui-ranking-tab]
+
+                    :containers                        [application-config/root
+                                                        application-config/application-page
+                                                        application-config/front-page
+                                                        application-config/tournament-page
+
+                                                        teams-page-config/teams-page
+                                                        teams-page-config/team-row
+                                                        teams-page-config/add-team
+
+                                                        setting-page-config/settings-page
+                                                        matches-page-config/matches-page
+                                                        ranking-page-config/ranking-page]
 
                     :debug?                            (system/debug?)
                     :component-hiccup-decorator        (when (system/debug?) component-hiccup-decorator)})))
@@ -100,10 +107,7 @@
                                                (.stopPropagation e)
                                                (.preventDefault e)
                                                (r/after-render reload-ui)
-                                               (swap! state/state update-in [:system :debug?] not))))
-  )
-
-;(println "asdf")
+                                               (swap! state/state update-in [:system :debug?] not)))))
 
 
 (defn ^:after-load on-js-reload []
