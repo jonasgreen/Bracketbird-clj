@@ -5,6 +5,7 @@
             [bracketbird.ui-services :as ui-services]
             [bracketbird.system :as system]
             [bracketbird.state :as state]
+            [restyle.core :as rs]
             [bracketbird.util :as ut]
             [bracketbird.dom :as d]))
 
@@ -95,31 +96,34 @@
                                                             seq)]))
 
 
-                         [:page :style]           (fn [_] {:height         "100vh"
-                                                           :display        :flex
-                                                           :flex-direction :column})
+                         [:page :style]           (fn [_] (rs/style
+                                                            {:height         "100vh"
+                                                             :display        :flex
+                                                             :flex-direction :column}))
 
-                         [:menu :style]           (fn [_] {:font-size      22
-                                                           :display        :flex
-                                                           :align-items    :center
-                                                           :min-height     [:app-padding]
-                                                           :padding-left   [:app-padding]
-                                                           :letter-spacing 1.2
-                                                           :padding-right  [:app-padding]})
+                         [:menu :style]           (fn [_] (rs/style
+                                                            {:font-size      22
+                                                             :display        :flex
+                                                             :align-items    :center
+                                                             :min-height     [:app-padding]
+                                                             :padding-left   [:app-padding]
+                                                             :letter-spacing 1.2
+                                                             :padding-right  [:app-padding]}))
 
-                         [:menu-item :style]      (fn [_] (merge
-                                                            {:margin-right [:layout-unit]
-                                                             :opacity      0.5
-                                                             :cursor       :pointer}
-                                                            (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto})))
+                         [:menu-item :style]      (fn [_] (rs/style
+                                                            (merge
+                                                              {:margin-right [:layout-unit]
+                                                               :opacity      0.5
+                                                               :cursor       :pointer}
+                                                              (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto}))))
 
                          [:menu-item :on-click]   (fn [h _]
                                                     (rc/dispatch h :select-item (rc/ls :current/item)))
 
 
-                         [:content-holder :style] (fn [_]
-                                                    (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
-                                                                             {:display :none})))
+                         [:content-holder :style] (fn [_] (rs/style
+                                                            (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
+                                                                                     {:display :none}))))
 
                          :select-item             (fn [h select]
                                                     (rc/put! h assoc :previous-selected (rc/ls :selected) :selected select))})
@@ -138,16 +142,18 @@
                                               ; input field
                                               [rc/container {} :ui-enter-team-input]]))
 
-                   [:tab-content :style] (fn [_] (merge {:display        :flex
-                                                         :flex-direction :column
-                                                         :height         :100%}
-                                                        (when (< 0 (rc/ls :table-scroll-top)) {:border-top [:border]})))
-                   [:table :style]       (fn [_] (merge {:padding-top    [:layout-unit]
-                                                         :max-height     :100%
-                                                         :min-height     :200px
-                                                         :padding-bottom [:layout-unit]
-                                                         :overflow-y     :auto}
-                                                        (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]})))
+                   [:tab-content :style] (fn [_] (rs/style
+                                                   (merge {:display        :flex
+                                                           :flex-direction :column
+                                                           :height         :100%}
+                                                          (when (< 0 (rc/ls :table-scroll-top)) {:border-top [:border]}))))
+                   [:table :style]       (fn [_] (rs/style
+                                                   (merge {:padding-top    [:layout-unit]
+                                                           :max-height     :100%
+                                                           :min-height     :200px
+                                                           :padding-bottom [:layout-unit]
+                                                           :overflow-y     :auto}
+                                                          (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]}))))
 
                    :scroll-to-bottom     (fn [h] (-> h
                                                      (rc/get-dom-element :table)
@@ -167,7 +173,7 @@
                                                       {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
                   :render                           (fn [_ index]
                                                       [::row {:events [:hover]}
-                                                       [::icons {:events [:hover]}
+                                                       [::icons {:events [:hover :click]}
                                                         [ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]]
                                                        [::space]
                                                        [::seeding (inc index)]
@@ -175,29 +181,37 @@
                                                                      :type   :text
                                                                      :value  (or (rc/ls :team-name-value) (rc/fs [:hook/team :team-name]))
                                                                      :events [:key :focus :change]}]])
-                  [:row :style]                     (fn [_] {:display :flex :align-items :center :min-height [:row-height]})
-                  [:icons :style]                   (fn [_] {:display         :flex
-                                                             :align-items     :center
-                                                             :height          [:row-height]
-                                                             :justify-content :center
-                                                             :cursor          (if (rc/ls :icons-hover?) :pointer :normal)
-                                                             :width           [:app-padding]})
-                  [:delete-icon :on-click]          (fn [h _] (rc/dispatch h :delete-team))
-                  [:delete-icon :style]             (fn [_] (merge {:font-size 8 :opacity 0.5 :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
-                                                                   (when-not (rc/ls :row-hover?)
-                                                                     {:color :transparent})
+                  [:row :style]                     (fn [_] (rs/style
+                                                              {:display :flex :align-items :center :min-height [:row-height]}))
+                  [:icons :style]                   (fn [_] (rs/style
+                                                              {:display         :flex
+                                                               :align-items     :center
+                                                               :height          [:row-height]
+                                                               :justify-content :center
+                                                               :cursor          (if (rc/ls :icons-hover?) :pointer :normal)
+                                                               :width           [:app-padding]}))
 
-                                                                   (when (rc/ls :icons-hover?)
-                                                                     {:font-weight   :bold
-                                                                      :background    :red
-                                                                      :color         :white
-                                                                      :font-size     10
-                                                                      :border-radius 8})))
-                  [:space :style]                   (fn [_] {:width [:page-padding]})
-                  [:seeding :style]                 (fn [_] {:display :flex :align-items :center :width [:seeding-width] :opacity 0.5 :font-size 10})
-                  [:team-name :style]               (fn [_] {:border    :none
-                                                             :padding   0
-                                                             :min-width 200})
+                  [:icons :on-click]                (fn [h _] (rc/dispatch h :delete-team))
+                  [:delete-icon :on-click]          (fn [h _] (rc/dispatch h :delete-team))
+                  [:delete-icon :style]             (fn [_] (rs/style
+                                                              (merge {:font-size 8 :opacity 0.5 :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
+                                                                     (when-not (rc/ls :row-hover?)
+                                                                       {:color :transparent})
+
+                                                                     (when (rc/ls :icons-hover?)
+                                                                       {:font-weight   :bold
+                                                                        :background    :red
+                                                                        :color         :white
+                                                                        :font-size     10
+                                                                        :border-radius 8}))))
+                  [:space :style]                   (fn [_] (rs/style
+                                                              {:width [:page-padding]}))
+                  [:seeding :style]                 (fn [_] (rs/style
+                                                              {:display :flex :align-items :center :width [:seeding-width] :opacity 0.5 :font-size 10}))
+                  [:team-name :style]               (fn [_] (rs/style
+                                                              {:border    :none
+                                                               :padding   0
+                                                               :min-width 200}))
                   [:team-name :on-key-down]         (fn [h e]
                                                       (d/handle-key e {:ESC            (fn [_] (rc/delete-local-state h) [:STOP-PROPAGATION])
                                                                        :ENTER          (fn [_] (rc/dispatch h :update-team))
@@ -255,12 +269,14 @@
                                                                      :value       (rc/ls :input-value)}]
                                                            [::button {:class  "primaryButton"
                                                                       :events [:key :click]} "Add Team"]])
-                          [:row :style]                 (fn [_] {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
-                                                                 :display      :flex
-                                                                 :min-height   [:app-padding]
-                                                                 :align-items  :center})
-                          [:input :style]               (fn [_] {:border  :none
-                                                                 :padding 0})
+                          [:row :style]                 (fn [_] (rs/style
+                                                                  {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
+                                                                   :display      :flex
+                                                                   :min-height   [:app-padding]
+                                                                   :align-items  :center}))
+                          [:input :style]               (fn [_] (rs/style
+                                                                  {:border  :none
+                                                                   :padding 0}))
                           [:input :on-key-down]         (fn [h e]
                                                           (d/handle-key e {[:ENTER] (fn [_] (rc/dispatch h :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                                                            [:UP]    (fn [_] (-> (:ctx h)

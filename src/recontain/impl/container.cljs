@@ -3,86 +3,66 @@
   (:require [clojure.data :as data]
             [clojure.string :as string]
             [reagent.core :as r]
-            [recontain.impl.state :as state]
-            [restyle.core :as rs]
-            [bracketbird.util :as ut]
-            [bracketbird.dom :as d]))
+            [recontain.impl.state :as state]))
 
 
-(defn- name-in-local-state [sub-id value-name]
+(defn name-in-local-state [sub-id value-name]
   (keyword (if-not (string/blank? sub-id)
              (str (name sub-id) "-" (name value-name))
              (name value-name))))
-
-(defn- put-value [h sub-id k v]
-  (state/put! h assoc (name-in-local-state sub-id k) v))
-
-(def events-shorts->event-handlers {:focus  [:on-focus :on-blur]
-                                    :hover  [:on-mouse-enter :on-mouse-leave]
-                                    :change [:on-change]
-                                    :click  [:on-click]
-                                    :key    [:on-key-down :on-key-up]
-                                    :scroll [:on-scroll]})
 
 
 (defn dispatch-silent [h f & args]
   (state/dispatch {:handle h :dispatch-f f :args args :silently-fail? true}))
 
-(def event-handler-fns {:on-focus       (fn [h sub-id _ _]
-                                          (put-value h sub-id "focus?" true))
 
-                        :on-blur        (fn [h sub-id _ _]
-                                          (put-value h sub-id "focus?" false))
+(def event-bindings {:hover  {:on-mouse-enter (fn [h sub-id _ _] (state/put! h assoc (name-in-local-state sub-id "hover?") true))
+                              :on-mouse-leave (fn [h sub-id _ _] (state/put! h assoc (name-in-local-state sub-id "hover?") false))}
 
-                        :on-mouse-enter (fn [h sub-id _ _]
-                                          (put-value h sub-id "hover?" true))
+                     :focus  {:on-focus (fn [h sub-id _ _] (state/put! h assoc (name-in-local-state sub-id "focus?") true))
+                              :on-blur  (fn [h sub-id _ _] (state/put! h assoc (name-in-local-state sub-id "focus?") false))}
 
-                        :on-mouse-leave (fn [h sub-id _ _]
-                                          (put-value h sub-id "hover?" false))
+                     :change {:on-change (fn [h sub-id _ e] (state/put! h assoc (name-in-local-state sub-id "value") (.. e -target -value)))}
 
-                        :on-key-down    (fn [h sub-id ls e]
-                                          (let [dob (name-in-local-state sub-id "delete-on-backspace?")]
-                                            (d/handle-key e {[:BACKSPACE]
-                                                             (fn [_]
-                                                               (when (get ls dob)
-                                                                 (dispatch-silent h [sub-id :delete-on-backspace])) [:STOP-PROPAGATION])})))
-                        :on-key-up      (fn [h sub-id _ e]
-                                          (when (= "text" (.-type (.-target e)))
-                                            (put-value h sub-id "delete-on-backspace?" (clojure.string/blank? (ut/value e)))))
+                     :click  {:on-click (fn [_ _ _ _] ())}
 
-                        :on-change      (fn [h sub-id _ e]
-                                          (put-value h sub-id "value" (ut/value e)))
+                     :key    {:on-key-down (fn [h sub-id ls e]
+                                             (let [backspace? (= 8 (.-keyCode e))
+                                                   delete? (get ls (name-in-local-state sub-id "delete-on-backspace?"))]
+                                               (when (and backspace? delete?)
+                                                 (.stopPropagation e)
+                                                 (dispatch-silent h [sub-id :delete-on-backspace]))))
+                              :on-key-up   (fn [h sub-id _ e]
+                                             (when (= "text" (.-type (.-target e)))
+                                               (state/put! h assoc (name-in-local-state sub-id "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}
 
-                        :on-click       (fn [_ _ _ _] ())
+                     :scroll {:on-scroll (fn [h sub-id _ e] (let [t (.-target e)
+                                                                  scroll-top (.-scrollTop t)
+                                                                  scroll-height (.-scrollHeight t)
+                                                                  client-height (.-clientHeight t)]
 
-
-                        :on-scroll      (fn [h sub-id _ e] (let [t (.-target e)
-                                                                 scroll-top (.-scrollTop t)
-                                                                 scroll-height (.-scrollHeight t)
-                                                                 client-height (.-clientHeight t)]
-
-                                                             (state/put! h assoc
-                                                                         (name-in-local-state sub-id "scroll-top") scroll-top
-                                                                         (name-in-local-state sub-id "scroll-height") scroll-height
-                                                                         (name-in-local-state sub-id "client-height") client-height
-                                                                         (name-in-local-state sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))})
+                                                              (state/put! h assoc
+                                                                          (name-in-local-state sub-id "scroll-top") scroll-top
+                                                                          (name-in-local-state sub-id "scroll-height") scroll-height
+                                                                          (name-in-local-state sub-id "client-height") client-height
+                                                                          (name-in-local-state sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))}})
+(defn- bind-event-map [opts e-map h sub-id ls passed-values]
+  (reduce-kv (fn [m event-name event-action]
+               (assoc m event-name (fn [e]
+                                     (event-action h sub-id ls e)
+                                     (binding [state/*passed-values* passed-values]
+                                       (dispatch-silent h [sub-id event-name] e)))))
+             opts
+             e-map))
 
 (defn- bind-events
-  [{:keys [events] :as opts} local-id h ls passed-values]
+  [{:keys [events] :as opts} sub-id h ls passed-values]
   (if events
     (->> (if (sequential? events) events [events])
-         ; resolve event to handlers
-         (map (fn [e] (if-let [handlers (e events-shorts->event-handlers)]
-                        handlers
-                        (e event-handler-fns))))
-         flatten
-         ; resolve handlers
-         (reduce (fn [m k]
-                   (when-let [f (get event-handler-fns k)]
-                     (assoc m k (fn [e]
-                                  (f h local-id ls e)
-                                  (binding [state/*passed-values* passed-values]
-                                    (dispatch-silent h [local-id k] e))))))
+         (reduce (fn [m bind-name]
+                   (if-let [e-map (get event-bindings bind-name)]
+                     (bind-event-map m e-map h sub-id ls passed-values)
+                     (println "No event binding found for " bind-name)))
                  opts))
     opts))
 
@@ -96,12 +76,11 @@
                        (binding [state/*current-container* {:handle         h
                                                             :local-state    ls-with-passed-values
                                                             :foreign-states fs}]
-                         (style-fn h)))
-        ]
+                         (style-fn h)))]
     (-> (apply dissoc opts passed-keys)
         (assoc :id (state/dom-element-id h id))
         (bind-events id h ls passed-values)
-        (assoc :style (rs/style (or style-config (:style opts) {}))))))
+        (assoc :style (or style-config (:style opts) {})))))
 
 (defn external-bind-options [opts]
   (let [{:keys [handle local-state foreign-state]} state/*current-container*]
