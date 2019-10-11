@@ -67,7 +67,7 @@
     opts))
 
 (defn bind-options [h ls fs {:keys [id] :as opts}]
-  (let [style-fn (get (state/get-container-config (:hook h)) [id :style])
+  (let [style-fn (get (state/get-container-config (:container-name h)) [id :style])
         passed-keys (->> opts keys (filter namespace))
         passed-values (select-keys opts passed-keys)
         ls-with-passed-values (merge ls passed-values)
@@ -89,18 +89,18 @@
 (defn decorate-container [form h]
   (let [container-fn (first form)
         additional-ctx (second form)
-        hook (nth form 2)]
+        container-name (nth form 2)]
 
     (when-not (map? additional-ctx)
-      (throw (js/Error. (str "Rendering " (:hook h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
-    (when-not hook
-      (throw (js/Error. (str "Render function of " (:hook h) " contains invalid recontain/container structure: Second element should be a keyword referencing the container in config. Hiccup: " form))))
-    (when-not (get @state/container-configurations hook)
-      (throw (js/Error. (str "No container configuration found for " hook ". Please add to configuration."))))
+      (throw (js/Error. (str "Rendering " (:container-name h) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
+    (when-not container-name
+      (throw (js/Error. (str "Render function of " (:container-name h) " contains invalid recontain/container structure: Second element should be a keyword referencing the container in config. Hiccup: " form))))
+    (when-not (get @state/container-configurations container-name)
+      (throw (js/Error. (str "No container configuration found for " container-name ". Please add to configuration."))))
 
     (let [ctx (merge additional-ctx (:ctx h))]
-      (state/validate-ctx hook ctx)
-      (-> (into [container-fn (assoc ctx :rc_parent-container-id (:id h)) hook] (subvec form 3))
+      (state/validate-ctx container-name ctx)
+      (-> (into [container-fn (assoc ctx :rc_parent-container-id (:container-id h)) container-name] (subvec form 3))
           (with-meta (meta form))))))
 
 (defn decorate-hiccup-result [form h ls fs]
@@ -135,21 +135,21 @@
     :else form))
 
 
-(defn- resolve-container-instance [parent-handle ctx hook]
+(defn- resolve-container-instance [parent-handle ctx container-name]
   (let [state-atom (get @state/recontain-settings-atom :state-atom)
-        cfg (get @state/container-configurations hook)
+        cfg (get @state/container-configurations container-name)
 
-        ;create path from parent-path, ctx and hook. Use diff in ctx
+        ;create path from parent-path, ctx and container-name. Use diff in ctx
         path (let [context-p (->> (first (data/diff ctx (:ctx parent-handle))) keys sort (map ctx) (reduce str))
                    p (-> (into [] (drop-last (:path parent-handle)))
-                         (into [hook context-p :_local-state]))]
+                         (into [container-name context-p :_local-state]))]
                (->> p
                     (remove nil?)
                     (remove string/blank?)
                     vec))
 
-        ;id of hook instance
-        id (state/mk-container-id ctx hook)
+        ;continer-id of container instance
+        container-id (state/mk-container-id ctx container-name)
 
         foreign-state-paths (if-let [f (:foreign-state cfg)]
                               (f ctx)
@@ -165,47 +165,47 @@
 
         all-state-paths (-> foreign-state-paths
                             (merge foreign-local-state-paths)
-                            (assoc hook path))]
+                            (assoc container-name path))]
 
 
 
     (merge cfg {:parent-handle           parent-handle
-                :id                      id
+                :container-id            container-id
                 :reload-conf-count       @state/reload-configuration-count
                 :path                    path
                 :all-paths               all-state-paths
                 :reactions               (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom v nil)))) {} all-state-paths)
                 :foreign-local-state-ids foreign-local-state-ids})))
 
-(defn- mk-container [additional-ctx container-hook _]
+(defn- mk-container [additional-ctx container-name _]
   (let [parent-handle-id (:rc_parent-container-id additional-ctx)
         parent-handle (:handle (get @state/container-states-atom parent-handle-id))
 
         ;:rc_parent-container-id is set during decoration when rendering previous container
         ctx (-> (:ctx parent-handle) (merge additional-ctx) (dissoc :rc_parent-container-id))
 
-        cfg (reaction (resolve-container-instance parent-handle ctx container-hook))
+        cfg (reaction (resolve-container-instance parent-handle ctx container-name))
         org-handle (state/mk-handle parent-handle ctx @cfg)]
 
     (r/create-class
       {:component-did-mount    (fn [_]
-                                 (let [{:keys [hook did-mount]} @cfg]
+                                 (let [{:keys [container-name did-mount]} @cfg]
                                    ;;todo wrap in try catch
-                                   (state/debug #(println "DID MOUNT - " hook))
+                                   (state/debug #(println "DID MOUNT - " container-name))
                                    (when did-mount (did-mount org-handle))))
 
        :component-will-unmount (fn [_]
-                                 (let [{:keys [hook will-mount]} @cfg]
-                                   (state/debug #(println "WILL UNMOUNT - " hook))
+                                 (let [{:keys [container-name will-mount]} @cfg]
+                                   (state/debug #(println "WILL UNMOUNT - " container-name))
                                    (when will-mount (will-mount org-handle))
                                    (when (:clear-container-state-on-unmount? @state/recontain-settings-atom)
                                      (state/clear-container-state org-handle))))
 
        :reagent-render         (fn [_ _ opts]
-                                 (let [{:keys [hook] :as config} @cfg
-                                       _ (state/debug #(println "RENDER - " hook))
+                                 (let [{:keys [container-name] :as config} @cfg
+                                       _ (state/debug #(println "RENDER - " container-name))
 
-                                       id (:id config)
+                                       container-id (:container-id config)
                                        foreign-local-state-ids (:foreign-local-state-ids config)
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} (:reactions config))
                                        handle (state/mk-handle parent-handle ctx config)
@@ -219,18 +219,18 @@
                                                                        foreign-local-state-ids)
 
                                        foreign-states (-> state-map
-                                                          (dissoc hook)
+                                                          (dissoc container-name)
                                                           (merge foreign-local-states))
 
-                                       local-state (if-let [ls (get state-map hook)]
+                                       local-state (if-let [ls (get state-map container-name)]
                                                      ls
-                                                     (if-let [ls-fn (:local-state (get @state/container-configurations hook))]
+                                                     (if-let [ls-fn (:local-state (get @state/container-configurations container-name))]
                                                        (ls-fn foreign-states)
                                                        {}))
 
-                                       _ (swap! state/container-states-atom assoc id {:handle         handle
-                                                                                      :local-state    local-state
-                                                                                      :foreign-states foreign-states})
+                                       _ (swap! state/container-states-atom assoc container-id {:handle         handle
+                                                                                                :local-state    local-state
+                                                                                                :foreign-states foreign-states})
                                        render (:render config)]
 
                                    (if-not render
@@ -244,5 +244,5 @@
                                                         (decorate-hiccup-result handle local-state foreign-states)))]
 
                                        (if-let [decorator (:component-hiccup-decorator @state/recontain-settings-atom)]
-                                         (decorator result (get @state/container-states-atom id))
+                                         (decorator result (get @state/container-states-atom container-id))
                                          result)))))})))

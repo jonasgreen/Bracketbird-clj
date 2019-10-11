@@ -19,20 +19,20 @@
   (reset! container-fn container-function)
   (reset! container-states-atom {})
   (reset! recontain-settings-atom (assoc config :anonymous-count 0))
-  (reset! container-configurations (reduce (fn [m v] (assoc m (:hook v) v)) {} (:containers config)))
+  (reset! container-configurations (reduce (fn [m v] (assoc m (:container-name v) v)) {} (:containers config)))
   @recontain-settings-atom)
 
 (defn debug [f]
   (when (:debug? @recontain-settings-atom) (f)))
 
-(defn get-container-config [hook]
-  (let [cfg (get @container-configurations hook)]
+(defn get-container-config [container-name]
+  (let [cfg (get @container-configurations container-name)]
     (when-not cfg
       (do
-        (throw (js/Error. (str "No configuration for container: " hook)))))
+        (throw (js/Error. (str "No configuration for container: " container-name)))))
     cfg))
 
-(defn get-container-data [id] (get @container-states-atom id))
+(defn get-container-data [container-id] (get @container-states-atom container-id))
 
 (defn- dissoc-path [state path]
   (if (= 1 (count path))
@@ -40,58 +40,58 @@
     (update-in state (vec (drop-last path)) dissoc (last path))))
 
 (defn clear-container-state [h]
-  (let [{:keys [id path]} h]
-    (swap! container-states-atom dissoc id)
+  (let [{:keys [container-id path]} h]
+    (swap! container-states-atom dissoc container-id)
     (swap! (:state-atom @recontain-settings-atom) dissoc-path (drop-last path))))
 
 (defn delete-local-state [h]
-  (let [{:keys [id path]} h]
-    (swap! container-states-atom dissoc-path [id :local-state])
+  (let [{:keys [container-id path]} h]
+    (swap! container-states-atom dissoc-path [container-id :local-state])
     (swap! (:state-atom @recontain-settings-atom) dissoc-path path)))
 
-(defn mk-container-id [ctx hook]
-  (let [ctx-id (->> (get-container-config hook)
+(defn mk-container-id [ctx container-name]
+  (let [ctx-id (->> (get-container-config container-name)
                     :ctx
                     (select-keys ctx)
                     hash)]
-    (->> (str hook "@" ctx-id))))
+    (->> (str container-name "@" ctx-id))))
 
-(defn dom-element-id [handle sub-id] (str (:id handle) "#" (if (keyword? sub-id) (name sub-id) sub-id)))
+(defn dom-element-id [handle sub-id] (str (:container-id handle) "#" (if (keyword? sub-id) (name sub-id) sub-id)))
 
-(defn mk-handle [parent-handle ctx {:keys [id path hook all-paths]}]
-  {:parent-handle-id (:id parent-handle)
-   :id               id
+(defn mk-handle [parent-handle ctx {:keys [container-id path container-name all-paths]}]
+  {:parent-handle-id (:container-id parent-handle)
+   :container-id     container-id
    :ctx              ctx
    :path             path
-   :hook             hook
+   :container-name             container-name
    :foreign-paths    (-> all-paths
-                         (dissoc hook)
+                         (dissoc container-name)
                          vals
                          vec)})
 
-(defn validate-ctx [hook given-ctx]
-  (let [rq-ctx (:ctx (get-container-config hook))
+(defn validate-ctx [container-name given-ctx]
+  (let [rq-ctx (:ctx (get-container-config container-name))
         given-ctx-set (reduce-kv (fn [s k v] (if v (conj s k))) #{} given-ctx)]
     (when-not (clojure.set/subset? rq-ctx given-ctx-set)
-      (throw (js/Error. (str "Missing context for container " hook ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
+      (throw (js/Error. (str "Missing context for container " container-name ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
 
 (defn dispatch [{:keys [handle dispatch-f args silently-fail?]}]
-  (let [{:keys [hook id]} handle
+  (let [{:keys [container-name container-id]} handle
         f (-> @container-configurations
-              (get hook)
+              (get container-name)
               (get dispatch-f))]
 
     (if f
-      (binding [*current-container* (update-in (get-container-data id) [:local-state] merge *passed-values*)]
+      (binding [*current-container* (update-in (get-container-data container-id) [:local-state] merge *passed-values*)]
         (apply f handle args))
-      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in hook " hook)))))))
+      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in container-name " container-name)))))))
 
-(defn get-handle [ctx hook]
-  (validate-ctx hook ctx)
-  (:handle (get-container-data (mk-container-id ctx hook))))
+(defn get-handle [ctx container-name]
+  (validate-ctx container-name ctx)
+  (:handle (get-container-data (mk-container-id ctx container-name))))
 
-(defn update! [state {:keys [id path]} & args]
-  (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-container-data id))) (rest args)))]
+(defn update! [state {:keys [container-id path]} & args]
+  (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-container-data container-id))) (rest args)))]
     (update-in state path upd)))
 
 (defn put! [handle & args]

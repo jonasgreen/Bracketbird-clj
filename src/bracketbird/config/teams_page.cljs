@@ -10,7 +10,7 @@
             [bracketbird.dom :as d]))
 
 
-(def teams-page {:hook                 :teams-page
+(def teams-page {:container-name       :teams-page
                  :ctx                  [:application-id :tournament-id]
                  :foreign-state        (fn [ctx] (state/path-map ctx :hook/teams-order :hook/teams))
 
@@ -48,7 +48,7 @@
                                                (rc/dispatch :focus))))})
 
 
-(def team-row {:hook                             :team-row
+(def team-row {:container-name                   :team-row
                :ctx                              [:application-id :tournament-id :team-id]
                :foreign-state                    (fn [ctx] (state/path-map ctx :hook/team))
                :local-state                      (fn [{:keys [hook/team]}]
@@ -137,7 +137,7 @@
                                                                          (rc/focus h :add-team)))})))
                :focus                            (fn [h] (-> h (rc/get-dom-element :team-name) (.focus)))})
 
-(def add-team {:hook                         :add-team
+(def add-team {:container-name                          :add-team
                :ctx                          [:application-id :tournament-id]
                :local-state                  (fn [_] {:input-delete-on-backspace? true})
                :foreign-state                (fn [ctx] (state/path-map ctx :hook/teams))

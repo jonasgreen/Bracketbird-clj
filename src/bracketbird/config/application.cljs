@@ -7,31 +7,31 @@
 
 
 
-(def root {:hook          :root
-           :foreign-state (fn [ctx]
-                            (state/path-map ctx :hook/system))
+(def root {:container-name :root
+           :foreign-state  (fn [ctx]
+                             (state/path-map ctx :hook/system))
 
-           :render        (fn [_]
-                            (let [app-id (rc/fs [:hook/system :active-application])]
-                              [:div
-                               (if app-id
-                                 [rc/container {:application-id app-id} :application-page]
-                                 [:div "No application"])]))})
+           :render         (fn [_]
+                             (let [app-id (rc/fs [:hook/system :active-application])]
+                               [:div
+                                (if app-id
+                                  [rc/container {:application-id app-id} :application-page]
+                                  [:div "No application"])]))})
 
-(def application-page {:hook          :application-page
-                       :ctx           [:application-id]
-                       :local-state   (fn [_] {:active-page :front-page})
-                       :foreign-state (fn [ctx] (state/path-map ctx :hook/application))
+(def application-page {:container-name :application-page
+                       :ctx            [:application-id]
+                       :local-state    (fn [_] {:active-page :front-page})
+                       :foreign-state  (fn [ctx] (state/path-map ctx :hook/application))
 
-                       :render        (fn [_]
-                                        (condp = (rc/ls :active-page)
-                                          :front-page ^{:key 1} [rc/container {} :front-page]
-                                          :tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
-                                                                          [rc/container {:tournament-id tournament-id} :tournament-page])
-                                          [:div "page " (rc/ls :active-page) " not supported"]))})
+                       :render         (fn [_]
+                                         (condp = (rc/ls :active-page)
+                                           :front-page ^{:key 1} [rc/container {} :front-page]
+                                           :tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
+                                                                        [rc/container {:tournament-id tournament-id} :tournament-page])
+                                           [:div "page " (rc/ls :active-page) " not supported"]))})
 
 
-(def front-page {:hook              :front-page
+(def front-page {:container-name    :front-page
                  :ctx               [:application-id]
 
                  :render            (fn [h]
@@ -65,7 +65,7 @@
                                                                             :tournament-page))
                                            :post-render    (fn [_])})))})
 
-(def tournament-page {:hook                    :tournament-page
+(def tournament-page {:container-name          :tournament-page
                       :ctx                     [:application-id :tournament-id]
                       :local-state             (fn [_] {:items             {:teams    {:header "TEAMS" :content :teams-page}
                                                                             :settings {:header "SETTINGS" :content :settings-page}

@@ -17,7 +17,7 @@
 
 (defn get-dom-element [handle sub-id] (-> handle (state/dom-element-id sub-id) dom/getElement))
 
-(defn get-handle [ctx hook] (state/get-handle ctx hook))
+(defn get-handle [ctx container-name] (state/get-handle ctx container-name))
 
 (defn has-changed [value org-value]
   (when value
@@ -29,18 +29,18 @@
       (not= value org-value))))
 
 (defn focus
-  ([handle hook ctx-id ctx-value]
+  ([handle container-name ctx-id ctx-value]
    (when-let [ctx-value (if (map? ctx-value) (get ctx-value ctx-id) ctx-value)]
-     (focus handle hook {ctx-id ctx-value})))
+     (focus handle container-name {ctx-id ctx-value})))
 
-  ([handle hook extra-ctx]
+  ([handle container-name extra-ctx]
    (-> (:ctx handle)
        (merge extra-ctx)
-       (get-handle hook)
+       (get-handle container-name)
        (dispatch :focus)))
 
-  ([handle hook]
-   (focus handle hook {})))
+  ([handle container-name]
+   (focus handle container-name {})))
 
 
 (defn ls [& ks]

@@ -24,12 +24,12 @@
                        [:button {:class    "debugButton"
                                  :on-click (fn [_]
                                              (println "\n-----------------------")
-                                             (println (str "\nHOOK\n" (:hook handle)))
+                                             (println (str "\nHOOK\n" (:container-name handle)))
                                              (println (str "RENDER RESULT\n" (b-ut/pp-str result)))
                                              (println "HANDLE\n" (b-ut/pp-str handle))
                                              (println "LOCAL-STATE\n" (b-ut/pp-str local-state))
                                              (println "FOREIGN-STATE-KEYS\n" (b-ut/pp-str (keys foreign-states))))}
-                        (:hook handle)]]]
+                        (:container-name handle)]]]
     (-> (concat start [debug-element] end)
         vec
         (update-in [1 :style] assoc :border "1px solid #00796B"))))
