@@ -20,6 +20,17 @@
 
              :page-menu-space   [:layout-unit]
 
+             :stage-width       200
+
+             :stage-line        {:width      2
+                                 :height     20
+                                 :background :red}
+
+             :stage-hook-end    {:width         8
+                                 :height        4
+                                 :border-radius "4px 4px 0 0"
+                                 :background    :red}
+
 
              :row-height        30
 
@@ -52,9 +63,33 @@
                                                                         :width           [:app-padding]})
 
 
+             :primary-button    (fn [{:keys [active? hover?]}]
+                                  (merge {
+                                          :box-shadow     "0 1px 1px rgba(0, 0, 0, 0.2)"
+                                          :background     "#3B9EBF"
+                                          :color          :white
+                                          :display        :inline-block
+                                          :font-size      16
+                                          :padding-top    5
+                                          :padding-left   15
+                                          :padding-right  15
+                                          :padding-bottom 3
+                                          :font-family    "klavika"
+                                          :border         "1px solid #0097BF"
+                                          :border-radius  2
+                                          :white-space    :nowrap
+                                          :z-index        20}
+                                         (when hover?
+                                           {:cursor     :pointer
+                                            :box-shadow "0 2px 3px rgba(0, 0, 0, 0.3)"})
+
+                                         (when active?
+                                           {:box-shadow "0 1px 1px rgba(0, 0, 0, 0.2)"})))
+
+
              :delete-icon       (fn [{:keys [hover?]}]
-                                  (merge {:font-size 8
-                                          :opacity 0.5
+                                  (merge {:font-size  8
+                                          :opacity    0.5
                                           :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
                                          (when hover?
                                            {:font-weight   :bold

@@ -65,14 +65,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 .primaryButton:hover, .primaryButton:visited {
     cursor: pointer;
-    -webkit-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
-    -moz-box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
     box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
 }
 
 .primaryButton:active {
-    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    -moz-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 

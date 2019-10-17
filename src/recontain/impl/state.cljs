@@ -3,11 +3,13 @@
 
 (defonce container-configurations (atom {}))
 (defonce container-states-atom (atom {}))
+(defonce elements-configurations (atom {}))
 
 (defonce recontain-settings-atom (atom {}))
 
 (defonce reload-configuration-count (r/atom 0))
 (defonce container-fn (atom nil))
+(defonce element-fn (atom nil))
 
 (def ^:dynamic *current-container* nil)
 (def ^:dynamic *passed-values* nil)
@@ -15,10 +17,13 @@
 (defn reload-container-configurations []
   (swap! reload-configuration-count inc))
 
-(defn setup [config container-function]
+(defn setup [config {:keys [container-function element-function]}]
   (reset! container-fn container-function)
+  (reset! element-fn element-function)
+
   (reset! container-states-atom {})
   (reset! recontain-settings-atom (assoc config :anonymous-count 0))
+  (reset! elements-configurations (:elements config))
   (reset! container-configurations (reduce (fn [m v] (assoc m (:container-name v) v)) {} (:containers config)))
   @recontain-settings-atom)
 
@@ -56,14 +61,17 @@
                     hash)]
     (->> (str container-name "@" ctx-id))))
 
-(defn dom-element-id [handle sub-id] (str (:container-id handle) "#" (if (keyword? sub-id) (name sub-id) sub-id)))
+(defn id->str [id]
+  (if (keyword? id) (name id) (str id)))
+
+(defn dom-element-id [parent-id sub-id] (str (id->str parent-id) "#" (id->str sub-id)))
 
 (defn mk-handle [parent-handle ctx {:keys [container-id path container-name all-paths]}]
   {:parent-handle-id (:container-id parent-handle)
    :container-id     container-id
    :ctx              ctx
    :path             path
-   :container-name             container-name
+   :container-name   container-name
    :foreign-paths    (-> all-paths
                          (dissoc container-name)
                          vals

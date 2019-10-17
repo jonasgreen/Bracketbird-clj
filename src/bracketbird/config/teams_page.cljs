@@ -22,13 +22,10 @@
                                                     ^{:key team-id} [rc/container {:team-id team-id} :team-row index]) teams-order (range (count teams)))]
 
                                             ; input field
-                                            [rc/container {} :add-team]]))
+                                            [::bottom-panel
+                                             [rc/container {} :add-team]]]))
 
-                 [:tab-content :style] (fn [_] (rs/style
-                                                 (merge {:display        :flex
-                                                         :flex-direction :column
-                                                         :height         :100%}
-                                                        (when (< 0 (rc/ls :table-scroll-top)) {:border-top [:border]}))))
+                 [:tab-content :style] (fn [_] (rs/style :tab-content {:scroll-top (rc/ls :table-scroll-top)}))
                  [:table :style]       (fn [_] (rs/style
                                                  (merge {:padding-top    [:layout-unit]
                                                          :max-height     :100%
@@ -56,7 +53,15 @@
                :render                           (fn [_ index]
                                                    [::row {:events [:hover]}
                                                     [::icons {:events [:hover :click]}
-                                                     [ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]]
+                                                     [ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]
+                                                     [::icon {:elm :e/icon
+                                                              [:icon :options] (fn[m])
+                                                              [:icon :style] (fn[m])
+                                                              [:icon :events] [:hover :click]
+
+                                                              }]
+                                                     ]
+
                                                     [::space]
                                                     [::seeding (inc index)]
                                                     [::team-name {:elm    :input
@@ -137,7 +142,7 @@
                                                                          (rc/focus h :add-team)))})))
                :focus                            (fn [h] (-> h (rc/get-dom-element :team-name) (.focus)))})
 
-(def add-team {:container-name                          :add-team
+(def add-team {:container-name               :add-team
                :ctx                          [:application-id :tournament-id]
                :local-state                  (fn [_] {:input-delete-on-backspace? true})
                :foreign-state                (fn [ctx] (state/path-map ctx :hook/teams))
@@ -149,8 +154,10 @@
                                                           :type        :text
                                                           :elm         :input
                                                           :value       (rc/ls :input-value)}]
-                                                [::button {:class  "primaryButton"
-                                                           :events [:key :click]} "Add Team"]])
+
+                                                ;[::add-team {:elm primary-button :events [action]}
+
+                                                [::button {:events [:key :click :hover]} "Add Team"]])
                [:row :style]                 (fn [_] (rs/style
                                                        {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
                                                         :display      :flex
@@ -173,6 +180,10 @@
                                                                              (-> (:ctx h)
                                                                                  (rc/get-handle :teams-page)
                                                                                  (rc/dispatch :scroll-to-bottom)))}))))
+               [:button :style]              (fn [_]
+                                               (rs/style :primary-button {:active? (rc/ls :button-active?)
+                                                                          :hover?  (rc/ls :button-hover?)}))
+
                [:button :on-click]           (fn [h _]
                                                (rc/dispatch h :create-team)
                                                (rc/dispatch h :focus))

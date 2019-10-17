@@ -1,6 +1,25 @@
 (ns bracketbird.tournament-api
   (:require [bracketbird.system :as system]
-            [bracketbird.util :as ut]))
+            [bracketbird.util :as ut]
+            [cljs.spec.alpha :as s]))
+
+
+(def settings {:max-number-of-teams {:description "asdfasdfasdf"
+                                     :type        :integer}
+               :number-of-groups    {:description "asdfasdfasdf"
+                                     :type        :integer}
+               :ranking-rules       {:description "asdf"
+                                     :type        :selector
+                                     :values      []}
+               :group-play          {:settings    [:max-number-of-teams :number-of-groups :number-of-repeats]
+                                     :description "bla bla bla"
+
+                                     }
+               })
+
+
+
+
 
 
 (def states {[:tournament :not-ready]    {}
@@ -27,6 +46,7 @@
              [:match :done-playing]      {}
              [:match :finished]          {}})
 
+
 (defn mk-tournament [id]
   {:tournament-id id
    :teams         {}
@@ -42,6 +62,36 @@
 (defn mk-team [id team-name]
   {:team-id   id
    :team-name team-name})
+
+
+(defn mk-settings [setting-type]
+  (if (= setting-type :group)
+
+    {:settings-type       :group
+     :max-number-of-teams nil
+     :number-of-groups    1
+     :ranking-rules       [:ranking/by-points :ranking/by-scored-goals :ranking/by-goal-diff]}
+
+    {:settings-type       :knockout
+     :max-number-of-teams nil}))
+
+(defn mk-stage [id]
+  {:stage-id      id
+   :state         :not-ready
+   :settings      nil
+   :matches       nil
+   ;:score-sheet   nil maybe only in view
+   :teams-order   []
+   :final-ranking []})
+
+(defn mk-match [id]
+  {:match-id id
+   :state    :not-ready
+   :round    nil
+   :teams    []
+   :result   []})
+
+
 
 
 (defn update-state [tournament]
@@ -117,4 +167,22 @@
                                                                (update :teams dissoc team-id)
                                                                (update :teams-order #(->> % (remove (fn [v] (= team-id v))) vec))
                                                                (assoc :dirty true)))}
+
+                  [:stage :create]      {:validate-input (fn [ctx m] ())
+                                         :validate-state (fn [ctx m] ())
+                                         :mk-event       (fn [{:keys [tournament-id]} {:keys [stage-type]}]
+                                                           {:tournament-id tournament-id
+                                                            :stage-id      (system/unique-id :stage)
+                                                            :stage-type    stage-type})
+
+                                         :execute-event  (fn [t {:keys [stage-id stage-type index]}]
+                                                           (let [stage (-> stage-id mk-stage (assoc :settings (mk-settings stage-type)))]
+                                                             (-> t
+                                                                 (update :stages assoc stage-id stage)
+                                                                 (update :stages-order (fn [items]
+                                                                                         (if index
+                                                                                           (ut/insert stage-id index items)
+                                                                                           (conj items stage-id))))
+                                                                 (assoc :dirty true)
+                                                                 )))}
                   })

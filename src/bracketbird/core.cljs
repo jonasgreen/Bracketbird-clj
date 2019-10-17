@@ -11,6 +11,7 @@
             [bracketbird.config.ranking-page :as ranking-page-config]
             [bracketbird.config.settings-page :as setting-page-config]
             [bracketbird.config.teams-page :as teams-page-config]
+            [bracketbird.config.ui-elements :as ui-elements]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]
@@ -46,7 +47,7 @@
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
-
+                    :elements                          ui-elements/elements
                     :containers                        [application-config/root
                                                         application-config/application-page
                                                         application-config/front-page
@@ -57,6 +58,9 @@
                                                         teams-page-config/add-team
 
                                                         setting-page-config/settings-page
+                                                        setting-page-config/stage-component
+                                                        setting-page-config/add-stage-buttons
+
                                                         matches-page-config/matches-page
                                                         ranking-page-config/ranking-page]
 
