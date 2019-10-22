@@ -2,13 +2,13 @@
   (:require [goog.dom :as dom]
             [clojure.string :as string]
             [recontain.impl.state :as rc-state]
-            [recontain.impl.element :as rc-element]
             [recontain.impl.container :as rc-container]))
 
 
 (defn bind-options [opts] (rc-container/external-bind-options opts))
 
-(defn update! [state-m handle & args] (apply rc-state/update! state-m handle args))
+(defn update! [state-m handle & args]
+  (apply rc-state/update! state-m handle args))
 
 (defn put! [handle & args] (apply rc-state/put! handle args))
 
@@ -16,9 +16,15 @@
 
 (defn dispatch [h f & args] (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
 
-(defn get-dom-element [handle sub-id] (-> handle :container-id (rc-state/dom-element-id sub-id) dom/getElement))
+(defn call [h f & args]
+  (binding [rc-state/*current-handle* h]
+    (if-let [cf (get-in h [:raw-config f])]
+      (cf h args)
+      (throw (js/Error. (str "Function " f " is not defined in " h))))))
 
-(defn get-handle [ctx container-name] (rc-state/get-handle ctx container-name))
+(defn get-dom-element [handle sub-id] (-> handle :container-id (rc-state/dom-id sub-id) dom/getElement))
+
+(defn get-handle ([ctx container-name] (rc-state/get-handle ctx container-name)))
 
 (defn has-changed [value org-value]
   (when value
@@ -46,13 +52,13 @@
 
 (defn ls [& ks]
   (if (seq ks)
-    (get-in (:local-state rc-state/*current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
-    (:local-state rc-state/*current-container*)))
+    (get-in (:local-state rc-state/*current-handle*) (if (vector? (first ks)) (first ks) (vec ks)))
+    (:local-state rc-state/*current-handle*)))
 
 (defn fs [& ks]
   (if (seq ks)
-    (get-in (:foreign-states rc-state/*current-container*) (if (vector? (first ks)) (first ks) (vec ks)))
-    (:foreign-states rc-state/*current-container*)))
+    (get-in (:foreign-states rc-state/*current-handle*) (if (vector? (first ks)) (first ks) (vec ks)))
+    (:foreign-states rc-state/*current-handle*)))
 
 (defn container
   ([ctx c]
@@ -61,9 +67,11 @@
   ([ctx c optional-value]
    [rc-container/mk-container ctx c optional-value]))
 
-(defn element [opts v]
-  (rc-element/mk-element opts v))
+(defn component [opts v]
+  (rc-container/mk-component opts v))
 
-(defn setup [config] (rc-state/setup config {:container-function container :element-function element}))
+(defn setup [config] (rc-state/setup config {:container-function container :component-function component}))
 
 (defn reload-configurations [] (rc-state/reload-container-configurations))
+
+

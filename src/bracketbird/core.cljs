@@ -11,7 +11,7 @@
             [bracketbird.config.ranking-page :as ranking-page-config]
             [bracketbird.config.settings-page :as setting-page-config]
             [bracketbird.config.teams-page :as teams-page-config]
-            [bracketbird.config.ui-elements :as ui-elements]
+            [bracketbird.config.components :as components]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]
@@ -25,12 +25,12 @@
                        [:button {:class    "debugButton"
                                  :on-click (fn [_]
                                              (println "\n-----------------------")
-                                             (println (str "\nHOOK\n" (:container-name handle)))
+                                             (println (str "\nHOOK\n" (:config-name handle)))
                                              (println (str "RENDER RESULT\n" (b-ut/pp-str result)))
                                              (println "HANDLE\n" (b-ut/pp-str handle))
                                              (println "LOCAL-STATE\n" (b-ut/pp-str local-state))
                                              (println "FOREIGN-STATE-KEYS\n" (b-ut/pp-str (keys foreign-states))))}
-                        (:container-name handle)]]]
+                        (:config-name handle)]]]
     (-> (concat start [debug-element] end)
         vec
         (update-in [1 :style] assoc :border "1px solid #00796B"))))
@@ -47,7 +47,7 @@
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
-                    :elements                          ui-elements/elements
+                    :components                        components/components
                     :containers                        [application-config/root
                                                         application-config/application-page
                                                         application-config/front-page

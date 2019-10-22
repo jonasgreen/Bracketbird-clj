@@ -49,8 +49,8 @@
 
 ;----------------------
 
-(defn last-team [h]
-  (-> (:ctx h)
+(defn last-team [ctx]
+  (-> ctx
       (state/get-data :hook/tournament)
       tournament-api/last-team))
 
@@ -65,7 +65,7 @@
       (state/get-data :hook/tournament)
       (tournament-api/after-team team-id)))
 
-(defn index-of [h team-id]
-  (-> (:ctx h)
+(defn index-of [ctx team-id]
+  (-> ctx
       (state/get-data :hook/teams-order)
       (ut/index-of team-id)))

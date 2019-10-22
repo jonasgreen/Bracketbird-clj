@@ -7,11 +7,11 @@
 
 
 
-(def settings-page {:container-name                :settings-page
+(def settings-page {:config-name                :settings-page
                     :ctx                           [:application-id :tournament-id]
                     :foreign-state                 (fn [ctx] (state/path-map ctx :hook/stages-order))
 
-                    :render                        (fn [_]
+                    :render                        (fn [_ _]
                                                      (let [{:keys [hook/stages-order]} (rc/fs)]
                                                        [::tab-content
                                                         [::scroll-panel {:events [:scroll]}
@@ -37,45 +37,45 @@
                                                           ]]
                                                         [rc/container {} :add-stage-buttons]]))
 
-                    [:tab-content :style]          (fn [_] (rs/style :tab-content {:scroll-top (rc/ls :scroll-panel-scroll-top)}))
+                    [:tab-content :style]          (fn [_ _] (rs/style :tab-content {:scroll-top (rc/ls :scroll-panel-scroll-top)}))
 
-                    [:scroll-panel :style]         (fn [_] (rs/style
+                    [:scroll-panel :style]         (fn [_ _] (rs/style
                                                              (merge {:padding-top    [:layout-unit]
                                                                      :max-height     :100%
                                                                      :min-height     :200px
                                                                      :padding-bottom [:layout-unit]
                                                                      :overflow-y     :auto})))
-                    [:tournament-start-row :style] (fn [_] (rs/style {:display    :flex
+                    [:tournament-start-row :style] (fn [_ _] (rs/style {:display    :flex
                                                                       :background :yellow}))
-                    [:start-icons :style]          (fn [_] (rs/style {:width  [+ :app-padding :page-padding]
+                    [:start-icons :style]          (fn [_ _] (rs/style {:width  [+ :app-padding :page-padding]
                                                                       :height :20 :background :blue}))
 
-                    [:start-stage :style]          (fn [_] (rs/style {:width          [:stage-width]
+                    [:start-stage :style]          (fn [_ _] (rs/style {:width          [:stage-width]
                                                                       :display        :flex
                                                                       :flex-direction :column
                                                                       :align-items    :center
                                                                       :background     :orange}))
 
-                    [:start-point :style]          (fn [_] (rs/style {:background    :red
+                    [:start-point :style]          (fn [_ _] (rs/style {:background    :red
                                                                       :width         20
                                                                       :border-radius 10
                                                                       :height        20
                                                                       }))
 
-                    [:tournament-end :style]       (fn [_] (rs/style {:padding-left [+ :app-padding :page-padding]
+                    [:tournament-end :style]       (fn [_ _] (rs/style {:padding-left [+ :app-padding :page-padding]
                                                                       :height       40}))
 
-                    [:no-stages :style]            (fn [_]
+                    [:no-stages :style]            (fn [_ _]
                                                      (rs/style {:height 80}))
                     })
 
 
 
-(def stage-component {:container-name :stage-component
+(def stage-component {:config-name :stage-component
                       :ctx            [:application-id :tournament-id :stage-id]
                       :foreign-state  (fn [ctx] (state/path-map ctx :hook/stage))
 
-                      :render         (fn [_]
+                      :render         (fn [_ _]
                                         [:div]
                                         #_(let [stage (rc/fs :hook/stage)]
                                             [::content
@@ -91,49 +91,47 @@
                                              ]))
 
 
-                      [:icons :style] (fn [_] (rs/style {:padding-left [+ :app-padding :page-padding]
+                      [:icons :style] (fn [_ _] (rs/style {:padding-left [+ :app-padding :page-padding]
                                                          :background   :red
                                                          :height       :40
                                                          }))})
 
 
-(def add-stage-buttons {:container-name         :add-stage-buttons
-                        :ctx                    [:application-id :tournament-id]
+(def add-stage-buttons {:config-name           :add-stage-buttons
+                        :ctx                      [:application-id :tournament-id]
 
-                        :render                 (fn [_]
-                                                  [::row
-                                                   ;[:e/icon {[:button :hover?]} "wat"]
-                                                   [::add-button :e/primary-button "click me"]
-                                                   [::add-knockout {:events [:key :click :hover]} "Add Knockout"]])
-
-
-                        [:row :style]           (fn [_] (rs/style
-                                                          {:padding-left [+ :app-padding :page-padding]
-                                                           :display      :flex
-                                                           :min-height   [:app-padding]
-                                                           :align-items  :center}))
+                        :render                   (fn [_ _]
+                                                    [::row
+                                                     ;[:e/icon {[:button :hover?]} "wat"]
+                                                     [::add-button :e/primary-button "click me"]
+                                                     [::add-knockout {:events [:key :click :hover]} "Add Knockout"]])
 
 
+                        [:row :style]             (fn [_ _] (rs/style
+                                                            {:padding-left [+ :app-padding :page-padding]
+                                                             :display      :flex
+                                                             :min-height   [:app-padding]
+                                                             :align-items  :center}))
 
-                        [:add-button :style]    (fn [_]
-                                                  (rs/style :primary-button {:active? (rc/ls :add-group-active?)
-                                                                             :hover?  (rc/ls :add-group-hover?)}))
+                        [:add-button :style]      (fn [_ _]
+                                                    (rs/style :primary-button {:active? (rc/ls :add-group-active?)
+                                                                               :hover?  (rc/ls :add-group-hover?)}))
 
-                        [:add-button :on-click] (fn [h _]
-                                                  (rc/dispatch h :create-stage :group))
+                        [:add-button :on-click]   (fn [this _ _]
+                                                    (rc/dispatch this :create-stage :group))
 
-                        [:add-knockout :style]    (fn [_]
+                        [:add-knockout :style]    (fn [_ _]
                                                     (rs/style :primary-button {:active? (rc/ls :add-knockout-active?)
                                                                                :hover?  (rc/ls :add-knockout-hover?)} :margin-left 20))
 
-                        [:add-knockout :on-click] (fn [h _]
-                                                    (rc/put! h assoc :gensym (gensym))
+                        [:add-knockout :on-click] (fn [this _]
+                                                    (rc/put! this assoc :gensym (gensym))
                                                     #_(rc/dispatch h :create-stage :knockout))
 
 
 
-                        :create-stage           (fn [{:keys [ctx] :as h} stage-type]
-                                                  (ui-services/dispatch-event
-                                                    {:event-type [:stage :create]
-                                                     :ctx        ctx
-                                                     :content    {:stage-type stage-type}}))})
+                        :create-stage             (fn [{:keys [ctx]} stage-type]
+                                                    (ui-services/dispatch-event
+                                                      {:event-type [:stage :create]
+                                                       :ctx        ctx
+                                                       :content    {:stage-type stage-type}}))})

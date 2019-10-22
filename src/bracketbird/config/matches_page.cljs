@@ -1,6 +1,6 @@
 (ns bracketbird.config.matches-page)
 
 
-(def matches-page {:container-name :matches-page
+(def matches-page {:config-name :matches-page
                    :ctx            [:application-id :tournament-id]
-                   :render         (fn [_] [:div "matches-tab"])})
+                   :render         (fn [_ _] [:div "matches-tab"])})
