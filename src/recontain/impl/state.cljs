@@ -97,15 +97,15 @@
       (throw (js/Error. (str "Missing context for container " container-name ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
 
 (defn dispatch [{:keys [handle dispatch-f args silently-fail?]}]
-  (let [{:keys [container-name container-id]} handle
+  (let [{:keys [config-name handle-id]} handle
         f (-> @container-configurations
-              (get container-name)
+              (get config-name)
               (get dispatch-f))]
 
     (if f
-      (binding [*current-container* (update-in (get-container-data container-id) [:local-state] merge *passed-values*)]
+      (binding [*current-container* (update-in (get-container-data handle-id) [:local-state] merge *passed-values*)]
         (apply f handle args))
-      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in container-name " container-name)))))))
+      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in container-name " config-name)))))))
 
 (defn get-handle [ctx container-name]
   (validate-ctx container-name ctx)

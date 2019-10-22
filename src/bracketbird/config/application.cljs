@@ -103,15 +103,15 @@
                                                             :letter-spacing 1.2
                                                             :padding-right  [:app-padding]}))
 
-                      [:menu-item :style]      (fn [_ _] (rs/style
+                      [:menu-item :style]      (fn [_ s] (rs/style
                                                            (merge
                                                              {:margin-right [:layout-unit]
                                                               :opacity      0.5
                                                               :cursor       :pointer}
-                                                             (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto}))))
+                                                             (when (= (rc/ls :selected) (:current/item s)) {:opacity 1 :cursor :auto}))))
 
-                      [:menu-item :on-click]   (fn [this _]
-                                                 (rc/dispatch this :select-item (rc/ls :current/item)))
+                      [:menu-item :on-click]   (fn [this s]
+                                                 (rc/dispatch this :select-item (:current/item s)))
 
 
                       [:content-holder :style] (fn [_ s]

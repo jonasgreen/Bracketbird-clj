@@ -14,7 +14,9 @@
 
 (defn delete-local-state [handle] (rc-state/delete-local-state handle))
 
-(defn dispatch [h f & args] (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
+(defn dispatch [h f & args]
+
+  (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
 
 (defn call [h f & args]
   (binding [rc-state/*current-handle* h]
