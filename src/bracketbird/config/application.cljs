@@ -116,7 +116,6 @@
 
 
                       [:content-holder :style] (fn [this]
-                                                 (println "contentholder-style" this)
                                                  (rs/style
                                                    (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
                                                                             {:display :none}))))
