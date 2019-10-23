@@ -7,6 +7,19 @@
             [bracketbird.state :as state]))
 
 
+(defn event-key? [k]
+  (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
+
+
+(defn bind-config-value [h k v]
+  (if (fn? v)
+    (fn [volatile-state]
+      (binding [rc-state/*current-handle* (update h :volatile-state merge volatile-state)]
+        (v rc-state/*current-handle*)))
+    v))
+
+
+
 (defn name-in-local-state [sub-id value-name]
   (keyword (if-not (string/blank? sub-id)
              (str (name sub-id) "-" (name value-name))
@@ -172,28 +185,36 @@
   (let [{:keys [first-element? element-ref]} element-opts
         {:keys [handle-id local-state]} handle
 
-        _ (println "element-opts" element-opts)
         elm (or (:elm element-opts) :div)
         passed-keys (->> element-opts keys (filter namespace))
         passed-values (select-keys element-opts passed-keys)
-        state (merge local-state passed-values)
 
+        _ (println element-ref "--- passed values" passed-values)
         ;keyword -> value config
         element-config (->> configs
                             (map (partial append-missing-element-refs element-ref first-element?))
                             (map (partial remove-none-element-keys element-ref))
                             (merge-configs)
+
+                            ;[:xxx :style] -> :style
                             (convert-vector-to-option-keys))
+
+        _ (println element-ref "element-config keys" (keys element-config))
+        _ (println element-ref "option keys" (keys element-opts))
+
 
         ;assemble options
         options (reduce-kv (fn [m k v]
                              (let [parent-fn-key (parent-function-keyword k)
                                    parent-fn (get element-config parent-fn-key)
-                                   s (merge state (when parent-fn {parent-fn-key parent-fn}))]
+                                   volatile-state (merge passed-values (when parent-fn {parent-fn-key parent-fn}))]
 
-                               (if (string/starts-with? (name k) "on-")
-                                 (assoc m k (fn [e] (v s e))) ;wrap events for later execution
-                                 (assoc m k (v s))))) {} element-config)]
+                               (if (event-key? k)
+                                 (assoc m k (fn [e] (v (merge volatile-state {:event e})))) ;wrap events for later execution
+                                 (assoc m k (v volatile-state))))) {} element-config)
+        _ (println element-ref "final option keys" (keys options))
+
+        ]
 
     [elm (-> options
              (assoc :id (rc-state/dom-id handle-id element-ref)))]))
@@ -376,6 +397,7 @@
 
                                                :local-state      local-state
                                                :local-state-path (:path cfg-config)
+                                               :volatile-state   {}
 
                                                :foreign-states   foreign-states
                                                :foreign-paths    (-> cfg-config
@@ -386,7 +408,7 @@
 
                                        config (->> raw-config
                                                    (reduce-kv (fn [m k v]
-                                                                (let [f (rc-state/bind-config-value handle k v)]
+                                                                (let [f (bind-config-value handle k v)]
                                                                   (assoc m k f))) {}))
 
 
@@ -444,12 +466,13 @@
 
                                                :local-state      local-state
                                                :local-state-path path
+                                               :volatile-state   {}
 
                                                :foreign-states   nil
                                                :foreign-paths    nil}
 
                                        component-config (->> raw-config
-                                                             (reduce-kv (fn [m k v] (assoc m k (rc-state/bind-config-value handle k v))) {}))
+                                                             (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle k v))) {}))
 
 
                                        render-fn (:render component-config)]

@@ -3,4 +3,4 @@
 
 (def ranking-page {:config-name :ranking-page
                    :ctx            [:application-id :tournament-id]
-                   :render         (fn [_ _] [:div "scores-tab"])})
+                   :render         (fn [_] [:div "scores-tab"])})

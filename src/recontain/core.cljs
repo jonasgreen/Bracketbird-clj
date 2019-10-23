@@ -53,9 +53,11 @@
 
 
 (defn ls [& ks]
-  (if (seq ks)
-    (get-in (:local-state rc-state/*current-handle*) (if (vector? (first ks)) (first ks) (vec ks)))
-    (:local-state rc-state/*current-handle*)))
+  ;TODO - also support lookup of local state of children like (rc/ls [::add-panel ::add-button] :button-hover?)
+  (let [lsm (merge (:local-state rc-state/*current-handle*) (:volatile-state rc-state/*current-handle*))]
+    (if (seq ks)
+      (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))
+      lsm)))
 
 (defn fs [& ks]
   (if (seq ks)

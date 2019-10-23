@@ -11,7 +11,7 @@
            :foreign-state (fn [ctx]
                             (state/path-map ctx :hook/system))
 
-           :render        (fn [this s]
+           :render        (fn [_]
                             (let [app-id (rc/fs [:hook/system :active-application])]
                               [:div
                                (if app-id
@@ -23,7 +23,7 @@
                        :local-state   (fn [_] {:active-page :front-page})
                        :foreign-state (fn [ctx] (state/path-map ctx :hook/application))
 
-                       :render        (fn [_ _]
+                       :render        (fn [_]
                                         (condp = (rc/ls :active-page)
                                           :front-page ^{:key 1} [rc/container {} :front-page]
                                           :tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
@@ -34,7 +34,7 @@
 (def front-page {:config-name       :front-page
                  :ctx               [:application-id]
 
-                 :render            (fn [this _]
+                 :render            (fn [this]
                                       [:div
                                        [:div {:style {:display :flex :justify-content :center :padding-top 30}}
                                         ;logo
@@ -52,7 +52,7 @@
                                          "Create a tournament"]
                                         [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
-                 :create-tournament (fn [{:keys [ctx] :as this} _]
+                 :create-tournament (fn [{:keys [ctx]}]
                                       (let [tournament-id (system/unique-id :tournament)]
                                         (ui-services/dispatch-event
                                           {:event-type     [:tournament :create]
@@ -67,16 +67,17 @@
 (def tournament-page {:config-name             :tournament-page
                       :ctx                     [:application-id :tournament-id]
                       :local-state             (fn [_] {:items             {:teams    {:header "TEAMS" :content :teams-page}
-                                                                            :settings {:header "SETTINGS" :content :settings-page}
-                                                                            :matches  {:header "MATCHES" :content :matches-page}
-                                                                            :ranking  {:header "SCORES" :content :ranking-page}}
+                                                                            ;:settings {:header "SETTINGS" :content :settings-page}
+                                                                            ;:matches  {:header "MATCHES" :content :matches-page}
+                                                                            ;:ranking  {:header "SCORES" :content :ranking-page}
+                                                                             }
 
                                                         :order             [:teams :settings :matches :ranking]
                                                         :selection-type    :single
                                                         :selected          :teams
                                                         :previous-selected :teams})
 
-                      :render                  (fn [_ _]
+                      :render                  (fn [_]
                                                  (let [{:keys [items order]} (rc/ls)]
                                                    [::page
                                                     [::menu (map (fn [k] ^{:key k}
@@ -89,12 +90,12 @@
                                                          seq)]))
 
 
-                      [:page :style]           (fn [_ _] (rs/style
+                      [:page :style]           (fn [_] (rs/style
                                                            {:height         "100vh"
                                                             :display        :flex
                                                             :flex-direction :column}))
 
-                      [:menu :style]           (fn [_ _] (rs/style
+                      [:menu :style]           (fn [_] (rs/style
                                                            {:font-size      22
                                                             :display        :flex
                                                             :align-items    :center
@@ -103,21 +104,21 @@
                                                             :letter-spacing 1.2
                                                             :padding-right  [:app-padding]}))
 
-                      [:menu-item :style]      (fn [_ s] (rs/style
+                      [:menu-item :style]      (fn [_] (rs/style
                                                            (merge
                                                              {:margin-right [:layout-unit]
                                                               :opacity      0.5
                                                               :cursor       :pointer}
-                                                             (when (= (rc/ls :selected) (:current/item s)) {:opacity 1 :cursor :auto}))))
+                                                             (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto}))))
 
-                      [:menu-item :on-click]   (fn [this s]
-                                                 (rc/dispatch this :select-item (:current/item s)))
+                      [:menu-item :on-click]   (fn [this]
+                                                 (rc/dispatch this :select-item (rc/ls :current/item)))
 
 
-                      [:content-holder :style] (fn [_ s]
-                                                 (println "content-holder " s)
+                      [:content-holder :style] (fn [this]
+                                                 (println "contentholder-style" this)
                                                  (rs/style
-                                                   (merge {:height :100%} (when-not (= (rc/ls :selected) (:current/item s))
+                                                   (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
                                                                             {:display :none}))))
 
                       :select-item             (fn [this select]

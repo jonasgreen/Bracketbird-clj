@@ -46,23 +46,6 @@
 (defn get-container-data [container-id]
   (get @container-states-atom container-id))
 
-(defn event-key? [k]
-  (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
-
-
-(defn bind-config-value [h k v]
-  (if (fn? v)
-    (if (event-key? k)
-      (fn [s e]
-        (binding [*current-handle* h]
-          (v h s e)))
-
-      (fn [s]
-        (binding [*current-handle* h]
-          (v h s))))
-    v))
-
-
 (defn- dissoc-path [state path]
   (if (= 1 (count path))
     (dissoc state (last path))
