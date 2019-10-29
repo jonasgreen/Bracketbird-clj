@@ -141,14 +141,13 @@
 
                :render                (fn [_]
                                         [::row
-                                         [::input {;:events      [:key :change]
-                                                   :type  :text
-                                                   :elm   :input
-                                                   :value (rc/ls :input-value)}]
+                                         [::input {:inherit [:hover :change :focus  ]
+                                                   :type    :text
+                                                   :elm     :input}]
 
                                          ;[::add-team {:elm primary-button :events [action]}
 
-                                         [::button {:events [:key :click :hover]} "Add Team"]])
+                                         [::button #_{:events [:key :click :hover]} "Add Team"]])
                [:row :style]          (fn [_]
                                         (rs/style
                                           {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
@@ -160,7 +159,12 @@
                [:input :style]        (fn [_] (rs/style
                                                 {:border  :none
                                                  :padding 0}))
-               [:input :on-key-down]  (fn [this]
+
+               ;[:input :on-change]    (fn [this]
+               ;                         (println "onchange" (.. (rc/ls :event) -target -value))
+               ;                         (rc/put! this assoc :input-value (.. (rc/ls :event) -target -value)))
+
+               #_[:input :on-key-down]  #_(fn [this]
                                         (d/handle-key (rc/ls :event) {[:ENTER] (fn [_] (rc/dispatch this :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                                                       [:UP]    (fn [_] (-> this
                                                                                            :ctx

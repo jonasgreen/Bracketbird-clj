@@ -82,7 +82,8 @@
                                                    [::page
                                                     [::menu (map (fn [k] ^{:key k}
                                                                    [::menu-item {:current/item k
-                                                                                 :events       [:click]} (get-in items [k :header])]) order)]
+                                                                                 ;:events       [:click]
+                                                                                 } (get-in items [k :header])]) order)]
                                                     (->> items
                                                          (reduce-kv (fn [m k {:keys [content]}]
                                                                       (conj m ^{:key k} [::content-holder {:current/item k} [rc/container {} content]]))

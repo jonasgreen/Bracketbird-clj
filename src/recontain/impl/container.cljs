@@ -13,96 +13,14 @@
 
 (defn bind-config-value [h k v]
   (if (fn? v)
-    (fn [volatile-state]
-      (binding [rc-state/*current-handle* (update h :volatile-state merge volatile-state)]
+    (fn [element-state]
+      (binding [rc-state/*current-handle* (update h :element-state merge element-state)]
         (v rc-state/*current-handle*)))
     v))
 
+(defn bind-config-values [handle config]
+  (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle k v))) {} config))
 
-
-(defn name-in-local-state [sub-id value-name]
-  (keyword (if-not (string/blank? sub-id)
-             (str (name sub-id) "-" (name value-name))
-             (name value-name))))
-
-
-(defn dispatch-silent [h f & args]
-  (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? true}))
-
-
-(def event-bindings {:hover  {:on-mouse-enter (fn [h sub-id _ _] (rc-state/put! h assoc (name-in-local-state sub-id "hover?") true))
-                              :on-mouse-leave (fn [h sub-id _ _] (rc-state/put! h assoc
-                                                                                (name-in-local-state sub-id "hover?") false
-                                                                                (name-in-local-state sub-id "active?") false))}
-
-                     :focus  {:on-focus (fn [h sub-id _ _] (rc-state/put! h assoc (name-in-local-state sub-id "focus?") true))
-                              :on-blur  (fn [h sub-id _ _] (rc-state/put! h assoc (name-in-local-state sub-id "focus?") false))}
-
-                     :change {:on-change (fn [h sub-id _ e] (rc-state/put! h assoc (name-in-local-state sub-id "value") (.. e -target -value)))}
-
-                     :click  {:on-click      (fn [_ _ _ _] ())
-                              :on-mouse-down (fn [h sub-id _ _] (rc-state/put! h assoc (name-in-local-state sub-id "active?") true))
-                              :on-mouse-up   (fn [h sub-id _ _] (rc-state/put! h assoc (name-in-local-state sub-id "active?") false))}
-
-                     :key    {:on-key-down (fn [h sub-id ls e]
-                                             (let [backspace? (= 8 (.-keyCode e))
-                                                   delete? (get ls (name-in-local-state sub-id "delete-on-backspace?"))]
-                                               (when (and backspace? delete?)
-                                                 (.stopPropagation e)
-                                                 (dispatch-silent h [sub-id :delete-on-backspace]))))
-                              :on-key-up   (fn [h sub-id _ e]
-                                             (when (= "text" (.-type (.-target e)))
-                                               (rc-state/put! h assoc (name-in-local-state sub-id "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}
-
-                     :scroll {:on-scroll (fn [h sub-id _ e] (let [t (.-target e)
-                                                                  scroll-top (.-scrollTop t)
-                                                                  scroll-height (.-scrollHeight t)
-                                                                  client-height (.-clientHeight t)]
-
-                                                              (rc-state/put! h assoc
-                                                                             (name-in-local-state sub-id "scroll-top") scroll-top
-                                                                             (name-in-local-state sub-id "scroll-height") scroll-height
-                                                                             (name-in-local-state sub-id "client-height") client-height
-                                                                             (name-in-local-state sub-id "scroll-bottom") (- scroll-height scroll-top client-height))))}})
-(defn- bind-event-map [opts e-map h sub-id ls passed-values]
-  (reduce-kv (fn [m event-name event-action]
-               (assoc m event-name (fn [e]
-                                     (event-action h sub-id ls e)
-                                     (binding [rc-state/*passed-values* passed-values]
-                                       (dispatch-silent h [sub-id event-name] e)))))
-             opts
-             e-map))
-
-(defn- bind-events
-  [{:keys [events] :as opts} sub-id h ls passed-values]
-  (if events
-    (->> (if (sequential? events) events [events])
-         (reduce (fn [m bind-name]
-                   (if-let [e-map (get event-bindings bind-name)]
-                     (bind-event-map m e-map h sub-id ls passed-values)
-                     (println "No event binding found for " bind-name)))
-                 opts))
-    opts))
-
-(defn bind-options [h ls fs {:keys [id] :as opts}]
-  (let [style-fn (get (rc-state/get-container-config (:config-name h)) [id :style])
-        passed-keys (->> opts keys (filter namespace))
-        passed-values (select-keys opts passed-keys)
-        ls-with-passed-values (merge ls passed-values)
-
-        style-config (when style-fn
-                       (binding [rc-state/*current-container* {:handle         h
-                                                               :local-state    ls-with-passed-values
-                                                               :foreign-states fs}]
-                         (style-fn h)))]
-    (-> (apply dissoc opts passed-keys)
-        (assoc :id (-> h :container-id (rc-state/dom-id id)))
-        (bind-events id h ls passed-values)
-        (assoc :style (or style-config (:style opts) {})))))
-
-(defn external-bind-options [opts]
-  (let [{:keys [handle local-state foreign-state]} rc-state/*current-container*]
-    (bind-options handle local-state foreign-state (if (keyword? opts) {:id opts} opts))))
 
 (defn decorate-container [form h]
   (let [container-fn (first form)
@@ -118,7 +36,7 @@
 
     (let [ctx (merge additional-ctx (:ctx h))]
       (rc-state/validate-ctx container-name ctx)
-      (-> (into [container-fn (assoc ctx :rc_parent-container-id (:handle-id h)) container-name] (subvec form 3))
+      (-> (into [container-fn (assoc ctx :rc_parent-handle-id (:handle-id h)) container-name] (subvec form 3))
           (with-meta (meta form))))))
 
 
@@ -139,14 +57,14 @@
   (keyword (str (name k) "'")))
 
 ;dont call directly - use merge-configs
-(defn- merge-configs-maps [newest oldest]
-  (->> newest
+(defn- merge-configs-maps [from to]
+  (->> from
        (reduce-kv (fn [m k v]
                     (if-let [existing-value (get m k)]
                       (assoc m [(first k) (parent-function-keyword (last k))] existing-value
                                k v)
                       (assoc m k v)))
-                  oldest)))
+                  to)))
 
 (defn merge-configs [config-xs]
   (loop [xs config-xs]
@@ -154,8 +72,6 @@
       (first xs)
       (recur (let [merged (merge-configs-maps (-> xs drop-last last) (last xs))]
                (-> (drop-last 2 xs) vec (conj merged)))))))
-
-
 
 (defn- append-missing-element-refs [element-ref first-element? config]
   (if first-element?
@@ -179,40 +95,79 @@
              config))
 
 
+(defn- insert-element-inheritance [config inheritable-configs]
+  (reduce (fn [v p]
+            (let [parent-config (get inheritable-configs p)]
+              (conj v (insert-element-inheritance parent-config inheritable-configs)))) [(dissoc config :inherit)] (:inherit config)))
+
 (defn- mk-element
   "Returns a vector containing the element and the elements options"
   [element-opts handle configs]
-  (let [{:keys [first-element? element-ref]} element-opts
+  (let [{:keys [first-element? element-ref elm]} element-opts
         {:keys [handle-id local-state]} handle
 
-        elm (or (:elm element-opts) :div)
-        passed-keys (->> element-opts keys (filter namespace))
-        passed-values (select-keys element-opts passed-keys)
+        elm (or elm :div)
+        passed-element-state (->> element-opts keys (filter namespace) (select-keys element-opts))
 
-        _ (println element-ref "--- passed values" passed-values)
+
+        ;inheritance for is done when making component
+        components-element-config (->> (last configs)
+                                       (remove-none-element-keys element-ref)
+                                       convert-vector-to-option-keys)
+
+        ;with inheritance resolved
+        element-opts-configs (-> element-opts
+                                 (dissoc :elm :first-element? :element-ref)
+                                 (insert-element-inheritance @rc-state/element-configurations)
+                                 flatten)
+
+
+        vertical-merged-and-bound-config (->> (into [components-element-config] element-opts-configs)
+                                              merge-configs
+                                              (bind-config-values handle))
+
+
+        ;strip down config to element
+
+        ;all in options has to do with element (with containers and components it is passed along)
+
+
+        ;; horizontal merging
+
         ;keyword -> value config
-        element-config (->> configs
-                            (map (partial append-missing-element-refs element-ref first-element?))
-                            (map (partial remove-none-element-keys element-ref))
-                            (merge-configs)
+        element-config (->>
+                         ;config of parents
+                         (drop-last configs)
+                         (map (partial append-missing-element-refs element-ref first-element?))
+                         (map (partial remove-none-element-keys element-ref))
+                         (map convert-vector-to-option-keys)
 
-                            ;[:xxx :style] -> :style
-                            (convert-vector-to-option-keys))
+                         ;merge with elements vertical config
+                         (cons vertical-merged-and-bound-config)
 
-        _ (println element-ref "element-config keys" (keys element-config))
-        _ (println element-ref "option keys" (keys element-opts))
+                         merge-configs)
+
+        ;_ (println element-ref "element-config" (pr-str element-config))
+        ;_ (println element-ref "option keys" (keys element-opts))
 
 
         ;assemble options
         options (reduce-kv (fn [m k v]
                              (let [parent-fn-key (parent-function-keyword k)
                                    parent-fn (get element-config parent-fn-key)
-                                   volatile-state (merge passed-values (when parent-fn {parent-fn-key parent-fn}))]
 
-                               (if (event-key? k)
-                                 (assoc m k (fn [e] (v (merge volatile-state {:event e})))) ;wrap events for later execution
-                                 (assoc m k (v volatile-state))))) {} element-config)
-        _ (println element-ref "final option keys" (keys options))
+                                   ;; only present in element context - is merged into local-state on call to rc/ls
+                                   element-state (merge passed-element-state
+                                                        {:element-name element-ref}
+                                                        (when parent-fn {parent-fn-key parent-fn}))]
+
+
+                               (if (fn? v)
+                                 (if (event-key? k)
+                                   (assoc m k (fn [e] (v (merge element-state {:event e})))) ;wrap events for later execution
+                                   (assoc m k (v element-state)))
+                                 (assoc m k v))))
+                           {} element-config)
 
         ]
 
@@ -295,6 +250,7 @@
   (let [state-atom (get @rc-state/recontain-settings-atom :state-atom)
         cfg (get @rc-state/container-configurations container-name)
 
+
         ;create path from parent-path, ctx and container-name. Use diff in ctx
         path (let [context-p (->> (first (data/diff ctx (:ctx parent-handle))) keys sort (map ctx) (reduce str))
                    p (-> (into [] (drop-last (:local-state-path parent-handle)))
@@ -304,8 +260,9 @@
                     (remove string/blank?)
                     vec))
 
+
         ;continer-id of container instance
-        container-id (rc-state/mk-container-id ctx container-name)
+        handle-id (rc-state/mk-container-id ctx container-name)
 
         foreign-state-paths (if-let [f (:foreign-state cfg)]
                               (f ctx)
@@ -326,7 +283,7 @@
 
 
     (merge cfg {:parent-handle           parent-handle
-                :container-id            container-id
+                :handle-id               handle-id
                 :reload-conf-count       @rc-state/reload-configuration-count
                 :path                    path
                 :all-paths               all-state-paths
@@ -334,11 +291,11 @@
                 :foreign-local-state-ids foreign-local-state-ids})))
 
 (defn- mk-container [additional-ctx container-name _]
-  (let [parent-handle-id (:rc_parent-container-id additional-ctx)
-        parent-handle (:handle (get @rc-state/container-states-atom parent-handle-id))
+  (let [parent-handle-id (:rc_parent-handle-id additional-ctx)
+        parent-handle (get @rc-state/container-states-atom parent-handle-id)
 
         ;:rc_parent-container-id is set during decoration when rendering previous container
-        ctx (-> (:ctx parent-handle) (merge additional-ctx) (dissoc :rc_parent-container-id))
+        ctx (-> (:ctx parent-handle) (merge additional-ctx) (dissoc :rc_parent-handle-id))
 
         cfg (reaction (resolve-container-instance parent-handle ctx container-name))
         ;org-handle (rc-state/mk-container-handle parent-handle ctx @cfg)
@@ -360,10 +317,11 @@
 
        :reagent-render         (fn [_ _ opts]
                                  (let [cfg-config @cfg
+                                       start (.getTime (js/Date.))
 
                                        _ (rc-state/debug #(println "RENDER - " container-name))
 
-                                       handle-id (:container-id cfg-config)
+                                       handle-id (:handle-id cfg-config)
                                        foreign-local-state-ids (:foreign-local-state-ids cfg-config)
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} (:reactions cfg-config))
 
@@ -397,7 +355,7 @@
 
                                                :local-state      local-state
                                                :local-state-path (:path cfg-config)
-                                               :volatile-state   {}
+                                               :element-state    {}
 
                                                :foreign-states   foreign-states
                                                :foreign-paths    (-> cfg-config
@@ -423,6 +381,8 @@
                                      ;instead of reagent calling render function - we do it
                                      (let [result (-> (render handle opts)
                                                       (decorate-hiccup true handle [config]))]
+
+                                       ;(println container-name "render time: " (- (.getTime (js/Date.)) start))
 
                                        (if-let [decorator (:component-hiccup-decorator @rc-state/recontain-settings-atom)]
                                          (decorator result (get @rc-state/container-states-atom handle-id))
@@ -466,7 +426,7 @@
 
                                                :local-state      local-state
                                                :local-state-path path
-                                               :volatile-state   {}
+                                               :element-state    {}
 
                                                :foreign-states   nil
                                                :foreign-paths    nil}
@@ -485,5 +445,6 @@
                                      (let [result
                                            (-> (render-fn local-state)
                                                (decorate-hiccup true handle (conj parent-configs component-config)))]
+
                                        result
                                        ))))})))

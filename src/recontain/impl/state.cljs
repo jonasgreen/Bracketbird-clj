@@ -5,6 +5,7 @@
 (defonce container-configurations (atom {}))
 (defonce container-states-atom (atom {}))
 (defonce components-configurations (atom {}))
+(defonce element-configurations (atom {}))
 
 (defonce recontain-settings-atom (atom {}))
 
@@ -19,12 +20,13 @@
 (defn reload-container-configurations []
   (swap! reload-configuration-count inc))
 
-(defn setup [config {:keys [container-function component-function]}]
+(defn setup [config {:keys [container-function component-function elements]}]
   (reset! container-fn container-function)
   (reset! component-fn component-function)
 
   (reset! container-states-atom {})
   (reset! recontain-settings-atom (assoc config :anonymous-count 0))
+  (reset! element-configurations elements)
   (reset! components-configurations (:components config))
   (reset! container-configurations (reduce (fn [m v] (assoc m (:config-name v) v)) {} (:containers config)))
   @recontain-settings-atom)
@@ -60,6 +62,11 @@
   (let [{:keys [handle-id local-state-path]} h]
     (swap! container-states-atom dissoc-path [handle-id :local-state])
     (swap! (:state-atom @recontain-settings-atom) dissoc-path local-state-path)))
+
+(defn sub-name [sub-id value-name]
+  (keyword (if-not (string/blank? sub-id)
+             (str (name sub-id) "-" (name value-name))
+             (name value-name))))
 
 (defn mk-container-id [ctx container-name]
   (let [ctx-id (->> (get-container-config container-name)
