@@ -110,7 +110,7 @@
         passed-element-state (->> element-opts keys (filter namespace) (select-keys element-opts))
 
 
-        ;inheritance for is done when making component
+        ;inheritance for component is done when making component
         components-element-config (->> (last configs)
                                        (remove-none-element-keys element-ref)
                                        convert-vector-to-option-keys)

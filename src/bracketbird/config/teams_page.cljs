@@ -141,7 +141,7 @@
 
                :render                (fn [_]
                                         [::row
-                                         [::input {:inherit [:hover :change :focus  ]
+                                         [::input {:inherit [:hover :change :focus]
                                                    :type    :text
                                                    :elm     :input}]
 

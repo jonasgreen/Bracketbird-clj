@@ -8,33 +8,33 @@
 
 (declare ls put!)
 
-(def elements {:change {:on-change (fn [{:keys [element-name] :as this}] (put! this assoc
-                                                                               (rc-state/sub-name element-name "value")
-                                                                               (.. (ls :event) -target -value)))
+(def elements {:change {:on-change (fn [this] (put! this assoc
+                                                    (rc-state/sub-name (ls :element-name) "value")
+                                                    (.. (ls :event) -target -value)))
 
-                        :value     (fn [{:keys [element-name]}] (ls (rc-state/sub-name element-name "value")))}
+                        :value     (fn [_] (ls (rc-state/sub-name (ls :element-name) "value")))}
 
-               :hover  {:on-mouse-enter (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "hover?") true))
-                        :on-mouse-leave (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "hover?") false))}
+               :hover  {:on-mouse-enter (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "hover?") true))
+                        :on-mouse-leave (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "hover?") false))}
 
 
-               :focus  {:on-focus (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "focus?") true))
-                        :on-blur  (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "focus?") false))}
+               :focus  {:on-focus (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "focus?") true))
+                        :on-blur  (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "focus?") false))}
 
 
                :active {:on-mouse-down (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "active?") true))
                         :on-mouse-up   (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "active?") false))}
 
-               :scroll {:on-scroll (fn [{:keys [element-name] :as this}] (let [t (.-target (ls :event))
-                                                                               scroll-top (.-scrollTop t)
-                                                                               scroll-height (.-scrollHeight t)
-                                                                               client-height (.-clientHeight t)]
+               :scroll {:on-scroll (fn [this] (let [t (.-target (ls :event))
+                                                    scroll-top (.-scrollTop t)
+                                                    scroll-height (.-scrollHeight t)
+                                                    client-height (.-clientHeight t)]
 
-                                                                           (rc-state/put! this assoc
-                                                                                          (rc-state/sub-name element-name "scroll-top") scroll-top
-                                                                                          (rc-state/sub-name element-name "scroll-height") scroll-height
-                                                                                          (rc-state/sub-name element-name "client-height") client-height
-                                                                                          (rc-state/sub-name element-name "scroll-bottom") (- scroll-height scroll-top client-height))))}
+                                                (rc-state/put! this assoc
+                                                               (rc-state/sub-name (ls :element-name) "scroll-top") scroll-top
+                                                               (rc-state/sub-name (ls :element-name) "scroll-height") scroll-height
+                                                               (rc-state/sub-name (ls :element-name) "client-height") client-height
+                                                               (rc-state/sub-name (ls :element-name) "scroll-bottom") (- scroll-height scroll-top client-height))))}
                })
 
 
@@ -120,7 +120,7 @@
 
 (defn setup [config] (rc-state/setup config {:container-function container
                                              :component-function component
-                                             :elements        elements}))
+                                             :elements           elements}))
 
 (defn reload-configurations [] (rc-state/reload-container-configurations))
 
