@@ -12,7 +12,7 @@
                  :ctx                  [:application-id :tournament-id]
                  :foreign-state        (fn [ctx] (state/path-map ctx :hook/teams-order :hook/teams))
 
-                 :render               (fn [_]
+                 [:render]               (fn [_]
                                          (let [{:keys [hook/teams-order hook/teams]} (rc/fs)]
                                            [::tab-content
                                             #_[::table #_{:events [:scroll]}
@@ -48,7 +48,7 @@
                :foreign-state                    (fn [ctx] (state/path-map ctx :hook/team))
                :local-state                      (fn [{:keys [hook/team]}]
                                                    {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
-               :render                           (fn [_ index]
+               [:render]                           (fn [_ index]
                                                    [::row #_{:events [:hover]}
                                                     [::icons #_{:events [:hover :click]}
                                                      #_[ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]]
@@ -139,7 +139,7 @@
                :local-state           (fn [_] {:input-delete-on-backspace? true})
                :foreign-state         (fn [ctx] (state/path-map ctx :hook/teams))
 
-               :render                (fn [_]
+               [:render]                (fn [_]
                                         [::row
                                          [::input {:inherit [:hover :change :focus]
                                                    :type    :text

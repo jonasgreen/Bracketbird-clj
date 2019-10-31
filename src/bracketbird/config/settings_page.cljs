@@ -7,11 +7,11 @@
 
 
 
-(def settings-page {:config-name                :settings-page
+(def settings-page {:config-name                   :settings-page
                     :ctx                           [:application-id :tournament-id]
                     :foreign-state                 (fn [ctx] (state/path-map ctx :hook/stages-order))
 
-                    :render                        (fn [_]
+                    [:render]                      (fn [_]
                                                      (let [{:keys [hook/stages-order]} (rc/fs)]
                                                        [::tab-content
                                                         [::scroll-panel {:events [:scroll]}
@@ -71,11 +71,11 @@
 
 
 
-(def stage-component {:config-name :stage-component
+(def stage-component {:config-name    :stage-component
                       :ctx            [:application-id :tournament-id :stage-id]
                       :foreign-state  (fn [ctx] (state/path-map ctx :hook/stage))
 
-                      :render         (fn [_]
+                      [:render]       (fn [_]
                                         [:div]
                                         #_(let [stage (rc/fs :hook/stage)]
                                             [::content
@@ -97,10 +97,10 @@
                                                          }))})
 
 
-(def add-stage-buttons {:config-name           :add-stage-buttons
+(def add-stage-buttons {:config-name              :add-stage-buttons
                         :ctx                      [:application-id :tournament-id]
 
-                        :render                   (fn [_]
+                        [:render]                 (fn [_]
                                                     [::row
                                                      ;[:e/icon {[:button :hover?]} "wat"]
                                                      [::add-button :e/primary-button "click me"]

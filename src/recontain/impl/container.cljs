@@ -272,18 +272,19 @@
                                                                      vec)}
 
                                        config (->> raw-config
-                                                   (reduce-kv (fn [m k v]
-                                                                (let [f (bind-config-value handle k v)]
-                                                                  (assoc m k f))) {}))
-
+                                                   keys
+                                                   (remove keyword?)
+                                                   vec
+                                                   (select-keys raw-config)
+                                                   (bind-config-values handle 0))
 
                                        _ (swap! rc-state/container-states-atom assoc handle-id handle)
-                                       render (:render config)]
+                                       render (get config [:render])]
 
 
 
                                    (if-not render
-                                     [:div (str "No render: " config)]
+                                     [:div (str "No render: " container-name)]
 
 
                                      ;instead of reagent calling render function - we do it
@@ -291,8 +292,7 @@
                                            result (-> (render handle opts)
                                                       (decorate-hiccup true handle (rc-config-stack/mk
                                                                                      container-name
-                                                                                     (->> config keys (remove keyword?) vec (select-keys config)))))
-                                           ]
+                                                                                     config)))]
 
                                        ;(println container-name "render time: " (- (.getTime (js/Date.)) start))
 
@@ -349,7 +349,7 @@
                                                              (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle k v))) {}))
 
 
-                                       render-fn (:render component-config)]
+                                       render-fn (get component-config [:render])]
 
 
                                    (if-not render-fn

@@ -98,6 +98,8 @@
 
 (defn ls [& ks]
   ;TODO - also support lookup of local state of children like (rc/ls [::add-panel ::add-button] :button-hover?)
+  (println "LS " ks (:stack-index rc-state/*current-handle*))
+
   (let [lsm (merge (:local-state rc-state/*current-handle*) (:element-state rc-state/*current-handle*))]
     (if (seq ks)
       (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))

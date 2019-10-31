@@ -3,4 +3,4 @@
 
 (def matches-page {:config-name :matches-page
                    :ctx            [:application-id :tournament-id]
-                   :render         (fn [_] [:div "matches-tab"])})
+                   [:render]         (fn [_] [:div "matches-tab"])})

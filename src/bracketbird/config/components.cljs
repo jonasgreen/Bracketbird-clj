@@ -16,7 +16,7 @@
 ; Merge direction: (merge config-from-item-options item-config config-from-parent-options parents-config)
 
 
-(def components {:primary-button {:render              (fn [_] [::button "a button"])
+(def components {:primary-button {[:render]            (fn [_] [::button "a button"])
 
                                   [:button :style]     (fn [_]
                                                          (println "xecuting basic style")
