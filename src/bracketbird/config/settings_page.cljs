@@ -118,7 +118,7 @@
                                                                                :hover?  (rc/ls :add-group-hover?)}))
 
                         [:add-button :on-click]   (fn [this]
-                                                    (rc/dispatch this :create-stage :group))
+                                                    (rc/dispatch this 'create-stage :group))
 
                         [:add-knockout :style]    (fn [_]
                                                     (rs/style :primary-button {:active? (rc/ls :add-knockout-active?)
@@ -126,11 +126,11 @@
 
                         [:add-knockout :on-click] (fn [this]
                                                     (rc/put! this assoc :gensym (gensym))
-                                                    #_(rc/dispatch h :create-stage :knockout))
+                                                    #_(rc/dispatch h 'create-stage :knockout))
 
 
 
-                        :create-stage             (fn [{:keys [ctx]} stage-type]
+                        'create-stage             (fn [{:keys [ctx]} stage-type]
                                                     (ui-services/dispatch-event
                                                       {:event-type [:stage :create]
                                                        :ctx        ctx

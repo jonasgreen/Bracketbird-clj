@@ -90,7 +90,7 @@
    (-> (:ctx handle)
        (merge extra-ctx)
        (get-handle container-name)
-       (dispatch :focus)))
+       (dispatch 'focus)))
 
   ([handle container-name]
    (focus handle container-name {})))

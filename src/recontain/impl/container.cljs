@@ -4,22 +4,24 @@
             [clojure.string :as string]
             [reagent.core :as r]
             [recontain.impl.state :as rc-state]
+            [recontain.impl.config-stack :as rc-config-stack]
             [bracketbird.state :as state]))
 
 
 (defn event-key? [k]
   (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
 
-
-(defn bind-config-value [h k v]
+(defn bind-config-value [handle stack-index v]
   (if (fn? v)
     (fn [element-state]
-      (binding [rc-state/*current-handle* (update h :element-state merge element-state)]
+      (binding [rc-state/*current-handle* (-> handle
+                                              (update :element-state merge element-state)
+                                              (assoc :stack-index stack-index))]
         (v rc-state/*current-handle*)))
     v))
 
-(defn bind-config-values [handle config]
-  (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle k v))) {} config))
+(defn bind-config-values [handle stack-index config]
+  (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle stack-index v))) {} config))
 
 
 (defn decorate-container [form h]
@@ -40,134 +42,43 @@
           (with-meta (meta form))))))
 
 
-(defn- filter-config [element-ref config]
-  (reduce-kv (fn [m k v]
-               (if (and (vector? k) (= element-ref (first k)))
-                 (assoc m (subvec k 1) v)
-                 m))
-             {}
-             config))
-
-(defn filter-configs [element-ref configs]
-  (->> configs
-       (map #(filter-config element-ref %))
-       vec))
-
-(defn- parent-function-keyword [k]
-  (keyword (str (name k) "'")))
-
-;dont call directly - use merge-configs
-(defn- merge-configs-maps [from to]
-  (->> from
-       (reduce-kv (fn [m k v]
-                    (if-let [existing-value (get m k)]
-                      (assoc m [(first k) (parent-function-keyword (last k))] existing-value
-                               k v)
-                      (assoc m k v)))
-                  to)))
-
-(defn merge-configs [config-xs]
-  (loop [xs config-xs]
-    (if (< (count xs) 2)
-      (first xs)
-      (recur (let [merged (merge-configs-maps (-> xs drop-last last) (last xs))]
-               (-> (drop-last 2 xs) vec (conj merged)))))))
-
-(defn- append-missing-element-refs [element-ref first-element? config]
-  (if first-element?
-    (reduce-kv (fn [m k v] (if (and (vector? k) first-element? (= 1 (count k)))
-                             (assoc m [element-ref (first k)] v)
-                             m))
-               config
-               config)
-    config))
-
-(defn- remove-none-element-keys [element-ref config]
-  (reduce-kv (fn [m k v] (if (and (vector? k) (= (first k) element-ref))
-                           (assoc m k v)
-                           m))
-             {}
-             config))
-
-(defn- convert-vector-to-option-keys [config]
-  (reduce-kv (fn [m k v] (assoc m (last k) v))
-             {}
-             config))
-
-
-(defn- insert-element-inheritance [config inheritable-configs]
-  (reduce (fn [v p]
-            (let [parent-config (get inheritable-configs p)]
-              (conj v (insert-element-inheritance parent-config inheritable-configs)))) [(dissoc config :inherit)] (:inherit config)))
-
 (defn- mk-element
   "Returns a vector containing the element and the elements options"
-  [element-opts handle configs]
+  [element-opts handle config-stack]
   (let [{:keys [first-element? element-ref elm]} element-opts
         {:keys [handle-id local-state]} handle
+
+        ;;ready element configs
+        element-opts-config (->> (dissoc element-opts :elm :first-element? :element-ref :inherit)
+                                 (bind-config-values handle (count (:configs config-stack))))
+
+        ;add element-config
+        config-stack (rc-config-stack/add config-stack (str element-ref "-opts") element-opts-config)
+
+        ;;Add inherit configs to stack
+        config-stack (reduce (fn [stack inh] (->> inh
+                                                  (get @rc-state/element-configurations)
+                                                  (bind-config-values handle (count (:configs stack)))
+                                                  (rc-config-stack/add stack inh)))
+                             config-stack
+                             (:inherit element-opts))
+
 
         elm (or elm :div)
         passed-element-state (->> element-opts keys (filter namespace) (select-keys element-opts))
 
 
-        ;inheritance for component is done when making component
-        components-element-config (->> (last configs)
-                                       (remove-none-element-keys element-ref)
-                                       convert-vector-to-option-keys)
-
-        ;with inheritance resolved
-        element-opts-configs (-> element-opts
-                                 (dissoc :elm :first-element? :element-ref)
-                                 (insert-element-inheritance @rc-state/element-configurations)
-                                 flatten)
-
-
-        vertical-merged-and-bound-config (->> (into [components-element-config] element-opts-configs)
-                                              merge-configs
-                                              (bind-config-values handle))
-
-
-        ;strip down config to element
-
-        ;all in options has to do with element (with containers and components it is passed along)
-
-
-        ;; horizontal merging
-
-        ;keyword -> value config
-        element-config (->>
-                         ;config of parents
-                         (drop-last configs)
-                         (map (partial append-missing-element-refs element-ref first-element?))
-                         (map (partial remove-none-element-keys element-ref))
-                         (map convert-vector-to-option-keys)
-
-                         ;merge with elements vertical config
-                         (cons vertical-merged-and-bound-config)
-
-                         merge-configs)
-
-        ;_ (println element-ref "element-config" (pr-str element-config))
-        ;_ (println element-ref "option keys" (keys element-opts))
-
-
         ;assemble options
-        options (reduce-kv (fn [m k v]
-                             (let [parent-fn-key (parent-function-keyword k)
-                                   parent-fn (get element-config parent-fn-key)
-
-                                   ;; only present in element context - is merged into local-state on call to rc/ls
-                                   element-state (merge passed-element-state
-                                                        {:element-name element-ref}
-                                                        (when parent-fn {parent-fn-key parent-fn}))]
-
-
-                               (if (fn? v)
-                                 (if (event-key? k)
-                                   (assoc m k (fn [e] (v (merge element-state {:event e})))) ;wrap events for later execution
-                                   (assoc m k (v element-state)))
-                                 (assoc m k v))))
-                           {} element-config)
+        options (reduce (fn [m k]
+                          (if (symbol? k)
+                            m
+                            (let [{:keys [value index]} (rc-config-stack/config-value config-stack k)]
+                              (if (fn? value)
+                                (if (event-key? k)
+                                  (assoc m k (fn [e] (value (merge passed-element-state {:event e})))) ;wrap events for later execution
+                                  (assoc m k (value passed-element-state)))
+                                (assoc m k value)))))
+                        {} (rc-config-stack/config-keys config-stack))
 
         ]
 
@@ -192,16 +103,16 @@
            (namespaced? second-item "e")))))
 
 
-(defn decorate-component [form {:keys [component-dom-id component-path component-configs]}]
-  (-> (into [@rc-state/component-fn {:component-id   (keyword (name (second form)))
-                                     :parent-path    component-path
-                                     :parent-dom-id  component-dom-id
-                                     :parent-configs component-configs}] (subvec form 2))
+(defn decorate-component [form {:keys [component-dom-id component-path config-stack]}]
+  (-> (into [@rc-state/component-fn {:component-id  (keyword (name (second form)))
+                                     :parent-path   component-path
+                                     :parent-dom-id component-dom-id
+                                     :config-stack  config-stack}] (subvec form 2))
       (with-meta (meta form))))
 
 
 
-(defn decorate-hiccup [form first-element? handle configs]
+(defn decorate-hiccup [form first-element? handle config-stack]
   (cond
     ;;container
     (and (vector? form) (= (first form) @rc-state/container-fn))
@@ -209,41 +120,37 @@
 
     ;;component
     (component-form? form)
-    (decorate-component form {:parent-dom-id  (:handle-id handle)
-                              :parent-path    (:local-state-path handle)
-                              :parent-configs (filter-configs (keyword (name (first form))) configs)})
+    (decorate-component form {:parent-dom-id (:handle-id handle)
+                              :parent-path   (:local-state-path handle)
+                              :config-stack  (rc-config-stack/shave config-stack (keyword (name (first form))))})
 
 
     ;;vector of special form with ::keyword
     (and (vector? form) (keyword? (first form)) (namespace (first form)))
     (let [;;TODO- if element render is present in config - then recur with that content
+          element-ref (keyword (name (first form)))
 
           children (->> (if (map? (second form)) (nnext form) (next form))
-                        (map (fn [f] (decorate-hiccup f false? handle configs)))
+                        (map (fn [f] (decorate-hiccup f false? handle config-stack)))
                         vec)
           element-opts (-> (if (map? (second form)) (second form) {})
-                           (assoc :element-ref (keyword (name (first form)))
+                           (assoc :element-ref element-ref
                                   :first-element? first-element?))]
 
-      (-> (mk-element element-opts handle configs)
+      (-> (mk-element element-opts handle (rc-config-stack/prepare-for-element config-stack element-ref))
           (into children)
           ;preserve meta
           (with-meta (meta form))))
 
     (vector? form)
-    (let [v (->> form (map (fn [f] (decorate-hiccup f first-element? handle configs))) vec)]
+    (let [v (->> form (map (fn [f] (decorate-hiccup f first-element? handle config-stack))) vec)]
       ;preserve meta
       (with-meta v (meta form)))
 
     (sequential? form)
-    (->> form (map (fn [f] (decorate-hiccup f first-element? handle configs))))
+    (->> form (map (fn [f] (decorate-hiccup f first-element? handle config-stack))))
 
     :else form))
-
-
-
-
-
 
 
 (defn- resolve-container-instance [parent-handle ctx container-name]
@@ -378,9 +285,14 @@
                                    (if-not render
                                      [:div (str "No render: " config)]
 
+
                                      ;instead of reagent calling render function - we do it
-                                     (let [result (-> (render handle opts)
-                                                      (decorate-hiccup true handle [config]))]
+                                     (let [
+                                           result (-> (render handle opts)
+                                                      (decorate-hiccup true handle (rc-config-stack/mk
+                                                                                     container-name
+                                                                                     (->> config keys (remove keyword?) vec (select-keys config)))))
+                                           ]
 
                                        ;(println container-name "render time: " (- (.getTime (js/Date.)) start))
 
@@ -390,8 +302,10 @@
 
 
 (defn mk-component
-  [{:keys [component-id parent-dom-id parent-path parent-configs]} org-value]
-  (let [path (-> parent-configs drop-last vec (conj :_local-state))
+  [{:keys [component-id parent-dom-id parent-path config-stack]} org-value]
+
+  (println "****** Make compoennt")
+  (let [path (-> parent-path drop-last vec (conj :_local-state))
         local-state-atom (reaction (get-in state/state path))
         dom-id (rc-state/dom-id parent-dom-id component-id)
 
@@ -444,7 +358,7 @@
                                      ;instead of reagent calling render function - we do it
                                      (let [result
                                            (-> (render-fn local-state)
-                                               (decorate-hiccup true handle (conj parent-configs component-config)))]
+                                               (decorate-hiccup true handle (rc-config-stack/add config-stack component-id component-config)))]
 
                                        result
                                        ))))})))

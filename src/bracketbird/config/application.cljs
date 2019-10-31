@@ -47,12 +47,14 @@
                                         [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
                                          "Instant tournaments"]
                                         [:button {:class    "largeButton primaryButton"
-                                                  :on-click (fn [_] (rc/call this :create-tournament))}
+                                                  :on-click (fn [_] (rc/call this 'create-tournament))}
 
                                          "Create a tournament"]
                                         [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
-                 :create-tournament (fn [{:keys [ctx]}]
+                 'create-tournament (fn [{:keys [ctx]}]
+                                      (println "CREATE TORUNAMENT")
+
                                       (let [tournament-id (system/unique-id :tournament)]
                                         (ui-services/dispatch-event
                                           {:event-type     [:tournament :create]
@@ -113,7 +115,7 @@
                                                              (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto}))))
 
                       [:menu-item :on-click]   (fn [this]
-                                                 (rc/dispatch this :select-item (rc/ls :current/item)))
+                                                 (rc/dispatch this 'select-item (rc/ls :current/item)))
 
 
                       [:content-holder :style] (fn [this]
@@ -121,5 +123,5 @@
                                                    (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
                                                                             {:display :none}))))
 
-                      :select-item             (fn [this select]
+                      'select-item             (fn [this select]
                                                  (rc/put! this assoc :previous-selected (rc/ls :selected) :selected select))})

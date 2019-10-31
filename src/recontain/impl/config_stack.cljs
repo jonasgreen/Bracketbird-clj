@@ -1,5 +1,9 @@
 (ns recontain.impl.config-stack)
 
+(defn print-config-stack [config-stack]
+  (println "---- CONFIG STACK ----")
+  (doseq [index (range (count (:config-names config-stack)))]
+    (println index (get-in config-stack [:config-names index]) (get-in config-stack [:configs index]))))
 
 (defn mk [config-name config]
   {:config-names [config-name]
@@ -13,11 +17,14 @@
 
 
 (defn- shave-config [config element-ref]
-  (reduce-kv (fn [m k v] (if (and (vector? k) (= (first k) element-ref))
-                           (assoc m (subvec k 1) v)
-                           m))
-             {}
-             config))
+  (let [shaved-config (reduce-kv (fn [m k v] (if (and (vector? k) (= (first k) element-ref))
+                                               (assoc m (subvec k 1) v)
+                                               m))
+                                 {}
+                                 config)]
+
+    shaved-config
+    ))
 
 (defn shave [config-stack element-ref]
   (update config-stack :configs (fn [xs] (->> xs
@@ -26,37 +33,49 @@
 
 
 (defn prepare-config-for-element [config element-ref]
-  (reduce-kv (fn [m k v] (if (vector? k)
-                           (when (= (first k) element-ref)
-                             (assoc m (last k) v))
-                           (assoc m k v)))
-             {}
-             config))
-
+  (let [prepared (reduce-kv (fn [m k v] (if (vector? k)
+                                          (if (= (first k) element-ref)
+                                            (assoc m (last k) v)
+                                            m)
+                                          (assoc m k v)))
+                            {}
+                            config)]
+    prepared
+    )
+  )
 
 (defn prepare-for-element [config-stack element-ref]
-  (update config-stack :configs (fn [xs] (->> xs
+  (let [after (update config-stack :configs (fn [xs] (->> xs
                                               (map #(prepare-config-for-element % element-ref))
-                                              vec))))
+                                              vec)))]
+    after))
 
-(defn option-keys [config-stack]
+
+
+(defn config-keys [config-stack]
   (->> config-stack
        :configs
        (map keys)
-       concat
+       flatten
+       (remove nil?)
+
        (reduce (fn [s k] (if (keyword? k)
                            (conj s k)
                            s))
                #{})
        seq))
 
-(defn option-value
+(defn config-value
   ([config-stack option-key]
-   (option-value config-stack option-key 0))
+   (config-value config-stack option-key 0))
 
   ([config-stack option-key start-index]
    (loop [index start-index]
+     (when (= (count (:configs config-stack)) index)
+       (throw (js/Error. (str "Index out of bounds - unable to find config-key: "option-key))))
      (let [value (get-in config-stack [:configs index option-key])]
        (if value
          {:value value :index index}
-         (recur (inc start-index)))))))
+         (recur (inc index)))))))
+
+

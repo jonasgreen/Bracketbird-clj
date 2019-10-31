@@ -15,7 +15,7 @@
                  :render               (fn [_]
                                          (let [{:keys [hook/teams-order hook/teams]} (rc/fs)]
                                            [::tab-content
-                                            [::table #_{:events [:scroll]}
+                                            #_[::table #_{:events [:scroll]}
                                              (map (fn [team-id index]
                                                     ^{:key team-id} [rc/container {:team-id team-id} :team-row index]) teams-order (range (count teams)))]
 
@@ -32,15 +32,15 @@
                                                          :overflow-y     :auto}
                                                         (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]}))))
 
-                 :scroll-to-bottom     (fn [this] (-> this
+                 'scroll-to-bottom     (fn [this] (-> this
                                                       (rc/get-dom-element :table)
                                                       (ut/scroll-elm-to-bottom!)))
 
-                 :focus-last-team      (fn [{:keys [ctx]}]
+                 'focus-last-team      (fn [{:keys [ctx]}]
                                          (when (seq (rc/fs :hook/teams-order))
                                            (-> (merge ctx {:team-id (last (rc/fs :hook/teams-order))})
                                                (rc/get-handle :team-row)
-                                               (rc/dispatch :focus))))})
+                                               (rc/dispatch 'focus))))})
 
 
 (def team-row {:config-name                      :team-row
@@ -70,8 +70,8 @@
                                                             :cursor          (if (rc/ls :icons-hover?) :pointer :normal)
                                                             :width           [:app-padding]}))
 
-               [:icons :on-click]                (fn [this] (rc/dispatch this :delete-team))
-               [:delete-icon :on-click]          (fn [this] (rc/dispatch this :delete-team))
+               [:icons :on-click]                (fn [this] (rc/dispatch this 'delete-team))
+               [:delete-icon :on-click]          (fn [this] (rc/dispatch this 'delete-team))
                [:delete-icon :style]             (fn [_] (rs/style
                                                            (merge {:font-size 8 :opacity 0.5 :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
                                                                   (when-not (rc/ls :row-hover?)
@@ -93,7 +93,7 @@
                                                             :min-width 200}))
                [:team-name :on-key-down]         (fn [{:keys [ctx] :as this}]
                                                    (d/handle-key (rc/ls :event) {:ESC            (fn [_] (rc/delete-local-state this) [:STOP-PROPAGATION])
-                                                                                 :ENTER          (fn [_] (rc/dispatch this :update-team))
+                                                                                 :ENTER          (fn [_] (rc/dispatch this 'update-team))
                                                                                  [:SHIFT :ENTER] (fn [_] (ui-services/dispatch-event
                                                                                                            {:event-type  [:team :create]
                                                                                                             :ctx         ctx
@@ -103,7 +103,7 @@
                                                                                                                            (-> ctx
                                                                                                                                (assoc :team-id (:team-id event))
                                                                                                                                (rc/get-handle :team-row)
-                                                                                                                               (rc/dispatch :focus)))}))
+                                                                                                                               (rc/dispatch 'focus)))}))
                                                                                  :UP             (fn [_] (->> (rc/fs [:hook/team :team-id])
                                                                                                               (ui-services/previous-team this)
                                                                                                               (rc/focus this :team-row :team-id)))
@@ -111,16 +111,16 @@
                                                                                                            (if team-to-focus
                                                                                                              (rc/focus this :team-row :team-id team-to-focus)
                                                                                                              (rc/focus this :add-team))))}))
-               [:team-name :delete-on-backspace] (fn [this] (rc/dispatch this :delete-team))
-               [:team-name :on-blur]             (fn [this] (rc/dispatch this :update-team))
+               [:team-name :delete-on-backspace] (fn [this] (rc/dispatch this 'delete-team))
+               [:team-name :on-blur]             (fn [this] (rc/dispatch this 'update-team))
 
-               :update-team                      (fn [this]
+               'update-team                      (fn [this]
                                                    (when (rc/has-changed (rc/ls :team-name-value) (rc/fs [:hook/team :team-name]))
                                                      (ui-services/dispatch-event
                                                        {:event-type [:team :update]
                                                         :ctx        (:ctx this)
                                                         :content    {:team-name (rc/ls :team-name-value)}})))
-               :delete-team                      (fn [this]
+               'delete-team                      (fn [this]
                                                    (let [team-id (rc/fs [:hook/team :team-id])
                                                          team-to-focus (or
                                                                          (ui-services/after-team this team-id)
@@ -132,7 +132,7 @@
                                                                        (if team-to-focus
                                                                          (rc/focus this :team-row :team-id team-to-focus)
                                                                          (rc/focus this :add-team)))})))
-               :focus                            (fn [this] (-> this (rc/get-dom-element :team-name) (.focus)))})
+               'focus                            (fn [this] (-> this (rc/get-dom-element :team-name) (.focus)))})
 
 (def add-team {:config-name           :add-team
                :ctx                   [:application-id :tournament-id]
@@ -165,11 +165,11 @@
                ;                         (rc/put! this assoc :input-value (.. (rc/ls :event) -target -value)))
 
                #_[:input :on-key-down]  #_(fn [this]
-                                        (d/handle-key (rc/ls :event) {[:ENTER] (fn [_] (rc/dispatch this :create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
+                                        (d/handle-key (rc/ls :event) {[:ENTER] (fn [_] (rc/dispatch this :'create-team) [:STOP-PROPAGATION :PREVENT-DEFAULT])
                                                                       [:UP]    (fn [_] (-> this
                                                                                            :ctx
                                                                                            (rc/get-handle :teams-page)
-                                                                                           (rc/dispatch :focus-last-team)))}))
+                                                                                           (rc/dispatch 'focus-last-team)))}))
                #_[:input :delete-on-backspace] #_(fn [{:keys [ctx]} _ _]
                                                    (when-let [{:keys [team-name team-id]} (ui-services/last-team ctx)]
                                                      (when (string/blank? team-name)
@@ -179,22 +179,22 @@
                                                           :post-render (fn [_]
                                                                          (-> ctx
                                                                              (rc/get-handle :teams-page)
-                                                                             (rc/dispatch :scroll-to-bottom)))}))))
+                                                                             (rc/dispatch 'scroll-to-bottom)))}))))
                [:button :style]       (fn [_]
                                         (rs/style :primary-button {:active? (rc/ls :button-active?)
                                                                    :hover?  (rc/ls :button-hover?)}))
 
                [:button :on-click]    (fn [this]
-                                        (rc/dispatch this :create-team)
-                                        (rc/dispatch this :focus))
+                                        (rc/dispatch this 'create-team)
+                                        (rc/dispatch this 'focus))
 
                [:button :on-key-down] (fn [this]
                                         (d/handle-key (rc/ls :event) {[:ENTER] (fn [_]
-                                                                                 (rc/dispatch this :create-team)
-                                                                                 (rc/dispatch this :focus)
+                                                                                 (rc/dispatch this 'create-team)
+                                                                                 (rc/dispatch this 'focus)
                                                                                  [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
-               :did-mount             (fn [this] (rc/dispatch this :focus))
-               :create-team           (fn [{:keys [ctx] :as this} _]
+               'did-mount             (fn [this] (rc/dispatch this 'focus))
+               'create-team           (fn [{:keys [ctx] :as this} _]
                                         (ui-services/dispatch-event
                                           {:event-type     [:team :create]
                                            :ctx            ctx
@@ -202,5 +202,5 @@
                                            :state-coeffect #(-> % (rc/update! this dissoc :input-value))
                                            :post-render    (fn [_]
                                                              (-> (rc/get-handle ctx :teams-page)
-                                                                 (rc/dispatch :scroll-to-bottom)))}))
-               :focus                 (fn [this] (-> this (rc/get-dom-element :input) (.focus)))})
+                                                                 (rc/dispatch 'scroll-to-bottom)))}))
+               'focus                 (fn [this] (-> this (rc/get-dom-element :input) (.focus)))})
