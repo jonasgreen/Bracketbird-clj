@@ -11,17 +11,25 @@
 (defn event-key? [k]
   (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
 
-(defn bind-config-value [handle stack-index v]
+(defn bind-config-value [handle stack-index element-ref v]
   (if (fn? v)
-    (fn [element-state]
+    (fn [config-stack element-state]
       (binding [rc-state/*current-handle* (-> handle
                                               (update :element-state merge element-state)
-                                              (assoc :stack-index stack-index))]
+                                              (assoc :element-ref element-ref)
+                                              (assoc :config-stack-index stack-index
+                                                     :config-stack config-stack))]
         (v rc-state/*current-handle*)))
     v))
 
-(defn bind-config-values [handle stack-index config]
-  (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle stack-index v))) {} config))
+(defn bind-config-values
+  ([handle stack-index config]
+   (bind-config-values handle stack-index nil config))
+
+  ;optional element-ref
+  ([handle stack-index element-ref config]
+   (reduce-kv (fn [m k v] (let [e-ref (or element-ref (when (vector? k) (first k)))]
+                            (assoc m k (bind-config-value handle stack-index e-ref v)))) {} config)))
 
 
 (defn decorate-container [form h]
@@ -49,20 +57,21 @@
         {:keys [handle-id local-state]} handle
 
         ;;ready element configs
+
         element-opts-config (->> (dissoc element-opts :elm :first-element? :element-ref :inherit)
                                  (bind-config-values handle (count (:configs config-stack))))
 
         ;add element-config
         config-stack (rc-config-stack/add config-stack (str element-ref "-opts") element-opts-config)
 
+
         ;;Add inherit configs to stack
         config-stack (reduce (fn [stack inh] (->> inh
                                                   (get @rc-state/element-configurations)
-                                                  (bind-config-values handle (count (:configs stack)))
+                                                  (bind-config-values handle (count (:configs stack)) element-ref)
                                                   (rc-config-stack/add stack inh)))
                              config-stack
                              (:inherit element-opts))
-
 
         elm (or elm :div)
         passed-element-state (->> element-opts keys (filter namespace) (select-keys element-opts))
@@ -75,8 +84,8 @@
                             (let [{:keys [value index]} (rc-config-stack/config-value config-stack k)]
                               (if (fn? value)
                                 (if (event-key? k)
-                                  (assoc m k (fn [e] (value (merge passed-element-state {:event e})))) ;wrap events for later execution
-                                  (assoc m k (value passed-element-state)))
+                                  (assoc m k (fn [e] (value config-stack (merge passed-element-state {:event e})))) ;wrap events for later execution
+                                  (assoc m k (value config-stack passed-element-state)))
                                 (assoc m k value)))))
                         {} (rc-config-stack/config-keys config-stack))
 
@@ -103,10 +112,10 @@
            (namespaced? second-item "e")))))
 
 
-(defn decorate-component [form {:keys [component-dom-id component-path config-stack]}]
+(defn decorate-component [form {:keys [parent-dom-id parent-path config-stack]}]
   (-> (into [@rc-state/component-fn {:component-id  (keyword (name (second form)))
-                                     :parent-path   component-path
-                                     :parent-dom-id component-dom-id
+                                     :parent-path   parent-path
+                                     :parent-dom-id parent-dom-id
                                      :config-stack  config-stack}] (subvec form 2))
       (with-meta (meta form))))
 
@@ -292,7 +301,10 @@
                                            result (-> (render handle opts)
                                                       (decorate-hiccup true handle (rc-config-stack/mk
                                                                                      container-name
-                                                                                     config)))]
+                                                                                     config)))
+
+                                           ;_ (println "render" (- (.getTime (js/Date.)) start) )
+                                           ]
 
                                        ;(println container-name "render time: " (- (.getTime (js/Date.)) start))
 
@@ -303,8 +315,6 @@
 
 (defn mk-component
   [{:keys [component-id parent-dom-id parent-path config-stack]} org-value]
-
-  (println "****** Make compoennt")
   (let [path (-> parent-path drop-last vec (conj :_local-state))
         local-state-atom (reaction (get-in state/state path))
         dom-id (rc-state/dom-id parent-dom-id component-id)
@@ -346,7 +356,7 @@
                                                :foreign-paths    nil}
 
                                        component-config (->> raw-config
-                                                             (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle k v))) {}))
+                                                             (bind-config-values handle (count (:configs config-stack))))
 
 
                                        render-fn (get component-config [:render])]
@@ -359,6 +369,5 @@
                                      (let [result
                                            (-> (render-fn local-state)
                                                (decorate-hiccup true handle (rc-config-stack/add config-stack component-id component-config)))]
-
                                        result
                                        ))))})))

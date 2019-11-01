@@ -2,28 +2,36 @@
   (:require [goog.dom :as dom]
             [clojure.string :as string]
             [recontain.impl.state :as rc-state]
-            [recontain.impl.container :as rc-container]))
+            [recontain.impl.container :as rc-container]
+            [recontain.impl.config-stack :as rc-config-stack]))
 
 
 
 (declare ls put!)
 
-(def elements {:change {:on-change (fn [this] (put! this assoc
-                                                    (rc-state/sub-name (ls :element-name) "value")
-                                                    (.. (ls :event) -target -value)))
+(defn element-ref
+  ([] (:element-ref rc-state/*current-handle*))
 
-                        :value     (fn [_] (ls (rc-state/sub-name (ls :element-name) "value")))}
-
-               :hover  {:on-mouse-enter (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "hover?") true))
-                        :on-mouse-leave (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "hover?") false))}
-
-
-               :focus  {:on-focus (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "focus?") true))
-                        :on-blur  (fn [this] (put! this assoc (rc-state/sub-name (ls :element-name) "focus?") false))}
+  ([sub-name]
+   (let [element (:element-ref rc-state/*current-handle*)]
+     (keyword (if element
+                (str (name element) "-" (name sub-name))
+                (name sub-name))))))
 
 
-               :active {:on-mouse-down (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "active?") true))
-                        :on-mouse-up   (fn [{:keys [element-name] :as this}] (put! this assoc (rc-state/sub-name element-name "active?") false))}
+(def elements {:change {:on-change (fn [this] (put! this assoc (element-ref "value") (.. (ls :event) -target -value)))
+                        :value     (fn [_] (ls (element-ref "value")))}
+
+               :hover  {:on-mouse-enter (fn [this] (put! this assoc (element-ref "hover?") true))
+                        :on-mouse-leave (fn [this] (put! this assoc (element-ref "hover?") false))}
+
+
+               :focus  {:on-focus (fn [this] (put! this assoc (element-ref "focus?") true))
+                        :on-blur  (fn [this] (put! this assoc (element-ref "focus?") false))}
+
+
+               :active {:on-mouse-down (fn [this] (put! this assoc (element-ref "active?") true))
+                        :on-mouse-up   (fn [this] (put! this assoc (element-ref "active?") false))}
 
                :scroll {:on-scroll (fn [this] (let [t (.-target (ls :event))
                                                     scroll-top (.-scrollTop t)
@@ -31,24 +39,31 @@
                                                     client-height (.-clientHeight t)]
 
                                                 (rc-state/put! this assoc
-                                                               (rc-state/sub-name (ls :element-name) "scroll-top") scroll-top
-                                                               (rc-state/sub-name (ls :element-name) "scroll-height") scroll-height
-                                                               (rc-state/sub-name (ls :element-name) "client-height") client-height
-                                                               (rc-state/sub-name (ls :element-name) "scroll-bottom") (- scroll-height scroll-top client-height))))}
-               })
+                                                               (element-ref "scroll-top") scroll-top
+                                                               (element-ref "scroll-height") scroll-height
+                                                               (element-ref "client-height") client-height
+                                                               (element-ref "scroll-bottom") (- scroll-height scroll-top client-height))))}})
 
 
 
 
 (def event-bindings #_{:key {:on-key-down (fn [h sub-id ls e]
                                             (let [backspace? (= 8 (.-keyCode e))
-                                                  delete? (get ls (rc-state/sub-name sub-id "delete-on-backspace?"))]
+                                                  delete? (get ls (element-ref "delete-on-backspace?"))]
                                               (when (and backspace? delete?)
                                                 (.stopPropagation e)
                                                 #_(dispatch-silent h [sub-id :delete-on-backspace]))))
                              :on-key-up   (fn [h sub-id _ e]
                                             (when (= "text" (.-type (.-target e)))
-                                              (rc-state/put! h assoc (rc-state/sub-name sub-id "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}})
+                                              (rc-state/put! h assoc (element-ref "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}})
+
+
+(defn this [& ks]
+  (let [h rc-state/*current-handle*]
+    (println "this" h)
+    (if (seq ks)
+      (get-in h (if (vector? (first ks)) (first ks) (vec ks)))
+      h)))
 
 
 (defn update! [state-m handle & args]
@@ -59,14 +74,12 @@
 (defn delete-local-state [handle] (rc-state/delete-local-state handle))
 
 (defn dispatch [h f & args]
-
   (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
 
-(defn call [h f & args]
-  (binding [rc-state/*current-handle* h]
-    (if-let [cf (get-in h [:raw-config f])]
-      (cf h args)
-      (throw (js/Error. (str "Function " f " is not defined in " h))))))
+(defn call [f & args]
+    (if-let [cf (get-in (this) [:raw-config f])]
+      (cf (this) args)
+      (throw (js/Error. (str "Function " f " is not defined in " (this))))))
 
 (defn get-dom-element [handle sub-id] (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement))
 
@@ -98,12 +111,21 @@
 
 (defn ls [& ks]
   ;TODO - also support lookup of local state of children like (rc/ls [::add-panel ::add-button] :button-hover?)
-  (println "LS " ks (:stack-index rc-state/*current-handle*))
 
   (let [lsm (merge (:local-state rc-state/*current-handle*) (:element-state rc-state/*current-handle*))]
     (if (seq ks)
       (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))
       lsm)))
+
+(defn super [k]
+  (let [{:keys [config-stack config-stack-index]} rc-state/*current-handle*
+        super-fn (rc-config-stack/super config-stack config-stack-index k)
+
+        ]
+
+    )
+
+  )
 
 (defn fs [& ks]
   (if (seq ks)
@@ -125,5 +147,6 @@
                                              :elements           elements}))
 
 (defn reload-configurations [] (rc-state/reload-container-configurations))
+
 
 

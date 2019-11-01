@@ -63,11 +63,6 @@
     (swap! container-states-atom dissoc-path [handle-id :local-state])
     (swap! (:state-atom @recontain-settings-atom) dissoc-path local-state-path)))
 
-(defn sub-name [sub-id value-name]
-  (keyword (if-not (string/blank? sub-id)
-             (str (name sub-id) "-" (name value-name))
-             (name value-name))))
-
 (defn mk-container-id [ctx container-name]
   (let [ctx-id (->> (get-container-config container-name)
                     :ctx

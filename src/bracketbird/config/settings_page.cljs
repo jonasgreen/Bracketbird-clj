@@ -117,21 +117,21 @@
                                                     (rs/style :primary-button {:active? (rc/ls :add-group-active?)
                                                                                :hover?  (rc/ls :add-group-hover?)}))
 
-                        [:add-button :on-click]   (fn [this]
-                                                    (rc/dispatch this 'create-stage :group))
+                        [:add-button :on-click]   (fn [_]
+                                                    (rc/call 'create-stage :group))
 
                         [:add-knockout :style]    (fn [_]
                                                     (rs/style :primary-button {:active? (rc/ls :add-knockout-active?)
                                                                                :hover?  (rc/ls :add-knockout-hover?)} :margin-left 20))
 
-                        [:add-knockout :on-click] (fn [this]
-                                                    (rc/put! this assoc :gensym (gensym))
+                        [:add-knockout :on-click] (fn [_]
+                                                    (rc/put! (rc/this) assoc :gensym (gensym))
                                                     #_(rc/dispatch h 'create-stage :knockout))
 
 
 
-                        'create-stage             (fn [{:keys [ctx]} stage-type]
+                        'create-stage             (fn [stage-type]
                                                     (ui-services/dispatch-event
                                                       {:event-type [:stage :create]
-                                                       :ctx        ctx
+                                                       :ctx        (rc/this :ctx)
                                                        :content    {:stage-type stage-type}}))})

@@ -22,9 +22,7 @@
                                                m))
                                  {}
                                  config)]
-
-    shaved-config
-    ))
+    shaved-config))
 
 (defn shave [config-stack element-ref]
   (update config-stack :configs (fn [xs] (->> xs
@@ -40,9 +38,7 @@
                                           (assoc m k v)))
                             {}
                             config)]
-    prepared
-    )
-  )
+    prepared))
 
 (defn prepare-for-element [config-stack element-ref]
   (let [after (update config-stack :configs (fn [xs] (->> xs
@@ -78,4 +74,7 @@
          {:value value :index index}
          (recur (inc index)))))))
 
+(defn super[config-stack index config-key]
 
+
+  )
