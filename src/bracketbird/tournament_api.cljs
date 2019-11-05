@@ -1,7 +1,6 @@
 (ns bracketbird.tournament-api
   (:require [bracketbird.system :as system]
-            [bracketbird.util :as ut]
-            [cljs.spec.alpha :as s]))
+            [stateless.util :as ut]))
 
 
 (def settings {:max-number-of-teams {:description "asdfasdfasdf"

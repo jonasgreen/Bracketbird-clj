@@ -1,6 +1,7 @@
 (ns bracketbird.config.application
   (:require [recontain.core :as rc]
             [restyle.core :as rs]
+            [stateless.util :as ut]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.system :as system]
             [bracketbird.state :as state]))
@@ -46,12 +47,11 @@
                                         [:div {:style {:display :flex :flex-direction :column :align-items :center}}
                                          [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
                                           "Instant tournaments"]
-                                         [::button {:inherit [:hover :active]} "Create a tournament"]
+                                         [::button "Create a tournament"]
                                          [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
-                 [:button :style]    (fn [_] (rs/style :primary-button {:active? (rc/ls :button-active?)
-                                                                        :hover?  (rc/ls :button-hover?)}))
-
+                 [:button :inherit]  (fn [_] [:hover :active])
+                 [:button :style]    (fn [_] (rs/style :primary-button {:active? (rc/ls :button-active?) :hover? (rc/ls :button-hover?)}))
                  [:button :on-click] (fn [_] (rc/call 'create-tournament))
 
                  'create-tournament  (fn [_]
@@ -69,11 +69,12 @@
 
 (def tournament-page {:config-name             :tournament-page
                       :ctx                     [:application-id :tournament-id]
-                      :local-state             (fn [_] {:items             {:teams {:header "TEAMS" :content :teams-page}
-                                                                            ;:settings {:header "SETTINGS" :content :settings-page}
-                                                                            ;:matches  {:header "MATCHES" :content :matches-page}
-                                                                            ;:ranking  {:header "SCORES" :content :ranking-page}
-                                                                            }
+                      :local-state             (fn [_] {:items             [{:id :teams :header "TEAMS" :content :teams-page}
+                                                                            ;{:id :settings :header "SETTINGS" :content :settings-page}
+                                                                            ;{:id :matches  :header "MATCHES" :content :matches-page}
+                                                                            {:id :ranking  :header "SCORES" :content :ranking-page}
+
+                                                                            ]
 
                                                         :order             [:teams :settings :matches :ranking]
                                                         :selection-type    :single
@@ -81,17 +82,12 @@
                                                         :previous-selected :teams})
 
                       [:render]                (fn [_]
-                                                 (let [{:keys [items order]} (rc/ls)]
+                                                 (let [{:keys [items order]} (rc/ls)
+                                                       tabs (sort-by #(ut/index-of (:id %) order) items)]
+
                                                    [::page
-                                                    [::menu (map (fn [k] ^{:key k}
-                                                                   [::menu-item {:current/item k
-                                                                                 ;:events       [:click]
-                                                                                 } (get-in items [k :header])]) order)]
-                                                    (->> items
-                                                         (reduce-kv (fn [m k {:keys [content]}]
-                                                                      (conj m ^{:key k} [::content-holder {:current/item k} [rc/container {} content]]))
-                                                                    [])
-                                                         seq)]))
+                                                    [::menu (map (fn [t] ^{:key (:id t)} [::menu-item (:header t)]) tabs)]
+                                                    (map (fn [t] ^{:key (:id t)} [::content-holder [rc/container {} (:content t)]]) tabs)]))
 
 
                       [:page :style]           (fn [_] (rs/style
@@ -109,21 +105,20 @@
                                                           :letter-spacing 1.2
                                                           :padding-right  [:app-padding]}))
 
-                      [:menu-item :style]      (fn [_] (rs/style
-                                                         (merge
-                                                           {:margin-right [:layout-unit]
-                                                            :opacity      0.5
-                                                            :cursor       :pointer}
-                                                           (when (= (rc/ls :selected) (rc/ls :current/item)) {:opacity 1 :cursor :auto}))))
+                      [:menu-item :style]      (fn [{:keys [rc-element-key]}] (rs/style
+                                                                        (merge
+                                                                          {:margin-right [:layout-unit]
+                                                                           :opacity      0.5
+                                                                           :cursor       :pointer}
+                                                                          (when (= (rc/ls :selected) rc-element-key) {:opacity 1 :cursor :auto}))))
 
-                      [:menu-item :on-click]   (fn [_]
-                                                 (rc/call 'select-item (rc/ls :current/item)))
+                      [:menu-item :on-click]   (fn [{:keys [rc-element-key]}] (rc/call 'select-item rc-element-key))
 
 
-                      [:content-holder :style] (fn [_]
+                      [:content-holder :style] (fn [{:keys [rc-element-key] :as data}]
                                                  (rs/style
-                                                   (merge {:height :100%} (when-not (= (rc/ls :selected) (rc/ls :current/item))
+                                                   (merge {:height :100%} (when-not (= (rc/ls :selected) rc-element-key)
                                                                             {:display :none}))))
 
-                      'select-item             (fn [_ select]
-                                                 (rc/put! (rc/this) assoc :previous-selected (rc/ls :selected) :selected select))})
+                      'select-item             (fn [select]
+                                                 (rc/put! :previous-selected (rc/ls :selected) :selected select))})

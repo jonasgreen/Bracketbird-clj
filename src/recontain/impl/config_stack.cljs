@@ -42,8 +42,8 @@
 
 (defn prepare-for-element [config-stack element-ref]
   (let [after (update config-stack :configs (fn [xs] (->> xs
-                                              (map #(prepare-config-for-element % element-ref))
-                                              vec)))]
+                                                          (map #(prepare-config-for-element % element-ref))
+                                                          vec)))]
     after))
 
 
@@ -67,14 +67,12 @@
 
   ([config-stack option-key start-index]
    (loop [index start-index]
-     (when (= (count (:configs config-stack)) index)
-       (throw (js/Error. (str "Index out of bounds - unable to find config-key: "option-key))))
-     (let [value (get-in config-stack [:configs index option-key])]
-       (if value
-         {:value value :index index}
-         (recur (inc index)))))))
+     (when (> (count (:configs config-stack)) index)
+       (let [value (get-in config-stack [:configs index option-key])]
+         (if value
+           {:value value :index index}
+           (recur (inc index))))))))
 
-(defn super[config-stack index config-key]
-
+(defn super [config-stack index config-key]
 
   )

@@ -1,6 +1,7 @@
 (ns bracketbird.config.components
   (:require [recontain.core :as rc]
-            [restyle.core :as rs]))
+            [restyle.core :as rs]
+            [bracketbird.dom :as d]))
 
 ; configuration of elements:
 ; :render
@@ -15,15 +16,36 @@
 ;
 ; Merge direction: (merge config-from-item-options item-config config-from-parent-options parents-config)
 
+(def components {:primary-button {[:render]              (fn [{:keys [text] :as data}]
+                                                           [::button {:decorate [:hover :active]} (or text "a button")])
 
-(def components {:primary-button {[:render]            (fn [_] [::button {:inherit [:hover]} "a button"])
+                                  [:button :style]       (fn [_]
+                                                           (println "style")
+                                                           (rs/style :primary-button {:button-active? (rc/ls :button-active?)
+                                                                                            :button-hover?  (rc/ls :button-hover?)}))
+                                  [:button :on-click]    (fn [_] (rc/call 'action))
+                                  [:button :on-key-down] (fn [{:keys [rc-event]}]
+                                                           (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
 
-                                  [:button :style]     (fn [_] (rs/style :primary-button {:button-active? (rc/ls :button-active?)
-                                                                                    :button-hover?  (rc/ls :button-hover?)}))
-                                  ;[:button :event->state] (fn [_] [:hover :click])
+                                  'action                (fn [_] (println "default-button 'action ... "))}
 
-                                  [:button :on-click]  (fn [_] (println "primary button click"))
 
-                                  }})
+                 :default-input  {[:render]             (fn [_] [::input {:decorate [:hover :change :focus]}])
+
+                                  [:input :type]        (fn [_] :text)
+                                  [:input :style]       (fn [_] {:border :none :padding 0})
+                                  [:input :on-change]   (fn [_]
+                                                          (rc/put! :input-value (.. (rc/ls :event) -target -value)))
+
+                                  [:input :on-key-down] (fn [{:keys [rc-event]}]
+                                                          (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
+
+                                  'action               (fn [_] (println "default-input 'action ... " (rc/ls :input-value)))}
+                 }
+
+  )
+
+
+
 
 

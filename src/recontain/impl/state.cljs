@@ -16,6 +16,9 @@
 (def ^:dynamic *current-container* nil)
 (def ^:dynamic *passed-values* nil)
 (def ^:dynamic *current-handle* nil)
+(def ^:dynamic *rendering* {:config-stack nil
+                            :handle       nil})
+
 
 (defn reload-container-configurations []
   (swap! reload-configuration-count inc))
@@ -96,7 +99,7 @@
   (validate-ctx container-name ctx)
   (get-container-data (mk-container-id ctx container-name)))
 
-(defn update! [state {:keys [handle-id local-state-path] :as opts} & args]
+(defn update! [state {:keys [handle-id local-state-path]} & args]
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-container-data handle-id))) (rest args)))]
     (update-in state local-state-path upd)))
 

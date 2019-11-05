@@ -125,7 +125,7 @@
                                                                                :hover?  (rc/ls :add-knockout-hover?)} :margin-left 20))
 
                         [:add-knockout :on-click] (fn [_]
-                                                    (rc/put! (rc/this) assoc :gensym (gensym))
+                                                    (rc/put! :gensym (gensym))
                                                     #_(rc/dispatch h 'create-stage :knockout))
 
 

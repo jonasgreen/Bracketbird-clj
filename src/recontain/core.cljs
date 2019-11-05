@@ -9,58 +9,51 @@
 
 (declare ls put!)
 
-(defn element-ref
-  ([] (:element-ref rc-state/*current-handle*))
-
-  ([sub-name]
-   (let [element (:element-ref rc-state/*current-handle*)]
-     (keyword (if element
-                (str (name element) "-" (name sub-name))
-                (name sub-name))))))
+(defn sub-name [{:keys [rc-element-name]} sub-name]
+  (keyword (str (name rc-element-name) "-" (name sub-name))))
 
 
-(def elements {:change {:on-change (fn [this] (put! this assoc (element-ref "value") (.. (ls :event) -target -value)))
-                        :value     (fn [_] (ls (element-ref "value")))}
+(declare this)
+(def elements {:change {:on-change (fn [data] (put! (sub-name data "value") (.. (:rc-event data) -target -value)))
+                        :value     (fn [data] (ls (sub-name data "value")))}
 
-               :hover  {:on-mouse-enter (fn [this] (put! this assoc (element-ref "hover?") true))
-                        :on-mouse-leave (fn [this] (put! this assoc (element-ref "hover?") false))}
+               :hover  {:on-mouse-enter (fn [data] (put! (sub-name data "hover?") true))
+                        :on-mouse-leave (fn [data] (put! (sub-name data "hover?") false))}
+
+               :focus  {:on-focus (fn [data] (put! (sub-name data "focus?") true))
+                        :on-blur  (fn [data] (put! (sub-name data "focus?") false))}
 
 
-               :focus  {:on-focus (fn [this] (put! this assoc (element-ref "focus?") true))
-                        :on-blur  (fn [this] (put! this assoc (element-ref "focus?") false))}
+               :active {:on-mouse-down (fn [data] (put! (sub-name data "active?") true))
+                        :on-mouse-up   (fn [data] (put! (sub-name data "active?") false))}
 
-
-               :active {:on-mouse-down (fn [this] (put! this assoc (element-ref "active?") true))
-                        :on-mouse-up   (fn [this] (put! this assoc (element-ref "active?") false))}
-
-               :scroll {:on-scroll (fn [this] (let [t (.-target (ls :event))
+               :scroll {:on-scroll (fn [data] (let [t (.-target (:rc-event data))
                                                     scroll-top (.-scrollTop t)
                                                     scroll-height (.-scrollHeight t)
                                                     client-height (.-clientHeight t)]
 
-                                                (rc-state/put! this assoc
-                                                               (element-ref "scroll-top") scroll-top
-                                                               (element-ref "scroll-height") scroll-height
-                                                               (element-ref "client-height") client-height
-                                                               (element-ref "scroll-bottom") (- scroll-height scroll-top client-height))))}})
+                                                (put!
+                                                      (sub-name data "scroll-top") scroll-top
+                                                      (sub-name data "scroll-height") scroll-height
+                                                      (sub-name data "client-height") client-height
+                                                      (sub-name data "scroll-bottom") (- scroll-height scroll-top client-height))))}})
 
 
 
 
 (def event-bindings #_{:key {:on-key-down (fn [h sub-id ls e]
                                             (let [backspace? (= 8 (.-keyCode e))
-                                                  delete? (get ls (element-ref "delete-on-backspace?"))]
+                                                  delete? (get ls (sub-name "delete-on-backspace?"))]
                                               (when (and backspace? delete?)
                                                 (.stopPropagation e)
                                                 #_(dispatch-silent h [sub-id :delete-on-backspace]))))
                              :on-key-up   (fn [h sub-id _ e]
                                             (when (= "text" (.-type (.-target e)))
-                                              (rc-state/put! h assoc (element-ref "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}})
+                                              (rc-state/put! h (sub-name "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}})
 
 
 (defn this [& ks]
   (let [h rc-state/*current-handle*]
-    (println "this" h)
     (if (seq ks)
       (get-in h (if (vector? (first ks)) (first ks) (vec ks)))
       h)))
@@ -69,7 +62,7 @@
 (defn update! [state-m handle & args]
   (apply rc-state/update! state-m handle args))
 
-(defn put! [handle & args] (apply rc-state/put! handle args))
+(defn put! [& args] (apply rc-state/put! (this) assoc args))
 
 (defn delete-local-state [handle] (rc-state/delete-local-state handle))
 
@@ -77,9 +70,9 @@
   (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
 
 (defn call [f & args]
-    (if-let [cf (get-in (this) [:raw-config f])]
-      (cf (this) args)
-      (throw (js/Error. (str "Function " f " is not defined in " (this))))))
+  (if-let [cf (get-in (this) [:raw-config f])]
+    (apply cf args)
+    (throw (js/Error. (str "Function " f " is not defined in " (this))))))
 
 (defn get-dom-element [handle sub-id] (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement))
 
@@ -112,7 +105,7 @@
 (defn ls [& ks]
   ;TODO - also support lookup of local state of children like (rc/ls [::add-panel ::add-button] :button-hover?)
 
-  (let [lsm (merge (:local-state rc-state/*current-handle*) (:element-state rc-state/*current-handle*))]
+  (let [lsm (:local-state rc-state/*current-handle*)]
     (if (seq ks)
       (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))
       lsm)))
@@ -139,8 +132,8 @@
   ([ctx c optional-value]
    [rc-container/mk-container ctx c optional-value]))
 
-(defn component [opts v]
-  (rc-container/mk-component opts v))
+(defn component [opts handle config-stack]
+  (rc-container/mk-component opts handle config-stack))
 
 (defn setup [config] (rc-state/setup config {:container-function container
                                              :component-function component

@@ -1,8 +1,7 @@
 (ns bracketbird.ui-services
   (:require [bracketbird.tournament-api :as tournament-api]
             [bracketbird.event-dispatcher :as event-dispatcher]
-            [bracketbird.util :as ut]
-            [tools.util :as tut]
+            [stateless.util :as ut]
             [bracketbird.state :as state]))
 
 
