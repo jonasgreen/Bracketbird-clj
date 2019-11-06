@@ -132,8 +132,8 @@
   ([ctx c optional-value]
    [rc-container/mk-container ctx c optional-value]))
 
-(defn component [opts handle config-stack]
-  (rc-container/mk-component opts handle config-stack))
+(defn component [opts data]
+  (rc-container/mk-component opts data))
 
 (defn setup [config] (rc-state/setup config {:container-function container
                                              :component-function component

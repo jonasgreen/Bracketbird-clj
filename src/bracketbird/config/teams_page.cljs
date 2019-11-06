@@ -147,10 +147,9 @@
 
                                              ;[::add-team {:elm primary-button :events [action]}
 
-                                             [::add-team-button {:type :c/primary-button
-                                                                 :data {:text "Add team"}
-                                                                 }]])
+                                             [::add-team-button ::primary-button {:text "Add team"}]])
 
+               ;[:add-team-button :button :style] (fn[_] (println "styling"))
 
                [:row :style]              (fn [_]
                                             (rs/style
