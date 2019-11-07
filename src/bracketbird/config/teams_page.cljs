@@ -136,29 +136,25 @@
                                                                          (rc/focus this :add-team)))})))
                'focus                            (fn [_] (-> (rc/this) (rc/get-dom-element :team-name) (.focus)))})
 
-(def add-team {:config-name               :add-team
-               :ctx                       [:application-id :tournament-id]
+(def add-team {:config-name                     :add-team
+               :ctx                             [:application-id :tournament-id]
                ;:local-state               (fn [_] {:input-delete-on-backspace? true})
-               :foreign-state             (fn [ctx] (state/path-map ctx :hook/teams))
+               :foreign-state                   (fn [ctx] (state/path-map ctx :hook/teams))
 
-               [:render]                  (fn [_]
-                                            [::row {:decorate [:hover]}
-                                             ;[::team-name :default-input]
+               [:render]                        (fn [_]
+                                                  [::row {:decorate [:hover]}
+                                                   [::team-name {:element ::default-input}]
+                                                   [::add-team-button ::primary-button {:text "Add team"}]])
 
-                                             ;[::add-team {:elm primary-button :events [action]}
 
-                                             [::add-team-button ::primary-button {:text "Add team"}]])
+               [:row :style]                    (fn [_]
+                                                  (rs/style
+                                                    {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
+                                                     :display      :flex
+                                                     :min-height   [:app-padding]
+                                                     :align-items  :center}))
 
-               ;[:add-team-button :button :style] (fn[_] (println "styling"))
-
-               [:row :style]              (fn [_]
-                                            (rs/style
-                                              {:padding-left [+ :app-padding :page-padding (when (seq (rc/fs :hook/teams)) :seeding-width)]
-                                               :display      :flex
-                                               :min-height   [:app-padding]
-                                               :align-items  :center}))
-
-               [:input :placeholder]      (fn [_] "Enter team")
+               [:team-name :input :placeholder] (fn [_] "Enter team")
 
                ;[:input :on-change]    (fn [this]
                ;                         (println "onchange" (.. (rc/ls :event) -target -value))
@@ -181,18 +177,19 @@
                                                                              (rc/get-handle :teams-page)
                                                                              (rc/dispatch 'scroll-to-bottom)))}))))
 
-               [:add-team-button 'action] (fn [_]
-                                            (rc/call 'create-team)
-                                            (rc/call 'focus))
+               [:add-team-button 'action]       (fn [_]
+                                                  (rc/call 'create-team)
+                                                  (rc/call 'focus))
 
-               'did-mount                 (fn [_] (rc/call 'focus))
-               'create-team               (fn [{:keys [ctx] :as this} _]
-                                            (ui-services/dispatch-event
-                                              {:event-type     [:team :create]
-                                               :ctx            ctx
-                                               :content        {:team-name (rc/ls :input-value)}
-                                               :state-coeffect #(-> % (rc/update! this dissoc :input-value))
-                                               :post-render    (fn [_]
-                                                                 (-> (rc/get-handle ctx :teams-page)
-                                                                     (rc/dispatch 'scroll-to-bottom)))}))
-               'focus                     (fn [_] (-> (rc/this) (rc/get-dom-element :input) (.focus)))})
+               'did-mount                       (fn [] (rc/call 'focus))
+               'create-team                     (fn []
+                                                  (let [{:keys [ctx] :as this} (rc/this)]
+                                                    (ui-services/dispatch-event
+                                                      {:event-type     [:team :create]
+                                                       :ctx            ctx
+                                                       :content        {:team-name (rc/ls :input-value)}
+                                                       :state-coeffect #(-> % (rc/update! this dissoc :input-value))
+                                                       :post-render    (fn [_]
+                                                                         (-> (rc/get-handle ctx :teams-page)
+                                                                             (rc/dispatch 'scroll-to-bottom)))})))
+               'focus                           (fn [] (-> (rc/this) (rc/get-dom-element :input) (.focus)))})

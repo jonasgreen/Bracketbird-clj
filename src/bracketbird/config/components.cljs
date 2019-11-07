@@ -16,25 +16,25 @@
 ;
 ; Merge direction: (merge config-from-item-options item-config config-from-parent-options parents-config)
 
-(def components {:primary-button {[:render]                (fn [{:keys [text] :as data}]
-                                                           [::button {:decorate [:hover :active]} (or text "a button")])
+(def components {:primary-button {[:render]              (fn [{:keys [text]}]
+                                                           [::button {:decorate [:hover :active]} (or text "a primary button")])
 
-                                  [:button :style]       (fn [_]
-                                                           (rs/style :primary-button {:active? (rc/ls :button-active?)
-                                                                                      :hover?  (rc/ls :button-hover?)}))
+                                  [:button :style]       (fn [_] (rs/style :primary-button {:active? (rc/ls :button-active?)
+                                                                                            :hover?  (rc/ls :button-hover?)}))
                                   [:button :on-click]    (fn [_] (rc/call 'action))
+
                                   [:button :on-key-down] (fn [{:keys [rc-event]}]
                                                            (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
 
                                   'action                (fn [_] (println "default-button 'action ... "))}
 
 
-                 :default-input  {[:render]               (fn [_] [::input {:decorate [:hover :change :focus]}])
+                 :default-input  {[:render]             (fn [_] [::input {:element  :input
+                                                                          :decorate [:hover :change :focus]}])
 
-                                  [:input :type]        (fn [_] :text)
+                                  [:input :type]        :text
+                                  [:input :placeholder] "Type som text"
                                   [:input :style]       (fn [_] {:border :none :padding 0})
-                                  [:input :on-change]   (fn [_]
-                                                          (rc/put! :input-value (.. (rc/ls :event) -target -value)))
 
                                   [:input :on-key-down] (fn [{:keys [rc-event]}]
                                                           (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))

@@ -10,6 +10,7 @@
 (declare ls put!)
 
 (defn sub-name [{:keys [rc-element-name]} sub-name]
+  (println "sub-name" rc-element-name sub-name)
   (keyword (str (name rc-element-name) "-" (name sub-name))))
 
 
@@ -33,10 +34,10 @@
                                                     client-height (.-clientHeight t)]
 
                                                 (put!
-                                                      (sub-name data "scroll-top") scroll-top
-                                                      (sub-name data "scroll-height") scroll-height
-                                                      (sub-name data "client-height") client-height
-                                                      (sub-name data "scroll-bottom") (- scroll-height scroll-top client-height))))}})
+                                                  (sub-name data "scroll-top") scroll-top
+                                                  (sub-name data "scroll-height") scroll-height
+                                                  (sub-name data "client-height") client-height
+                                                  (sub-name data "scroll-bottom") (- scroll-height scroll-top client-height))))}})
 
 
 
@@ -62,17 +63,37 @@
 (defn update! [state-m handle & args]
   (apply rc-state/update! state-m handle args))
 
-(defn put! [& args] (apply rc-state/put! (this) assoc args))
+(defn put! [& args]
+  "Implicit assoc"
+  (apply rc-state/put! (this) assoc args))
 
 (defn delete-local-state [handle] (rc-state/delete-local-state handle))
 
 (defn dispatch [h f & args]
   (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
 
+
+(defn super
+  ([k] (super k (:rc-data rc-state/*current-handle*)))
+  ([k data]
+   (let [{:keys [config-stack config-stack-index]} rc-state/*current-handle*
+         {:keys [value]} (rc-config-stack/config-value @config-stack k (inc config-stack-index))]
+
+     (if (fn? value)
+       (value config-stack data)
+       value))))
+
 (defn call [f & args]
-  (if-let [cf (get-in (this) [:raw-config f])]
-    (apply cf args)
-    (throw (js/Error. (str "Function " f " is not defined in " (this))))))
+  (let [{:keys [config-stack rc-data]} rc-state/*current-handle*
+        {:keys [value _]} (rc-config-stack/config-value @config-stack f)]
+
+    (println "CAll " f)
+    (rc-config-stack/print-config-stack @config-stack)
+
+    (when-not value (throw (js/Error. (str "Function " f " not found in config-stack"))))
+    (when-not (fn? value) (throw (js/Error. (str f "is not a function"))))
+
+    (apply value rc-data args)))
 
 (defn get-dom-element [handle sub-id] (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement))
 
@@ -102,23 +123,24 @@
    (focus handle container-name {})))
 
 
-(defn ls [& ks]
-  ;TODO - also support lookup of local state of children like (rc/ls [::add-panel ::add-button] :button-hover?)
+(defn- create-local-state-path [start-local-state-path comp-keys]
+  (loop [ls-path start-local-state-path
+         ks (seq comp-keys)]
 
+    (if-not (seq ks)
+      ls-path
+      (recur (-> ls-path drop-last (conj (first ks) (conj :_local-state))) (rest ks)))))
+
+
+(defn ls
+  "Local state of children-components can be accessed in this way (ls ::child-a ::child-of-child-a :button-hover?)"
+  [& ks]
+  ;;TODO support what documentation describes ... use function create-local-state-path
   (let [lsm (:local-state rc-state/*current-handle*)]
     (if (seq ks)
       (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))
       lsm)))
 
-(defn super [k]
-  (let [{:keys [config-stack config-stack-index]} rc-state/*current-handle*
-        super-fn (rc-config-stack/super config-stack config-stack-index k)
-
-        ]
-
-    )
-
-  )
 
 (defn fs [& ks]
   (if (seq ks)

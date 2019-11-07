@@ -14,28 +14,12 @@
 (defn event-key? [k]
   (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
 
-
-;;TODO - bind symbol fns
-(defn bind-config-value [handle stack-index v]
-  (if (fn? v)
-    (fn [config-stack element-data]
-      (binding [rc-state/*current-handle* (assoc handle
-                                            :config-stack-index stack-index
-                                            :config-stack config-stack)]
-        (v element-data)))
-    v))
-
-(defn bind-config-values [handle stack-index config]
-  (reduce-kv (fn [m k v] (assoc m k (bind-config-value handle stack-index v)))
-             {}
-             config))
-
 (defn- options-value [config-stack data k]
   (let [{:keys [value index]} (rc-config-stack/config-value config-stack k)]
     (if (fn? value)
       (if (event-key? k)
-        (fn [e] (value config-stack (assoc data :rc-event e))) ;wrap events for later execution
-        (value config-stack data))
+        (fn [e] (value (assoc data :rc-event e))) ;wrap events for later execution
+        (value data))
       value))
   )
 
@@ -60,34 +44,32 @@
 (defn- mk-element
   "Returns a vector containing the element and the elements options"
   [element-opts handle config-stack]
-  (let [{:keys [rc-first-element? rc-element-name] :as data} (-> element-opts :data (dissoc :rc-first-element?))
-        {:keys [handle-id local-state]} handle
+  (let [{:keys [rc-element-name] :as data} (-> element-opts :data)
+        {:keys [handle-id]} handle
 
         ;;ready element configs
 
-        element-opts-config (->> (dissoc element-opts :decorate :type :data)
-                                 (bind-config-values handle (count (:configs config-stack))))
-
         ;add element-config
-        config-stack (rc-config-stack/add config-stack (str rc-element-name "-opts") element-opts-config)
+        config-stack (->> (dissoc element-opts :decorate :element :data)
+                          (rc-config-stack/add-config config-stack handle (str rc-element-name "-opts")))
 
 
-        ;;Add inherit configs to stack
-        config-stack (reduce (fn [stack inh] (->> inh
-                                                  (get @rc-state/element-configurations)
-                                                  (bind-config-values handle (count (:configs stack)))
-                                                  (rc-config-stack/add stack inh)))
+
+        ;;Add decorate configs to stack
+        config-stack (reduce (fn [stack deco-config] (->> deco-config
+                                                          (get @rc-state/element-configurations)
+                                                          (rc-config-stack/add-config stack handle deco-config)))
                              config-stack
                              (:decorate element-opts))
 
         ;_ (rc-config-stack/print-config-stack config-stack)
 
 
-        elm (or (:type element-opts) :div)
+        elm (or (:element element-opts) :div)
 
         ;assemble options
         options (reduce (fn [m k]
-                          (if (or (symbol? k) (= :decorate k))
+                          (if (or (symbol? k) (= :decorate k) (= :element k))
                             m
                             (assoc m k (options-value config-stack data k))))
                         {} (rc-config-stack/config-keys config-stack))]
@@ -110,63 +92,65 @@
        (or (namespaced? (second form))
            ;(fn? (second form))
            (and (map? (second form))
-                (-> (second form) :type namespaced?)))))
+                (-> (second form) :element namespaced?)))))
 
-(defn decorate-hiccup [form {:keys [first-element? component-data] :as deco-opts} handle config-stack]
-  (cond
-    ;;container
-    (and (vector? form) (= (first form) @rc-state/container-fn))
-    (decorate-container form handle)
+(defn decorate-hiccup [form opts]
+  (let [{:keys [component-data handle config-stack]} opts]
+    (cond
+      ;;container
+      (and (vector? form) (= (first form) @rc-state/container-fn))
+      (decorate-container form handle)
 
-    ;;component
-    (component-form? form)
-    (let [rc-component-ref (keyword (name (first form)))
-          component-opts (if (map? (second form)) (second form) {:type (second form)})
-          rc-component-id (rc-state/dom-id (:handle-id handle) rc-component-ref)
-          rc-component-key (:key (meta form))
-          rc-component-type (-> component-opts :type name keyword) ;remove namespace
+      ;;component
+      (component-form? form)
+      (let [rc-component-ref (keyword (name (first form)))
+            component-opts (if (map? (second form)) (second form) {:element (second form)})
+            rc-component-id (rc-state/dom-id (:handle-id handle) rc-component-ref)
+            rc-component-key (:key (meta form))
+            rc-component-type (-> component-opts :element name keyword) ;remove namespace
 
-          data (-> (nth form 2) (merge {:rc-component-ref  rc-component-ref
-                                        :rc-component-type rc-component-type
-                                        :rc-component-key  rc-component-key
-                                        :rc-component-id   rc-component-id}))]
+            data (-> (when (< 2 (count form)) (nth form 2))
+                     (merge {:rc-component-ref  rc-component-ref
+                             :rc-component-type rc-component-type
+                             :rc-component-key  rc-component-key
+                             :rc-component-id   rc-component-id}))]
 
-      (swap! stack-atom assoc rc-component-id {:config-stack config-stack :parent-handle handle})
-      (-> (into [@rc-state/component-fn (dissoc component-opts :type :data) data]
-                (subvec form 2))
-          (with-meta (meta form))))
+        (swap! stack-atom assoc rc-component-id {:config-stack config-stack :parent-handle handle})
+        (-> (into [@rc-state/component-fn (dissoc component-opts :type :data) data]
+                  (subvec form 2))
+            (with-meta (meta form))))
 
-    ;;vector of special form with ::keyword
-    (and (vector? form) (keyword? (first form)) (namespace (first form)))
-    (let [rc-element-name (keyword (name (first form)))
-          rc-element-opts (if (map? (second form)) (second form) {})
+      ;;vector of special form with ::keyword
+      (and (vector? form) (keyword? (first form)) (namespace (first form)))
+      (let [rc-element-name (keyword (name (first form)))
+            rc-element-opts (if (map? (second form)) (second form) {})
 
-          rc-data {:rc-element-type (or (:type rc-element-opts) :div)
-                   :rc-element-name rc-element-name
-                   :rc-element-key  (:key (meta form))}
+            rc-data {:rc-element-type (or (:element rc-element-opts) :div)
+                     :rc-element-name rc-element-name
+                     :rc-element-key  (:key (meta form))}
 
-          ;index-children (filter (or vector? string?) form)
+            ;index-children (filter (or vector? string?) form)
 
-          children (->> (if (map? (second form)) (nnext form) (next form))
-                        (map (fn [f] (decorate-hiccup f {:first-element false? :component-data component-data} handle config-stack)))
-                        vec)]
+            children (->> (if (map? (second form)) (nnext form) (next form))
+                          (map (fn [f] (decorate-hiccup f opts)))
+                          vec)]
 
-      (-> rc-element-opts
-          (update :data merge rc-data component-data)
-          (mk-element handle (rc-config-stack/shave config-stack rc-element-name))
-          (into children)
-          ;preserve meta
-          (with-meta (meta form))))
+        (-> rc-element-opts
+            (update :data merge rc-data component-data)
+            (mk-element handle (rc-config-stack/shave-by-element config-stack rc-element-name))
+            (into children)
+            ;preserve meta
+            (with-meta (meta form))))
 
-    (vector? form)
-    (let [v (->> form (map (fn [f] (decorate-hiccup f deco-opts handle config-stack))) vec)]
-      ;preserve meta
-      (with-meta v (meta form)))
+      (vector? form)
+      (let [v (->> form (map (fn [f] (decorate-hiccup f opts))) vec)]
+        ;preserve meta
+        (with-meta v (meta form)))
 
-    (sequential? form)
-    (->> form (map (fn [f] (decorate-hiccup f deco-opts handle config-stack))))
+      (sequential? form)
+      (->> form (map (fn [f] (decorate-hiccup f opts))))
 
-    :else form))
+      :else form)))
 
 
 
@@ -240,8 +224,7 @@
                                        (rc-state/clear-container-state org-handle))))
 
        :reagent-render         (fn [_ _ opts]
-                                 (let [_ (println "render" container-name)
-
+                                 (let [
                                        cfg-config @cfg
                                        start (.getTime (js/Date.))
 
@@ -276,7 +259,6 @@
                                                :parent-handle-id (:handle-id parent-handle)
 
                                                :config-name      container-name
-                                               :raw-config       raw-config
                                                :ctx              ctx
 
                                                :local-state      local-state
@@ -289,37 +271,29 @@
                                                                      vals
                                                                      vec)}
 
-                                       config (->> raw-config
-                                                   keys
-                                                   (remove keyword?)
-                                                   vec
-                                                   (select-keys raw-config)
-                                                   (bind-config-values handle 0))
+                                       container-config (->> raw-config
+                                                             keys
+                                                             (remove keyword?)
+                                                             vec
+                                                             (select-keys raw-config))
 
                                        _ (swap! rc-state/container-states-atom assoc handle-id handle)
-                                       render (get config [:render])] ;TODO
 
+                                       new-config-stack (rc-config-stack/mk handle container-name container-config)
 
+                                       rendered (options-value new-config-stack {} :render)]
 
-                                   (if-not render
-                                     [:div (str "No render: " container-name)]
+                                   (if-not rendered
+                                     [:div (str "No render: " container-name "(Container)")]
 
 
                                      ;instead of reagent calling render function - we do it
-                                     (let [
-                                           result (-> (render handle opts)
-                                                      (decorate-hiccup {:first-element? true :component-data {}} handle (rc-config-stack/mk
-                                                                                                                          container-name
-                                                                                                                          config)))
+                                     (let [result (-> rendered
+                                                      (decorate-hiccup {:component-data {}
+                                                                        :handle         handle
+                                                                        :config-stack   new-config-stack}))]
 
-                                           ;_ (println "render" (- (.getTime (js/Date.)) start) )
-                                           ]
-
-                                       ;(println container-name "render time: " (- (.getTime (js/Date.)) start))
-
-                                       (if-let [decorator (:component-hiccup-decorator @rc-state/recontain-settings-atom)]
-                                         (decorator result (get @rc-state/container-states-atom handle-id))
-                                         result)))))})))
+                                       result))))})))
 
 
 
@@ -334,13 +308,12 @@
         ;_ (rc-config-stack/print-config-stack config-stack)
 
         raw-config (rc-state/get-component-config rc-component-type)
-        config-stack (rc-config-stack/shave config-stack rc-component-ref)]
+        config-stack (rc-config-stack/shave-by-component config-stack rc-component-ref)]
 
     (r/create-class
       {:component-will-unmount (fn [_] #_(swap! stack-atom dissoc rc-component-id))
 
        :reagent-render         (fn [_ _ _]
-                                 (println "render" rc-component-ref)
                                  (let [local-state @local-state-atom
                                        ;do overriding validations
 
@@ -349,22 +322,13 @@
                                                :parent-handle-id (:handle-id parent-handle)
 
                                                :config-name      rc-component-type
-                                               :raw-config       raw-config
                                                :ctx              nil
 
                                                :local-state      local-state
                                                :local-state-path path}
 
-                                       ;bind config, handle and config-stack. and resolve render
-                                       component-config (->> raw-config
-                                                             (bind-config-values handle (count (:configs config-stack))))
-
-                                       new-config-stack (rc-config-stack/add config-stack rc-component-type component-config)
-
-                                       ;_ (rc-config-stack/print-config-stack new-config-stack)
-
-                                       rendered (options-value new-config-stack data :render)
-                                       ]
+                                       new-config-stack (rc-config-stack/add-config config-stack handle rc-component-type raw-config)
+                                       rendered (options-value new-config-stack data :render)]
 
 
                                    (if-not rendered
@@ -373,8 +337,8 @@
                                      ;instead of reagent calling render function - we do it
                                      (let [result
                                            (-> rendered
-                                               (decorate-hiccup {:first-element? true :component-data data}
-                                                                handle
-                                                                new-config-stack))]
+                                               (decorate-hiccup {:component-data data
+                                                                 :handle         handle
+                                                                 :config-stack   new-config-stack}))]
                                        result
                                        ))))})))
