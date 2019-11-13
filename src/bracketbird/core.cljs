@@ -12,6 +12,7 @@
             [bracketbird.config.settings-page :as setting-page-config]
             [bracketbird.config.teams-page :as teams-page-config]
             [bracketbird.config.components :as components]
+            [bracketbird.config.decorations :as decorations]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]
@@ -47,6 +48,7 @@
   (swap! state/state assoc :rc-config
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
+                    :decorations                       decorations/decorations
                     :components                        components/components
                     :containers                        [application-config/root
                                                         application-config/application-page

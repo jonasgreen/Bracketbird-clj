@@ -1,11 +1,12 @@
 (ns recontain.impl.state
-  (:require [reagent.core :as r]
-            [clojure.string :as string]))
+  (:require-macros [reagent.ratom :refer [reaction]])
+  (:require [reagent.core :as r]))
 
 (defonce container-configurations (atom {}))
-(defonce container-states-atom (atom {}))
-(defonce components-configurations (atom {}))
-(defonce element-configurations (atom {}))
+(defonce handles-atom (atom {}))
+
+;; decorations and components - later also containers
+(defonce configurations (r/atom {}))
 
 (defonce recontain-settings-atom (atom {}))
 
@@ -13,25 +14,24 @@
 (defonce container-fn (atom nil))
 (defonce component-fn (atom nil))
 
-(def ^:dynamic *current-container* nil)
+(def ^:dynamic *current-container-handle* nil)
 (def ^:dynamic *passed-values* nil)
 (def ^:dynamic *current-handle* nil)
-(def ^:dynamic *rendering* {:config-stack nil
-                            :handle       nil})
+(def ^:dynamic *execution-stack* nil)
 
 
 (defn reload-container-configurations []
   (swap! reload-configuration-count inc))
 
-(defn setup [config {:keys [container-function component-function elements]}]
+(defn setup [{:keys [decorations components] :as config} {:keys [container-function component-function]}]
   (reset! container-fn container-function)
   (reset! component-fn component-function)
 
-  (reset! container-states-atom {})
+  (reset! handles-atom {})
   (reset! recontain-settings-atom (assoc config :anonymous-count 0))
-  (reset! element-configurations elements)
-  (reset! components-configurations (:components config))
   (reset! container-configurations (reduce (fn [m v] (assoc m (:config-name v) v)) {} (:containers config)))
+  (reset! configurations (merge decorations components))
+
   @recontain-settings-atom)
 
 (defn debug [f]
@@ -44,12 +44,22 @@
         (throw (js/Error. (str "No configuration for container: " container-name)))))
     cfg))
 
-(defn get-component-config [component-id]
-  (get @components-configurations component-id))
+(defn get-config [config-name]
+  (let [cfg (get @configurations config-name)]
+    (when-not cfg
+      (do
+        (throw (js/Error. (str "No configuration found for: " config-name)))))
+    cfg))
 
+(defn config-with-inherits [config-name]
+  (loop [cfg-name config-name configs []]
+    (if-not cfg-name
+      configs
+      (let [cfg (get-config cfg-name)]
+        (recur (:inherits cfg) (conj configs cfg))))))
 
-(defn get-container-data [container-id]
-  (get @container-states-atom container-id))
+(defn get-handle [handle-id]
+  (get @handles-atom handle-id))
 
 (defn- dissoc-path [state path]
   (if (= 1 (count path))
@@ -58,12 +68,12 @@
 
 (defn clear-container-state [h]
   (let [{:keys [handle-id local-state-path]} h]
-    (swap! container-states-atom dissoc handle-id)
+    (swap! handles-atom dissoc handle-id)
     (swap! (:state-atom @recontain-settings-atom) dissoc-path (drop-last local-state-path))))
 
 (defn delete-local-state [h]
   (let [{:keys [handle-id local-state-path]} h]
-    (swap! container-states-atom dissoc-path [handle-id :local-state])
+    (swap! handles-atom dissoc-path [handle-id :local-state])
     (swap! (:state-atom @recontain-settings-atom) dissoc-path local-state-path)))
 
 (defn mk-container-id [ctx container-name]
@@ -76,7 +86,10 @@
 (defn id->str [id]
   (if (keyword? id) (name id) (str id)))
 
-(defn dom-id [parent-id sub-id] (str (id->str parent-id) "#" (id->str sub-id)))
+(defn dom-id [parent-id sub-id]
+  (str (id->str parent-id) "#" (id->str sub-id)))
+
+
 
 (defn validate-ctx [container-name given-ctx]
   (let [rq-ctx (:ctx (get-container-config container-name))
@@ -84,23 +97,23 @@
     (when-not (clojure.set/subset? rq-ctx given-ctx-set)
       (throw (js/Error. (str "Missing context for container " container-name ". Given ctx: " given-ctx ". Required ctx: " rq-ctx))))))
 
-(defn dispatch [{:keys [handle dispatch-f args silently-fail?]}]
+(defn dispatch [{:keys [handle dispatch-f args]}]
   (let [{:keys [config-name handle-id]} handle
         f (-> @container-configurations
               (get config-name)
               (get dispatch-f))]
 
     (if f
-      (binding [*current-container* (update-in (get-container-data handle-id) [:local-state] merge *passed-values*)]
+      (binding [*current-container-handle* (update-in (get-handle handle-id) [:local-state] merge *passed-values*)]
         (apply f handle args))
-      (when-not silently-fail? (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in container-name " config-name)))))))
+      (throw (js/Error. (str "Dispatch function " dispatch-f " is not defined in container-name " config-name))))))
 
-(defn get-handle [ctx container-name]
+(defn get-container-handle [ctx container-name]
   (validate-ctx container-name ctx)
-  (get-container-data (mk-container-id ctx container-name)))
+  (get-handle (mk-container-id ctx container-name)))
 
 (defn update! [state {:keys [handle-id local-state-path]} & args]
-  (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-container-data handle-id))) (rest args)))]
+  (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle handle-id))) (rest args)))]
     (update-in state local-state-path upd)))
 
 (defn put! [handle & args]

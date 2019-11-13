@@ -16,30 +16,34 @@
 ;
 ; Merge direction: (merge config-from-item-options item-config config-from-parent-options parents-config)
 
-(def components {:primary-button {[:render]              (fn [{:keys [text]}]
-                                                           [::button {:decorate [:hover :active]} (or text "a primary button")])
+(def components {:primary-button {[:render] (fn [{:keys [text]}]
+                                              [::button (or text "a primary button")])
 
-                                  [:button :style]       (fn [_] (rs/style :primary-button {:active? (rc/ls :button-active?)
-                                                                                            :hover?  (rc/ls :button-hover?)}))
-                                  [:button :on-click]    (fn [_] (rc/call 'action))
+                                  [:button] {:decorate    [:hover :active]
+                                             :style       #(rs/style :primary-button {:active? (rc/ls :button-active?)
+                                                                                      :hover?  (rc/ls :button-hover?)})
+                                             :on-click    #(rc/call 'action)
+                                             :on-key-down (fn [{:keys [rc-event]}]
+                                                            (d/handle-key
+                                                              rc-event
+                                                              {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))}
 
-                                  [:button :on-key-down] (fn [{:keys [rc-event]}]
-                                                           (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
-
-                                  'action                (fn [_] (println "default-button 'action ... "))}
+                                  'action   (fn [_] (println "default-button 'action ... "))}
 
 
-                 :default-input  {[:render]             (fn [_] [::input {:element  :input
-                                                                          :decorate [:hover :change :focus]}])
+                 :default-input  {[:render] (fn [_] [::input :input])
 
-                                  [:input :type]        :text
-                                  [:input :placeholder] "Type som text"
-                                  [:input :style]       (fn [_] {:border :none :padding 0})
+                                  [:input]  {:decorate    [:hover :change :focus]
+                                             :style       {:border :none :padding 0}
+                                             :type        :text
+                                             :placeholder "Type som text"
+                                             :on-key-down (fn [{:keys [rc-event]}]
+                                                            (d/handle-key
+                                                              rc-event
+                                                              {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))}
 
-                                  [:input :on-key-down] (fn [{:keys [rc-event]}]
-                                                          (d/handle-key rc-event {[:ENTER] (fn [_] (rc/call 'action) [:STOP-PROPAGATION :PREVENT-DEFAULT])}))
-
-                                  'action               (fn [_] (println "default-input 'action ... " (rc/ls :input-value)))}
+                                  'focus    (fn [] (rc/focus-dom-element :input))
+                                  'action   (fn [] (println "default-input 'action ... " (rc/ls :input-value)))}
                  }
 
   )

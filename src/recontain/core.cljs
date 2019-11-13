@@ -10,36 +10,10 @@
 (declare ls put!)
 
 (defn sub-name [{:keys [rc-element-name]} sub-name]
-  (println "sub-name" rc-element-name sub-name)
   (keyword (str (name rc-element-name) "-" (name sub-name))))
 
 
 (declare this)
-(def elements {:change {:on-change (fn [data] (put! (sub-name data "value") (.. (:rc-event data) -target -value)))
-                        :value     (fn [data] (ls (sub-name data "value")))}
-
-               :hover  {:on-mouse-enter (fn [data] (put! (sub-name data "hover?") true))
-                        :on-mouse-leave (fn [data] (put! (sub-name data "hover?") false))}
-
-               :focus  {:on-focus (fn [data] (put! (sub-name data "focus?") true))
-                        :on-blur  (fn [data] (put! (sub-name data "focus?") false))}
-
-
-               :active {:on-mouse-down (fn [data] (put! (sub-name data "active?") true))
-                        :on-mouse-up   (fn [data] (put! (sub-name data "active?") false))}
-
-               :scroll {:on-scroll (fn [data] (let [t (.-target (:rc-event data))
-                                                    scroll-top (.-scrollTop t)
-                                                    scroll-height (.-scrollHeight t)
-                                                    client-height (.-clientHeight t)]
-
-                                                (put!
-                                                  (sub-name data "scroll-top") scroll-top
-                                                  (sub-name data "scroll-height") scroll-height
-                                                  (sub-name data "client-height") client-height
-                                                  (sub-name data "scroll-bottom") (- scroll-height scroll-top client-height))))}})
-
-
 
 
 (def event-bindings #_{:key {:on-key-down (fn [h sub-id ls e]
@@ -59,7 +33,6 @@
       (get-in h (if (vector? (first ks)) (first ks) (vec ks)))
       h)))
 
-
 (defn update! [state-m handle & args]
   (apply rc-state/update! state-m handle args))
 
@@ -69,35 +42,51 @@
 
 (defn delete-local-state [handle] (rc-state/delete-local-state handle))
 
-(defn dispatch [h f & args]
-  (rc-state/dispatch {:handle h :dispatch-f f :args args :silently-fail? false}))
+(defn dispatch [{:keys [raw-config-stack config-name] :as handle} f-key & args]
+  (if-let [f (rc-config-stack/config-value raw-config-stack f-key)]
+    (apply f nil args)
+    (throw (js/Error. (str "Dispatch function " f-key " is not defined in config " config-name)))))
+
+(defn super [k & opts]
+  (let [index (-> @(:config-stack rc-state/*current-handle*) :configs count)
+        {:keys [value _]} (rc-config-stack/config-value rc-state/*execution-stack* k index)]
+
+    (if (fn? value)
+      (apply value opts)
+      value)))
+
+(defn call [k & args]
+  (println "call k" k " args" args)
+
+  (let [{:keys [value _]} (-> @(:config-stack rc-state/*current-handle*) (rc-config-stack/config-value k))]
+
+    (when-not value (throw (js/Error. (str "Function " k " not found in config-stack"))))
+    (when-not (fn? value) (throw (js/Error. (str k "is not a function"))))
+
+    (apply value "whaaat" args)))
+
+(defn dom-element
+  ([sub-id]
+   (dom-element (this) sub-id))
+
+  ([handle sub-id]
+   (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement)))
+
+(defn focus-dom-element
+  ([sub-id]
+   (focus-dom-element (this) sub-id))
+
+  ([handle sub-id]
+   (-> (dom-element handle sub-id) (.focus))))
 
 
-(defn super
-  ([k] (super k (:rc-data rc-state/*current-handle*)))
-  ([k data]
-   (let [{:keys [config-stack config-stack-index]} rc-state/*current-handle*
-         {:keys [value]} (rc-config-stack/config-value @config-stack k (inc config-stack-index))]
+(defn component-handle [element-ref]
+  (-> (this)
+      :handle-id
+      (rc-state/dom-id element-ref)
+      rc-state/get-handle))
 
-     (if (fn? value)
-       (value config-stack data)
-       value))))
-
-(defn call [f & args]
-  (let [{:keys [config-stack rc-data]} rc-state/*current-handle*
-        {:keys [value _]} (rc-config-stack/config-value @config-stack f)]
-
-    (println "CAll " f)
-    (rc-config-stack/print-config-stack @config-stack)
-
-    (when-not value (throw (js/Error. (str "Function " f " not found in config-stack"))))
-    (when-not (fn? value) (throw (js/Error. (str f "is not a function"))))
-
-    (apply value rc-data args)))
-
-(defn get-dom-element [handle sub-id] (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement))
-
-(defn get-handle ([ctx container-name] (rc-state/get-handle ctx container-name)))
+(defn container-handle ([ctx container-name] (rc-state/get-container-handle ctx container-name)))
 
 (defn has-changed [value org-value]
   (when value
@@ -116,31 +105,28 @@
   ([handle container-name extra-ctx]
    (-> (:ctx handle)
        (merge extra-ctx)
-       (get-handle container-name)
+       (container-handle container-name)
        (dispatch 'focus)))
 
   ([handle container-name]
    (focus handle container-name {})))
 
 
-(defn- create-local-state-path [start-local-state-path comp-keys]
-  (loop [ls-path start-local-state-path
-         ks (seq comp-keys)]
-
-    (if-not (seq ks)
-      ls-path
-      (recur (-> ls-path drop-last (conj (first ks) (conj :_local-state))) (rest ks)))))
-
 
 (defn ls
   "Local state of children-components can be accessed in this way (ls ::child-a ::child-of-child-a :button-hover?)"
-  [& ks]
-  ;;TODO support what documentation describes ... use function create-local-state-path
-  (let [lsm (:local-state rc-state/*current-handle*)]
-    (if (seq ks)
-      (get-in lsm (if (vector? (first ks)) (first ks) (vec ks)))
-      lsm)))
+  ([]
+   (ls (this)))
 
+  ([k-or-handle]
+   (if (keyword? k-or-handle)
+     (ls (this) k-or-handle)
+     (ls k-or-handle nil)))
+
+  ([handle k]
+   (let [h (if (keyword? handle) (component-handle handle) handle)
+         lsm (:local-state h)]
+     (if k (get lsm k) lsm))))
 
 (defn fs [& ks]
   (if (seq ks)
@@ -154,12 +140,11 @@
   ([ctx c optional-value]
    [rc-container/mk-container ctx c optional-value]))
 
-(defn component [opts data]
-  (rc-container/mk-component opts data))
+(defn component [data]
+  (rc-container/mk-component data))
 
 (defn setup [config] (rc-state/setup config {:container-function container
-                                             :component-function component
-                                             :elements           elements}))
+                                             :component-function component}))
 
 (defn reload-configurations [] (rc-state/reload-container-configurations))
 

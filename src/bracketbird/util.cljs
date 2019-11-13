@@ -17,6 +17,7 @@
   (set! (.-scrollTop element) (:scroll-top scroll-data)))
 
 (defn scroll-elm-to-bottom! [elm]
+  (println "scroll" elm)
   (->> elm
        scroll-data
        scroll-to-bottom

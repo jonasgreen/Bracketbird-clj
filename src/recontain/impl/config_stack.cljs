@@ -9,7 +9,8 @@
 (defn- replace-one-size-vector-keys [config]
   (->> config (reduce-kv (fn [m k v] (assoc m (replace-one-size-vector-key k) v)) {})))
 
-
+(defn size [config-stack]
+  (count (:configs config-stack)))
 
 (defn bind-config-value
   "Config values are (if they are functions) bound at a certain stack-index (used when calling super) and a certain handle (used to get local-state).
@@ -24,11 +25,9 @@
   [handle stack-atom k v]
   (if (fn? v)
     ;;binding for later execution
-    (fn [element-data params]
-      (binding [rc-state/*current-handle* (assoc handle
-                                            :config-stack-index (count (:configs @stack-atom))
-                                            :config-stack stack-atom
-                                            :rc-data element-data)]
+    (fn [element-data & params]
+      (binding [rc-state/*current-handle* (assoc handle :config-stack stack-atom
+                                                        :rc-data element-data)]
 
         (if (symbol? k)
           (apply v params)
@@ -65,13 +64,22 @@
       (println "---"))))
 
 
+(defn- explode-config [config]
+  (let [render-fn (get config [:render])
+        exploding-keys (-> config (dissoc [:render]) keys (filter vector?))
+        exploded-config (->> exploding-keys
+                             (reduce (fn [m k] (doseq [[k1 v1] (get k config)]
+                                                 (assoc m (into k (vec k1)) v1))) {}))]
+
+    (assoc exploded-config [:render] render-fn)))
 
 (defn add-config [config-stack handle config-name config]
   (let [stack-atom (atom (-> config-stack
                              (update :config-names conj config-name)
                              (update :shaved conj [])))]
 
-    (->> (bind-config-values stack-atom handle config)
+    (->> (explode-config config)
+         (bind-config-values stack-atom handle)
          (swap! stack-atom update :configs conj))))
 
 (defn mk [handle config-name config]
