@@ -95,22 +95,23 @@
                                                            :letter-spacing 1.2
                                                            :padding-right  [:app-padding]}))}
 
-                      [:menu-item]      {:style    (fn [{:keys [rc-element-key]}]
+                      [:menu-item]      {:style    (fn [{:keys [rc-key]}]
                                                      (rs/style
                                                        (merge
                                                          {:margin-right [:layout-unit]
                                                           :opacity      0.5
                                                           :cursor       :pointer}
-                                                         (when (= (rc/ls :selected) rc-element-key)
+                                                         (when (= (rc/ls :selected) rc-key)
                                                            {:opacity 1 :cursor :auto}))))
 
-                                         :on-click (fn [{:keys [rc-element-key]}]
-                                                     (rc/call 'select-item rc-element-key))}
+                                         :on-click (fn [{:keys [rc-key]}]
+                                                     (rc/call 'select-item rc-key))}
 
-                      [:content-holder] {:style (fn [{:keys [rc-element-key]}] (rs/style (merge
-                                                                                           {:height :100%}
-                                                                                           (when-not (= (rc/ls :selected) rc-element-key)
-                                                                                             {:display :none}))))}
+                      [:content-holder] {:style (fn [{:keys [rc-key] :as data}]
+                                                  (rs/style (merge
+                                                              {:height :100%}
+                                                              (when-not (= (rc/ls :selected) rc-key)
+                                                                {:display :none}))))}
 
                       'select-item      (fn [select]
                                           (rc/put! :previous-selected (rc/ls :selected)

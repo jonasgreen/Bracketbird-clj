@@ -1,5 +1,6 @@
 (ns recontain.impl.config-stack
-  (:require [recontain.impl.state :as rc-state]))
+  (:require [recontain.impl.state :as rc-state]
+            [stateless.util :as ut]))
 
 (defn- replace-one-size-vector-key [k]
   (if (and (vector? k) (= 1 (count k)))
@@ -64,14 +65,19 @@
       (println "---"))))
 
 
-(defn- explode-config [config]
-  (let [render-fn (get config [:render])
-        exploding-keys (-> config (dissoc [:render]) keys (filter vector?))
-        exploded-config (->> exploding-keys
-                             (reduce (fn [m k] (doseq [[k1 v1] (get k config)]
-                                                 (assoc m (into k (vec k1)) v1))) {}))]
+(defn- explode-options [config options-key]
+  (->> (get config options-key)
+       (reduce-kv (fn [m k v] (-> m
+                                  (assoc (into options-key (if (vector? k) k [k])) v)
+                                  (dissoc options-key)))
+                  config)))
 
-    (assoc exploded-config [:render] render-fn)))
+(defn- explode-config [config]
+  (let [options-keys (->> (dissoc config [:render]) keys (filter vector?))]
+    (->> options-keys
+         (reduce (fn [m k]
+                   (explode-options m k)) config))))
+
 
 (defn add-config [config-stack handle config-name config]
   (let [stack-atom (atom (-> config-stack

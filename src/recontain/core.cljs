@@ -9,8 +9,8 @@
 
 (declare ls put!)
 
-(defn sub-name [{:keys [rc-element-name]} sub-name]
-  (keyword (str (name rc-element-name) "-" (name sub-name))))
+(defn sub-name [{:keys [rc-name]} sub-name]
+  (keyword (str (name rc-name) "-" (name sub-name))))
 
 
 (declare this)
@@ -56,8 +56,6 @@
       value)))
 
 (defn call [k & args]
-  (println "call k" k " args" args)
-
   (let [{:keys [value _]} (-> @(:config-stack rc-state/*current-handle*) (rc-config-stack/config-value k))]
 
     (when-not value (throw (js/Error. (str "Function " k " not found in config-stack"))))
@@ -138,7 +136,12 @@
    (container ctx c {}))
 
   ([ctx c optional-value]
+   ;;will be parsed and made fit [rc-container/mk-container data] like root calls it
    [rc-container/mk-container ctx c optional-value]))
+
+(defn root [root-config-name]
+  [rc-container/mk-container {:rc-type root-config-name
+                              :rc-component-id (rc-state/mk-container-id {} root-config-name)}])
 
 (defn component [data]
   (rc-container/mk-component data))

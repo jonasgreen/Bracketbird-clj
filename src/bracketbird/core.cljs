@@ -38,7 +38,7 @@
 
 
 (defn mount-reagent []
-  (r/render [rc/container {} :root] (js/document.getElementById "system")))
+  (r/render [rc/root :root] (js/document.getElementById "system")))
 
 (defn setup-styles []
   (rs/setup styles/styles)
