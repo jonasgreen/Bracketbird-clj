@@ -72,7 +72,8 @@
                                                             :align-items :center
                                                             :min-height  [:row-height]}))}
 
-               [:icons]       {:style (fn [_] (rs/style
+               [:icons]       {:decorate [:hover]
+                               :style (fn [_] (rs/style
                                                 {:display         :flex
                                                  :align-items     :center
                                                  :height          [:row-height]
@@ -105,7 +106,6 @@
                [:team-name]   {[:input :style] #(rs/style
                                                   {:border     :none
                                                    :padding    0
-                                                   :background :red
                                                    :min-width  200})
                                [:input :value] #(or (rc/ls :team-name :input-value)
                                                     (rc/fs [:hook/team :team-name]))
