@@ -4,8 +4,7 @@
 
             [bracketbird.ui-services :as ui-services]
             [bracketbird.state :as state]
-            [bracketbird.util :as ut]
-            [bracketbird.dom :as d]))
+            [bracketbird.util :as ut]))
 
 
 (def teams-page {:config-name      :teams-page
