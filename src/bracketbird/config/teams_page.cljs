@@ -52,8 +52,8 @@
 
                [:render]      (fn [data]
                                 [::row
-                                 [::icons]
-                                 ;[::delete-icon ::icon "clear"]]
+                                 [::icons
+                                  [::delete-icon :e/icon "clear"]]
 
                                  [::space]
                                  [::seeding (inc (:rc-index data))]
@@ -72,20 +72,20 @@
                                                     :height          [:row-height]
                                                     :justify-content :center
                                                     :cursor          (if (rc/ls :icons-hover?) :pointer :normal)
-                                                    :width           [:app-padding]}))}
+                                                    :width           [:app-padding]}))
+                               :on-click #(rc/call 'delete-team)}
 
-               [:delete-icon] {:style (fn [_] (rs/style (merge {:font-size  8
-                                                                :opacity    0.5
-                                                                :transition "background 0.2s, color 0.2s, border-radius 0.2s"}
-                                                               (when-not (rc/ls :row-hover?)
-                                                                 {:color :transparent})
+               [:delete-icon] {:style    #(merge (rc/super :style)
+                                                 (when-not (rc/ls :row-hover?)
+                                                   {:color :transparent})
 
-                                                               (when (rc/ls :icons-hover?)
-                                                                 {:font-weight   :bold
-                                                                  :background    :red
-                                                                  :color         :white
-                                                                  :font-size     10
-                                                                  :border-radius 8}))))}
+                                                 (when (rc/ls :icons-hover?)
+                                                   {:font-weight   :bold
+                                                    :background    :red
+                                                    :color         :white
+                                                    :font-size     10
+                                                    :border-radius 8}))
+                               :on-click #(rc/call 'delete-team)}
 
                [:space]       {:style #(rs/style {:width [:page-padding]})}
 
@@ -139,6 +139,7 @@
                                      :ctx        (rc/this :ctx)
                                      :content    {:team-name (rc/ls :team-name-value)}})))
                'delete-team   (fn [_]
+                                (println "delete team")
                                 (let [this (rc/this)
                                       team-id (rc/fs [:hook/team :team-id])
                                       team-to-focus (or
@@ -161,7 +162,7 @@
                [:render]      (fn [_]
                                 [::row
                                  [::team-name :e/input]
-                                 [::add-button :e/button {:text "Add team"}]])
+                                 [::add-button :e/button "Add team"]])
 
 
                [:row]         {:style (fn [_]
