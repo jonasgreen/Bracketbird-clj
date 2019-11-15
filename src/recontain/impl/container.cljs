@@ -269,8 +269,8 @@
                                  (let [
                                        cfg-config @cfg
                                        start (.getTime (js/Date.))
-
-                                       _ (rc-state/debug #(println "RENDER - " container-name))
+                                       reload-conf-count (:reload-conf-count @cfg)
+                                       _ (rc-state/debug #(println "RENDER - " reload-conf-count container-name))
 
                                        foreign-local-state-ids (:foreign-local-state-ids cfg-config)
                                        state-map (reduce-kv (fn [m k v] (assoc m k (deref v))) {} (:reactions cfg-config))
