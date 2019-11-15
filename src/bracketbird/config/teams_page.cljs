@@ -58,10 +58,7 @@
 
                                  [::space]
                                  [::seeding (inc (:rc-index data))]
-                                 [::team-name :e/input]
-                                 ])
-
-
+                                 [::team-name :e/input]])
 
                [:row]         {:decorate [:hover]
                                :style    (fn [data]

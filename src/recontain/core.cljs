@@ -146,8 +146,7 @@
 (defn component [data]
   (rc-container/mk-component data))
 
-(defn setup [config] (rc-state/setup config {:container-function container
-                                             :component-function component}))
+(defn setup [config] (rc-state/setup config {:container-function container}))
 
 (defn reload-configurations [] (rc-state/reload-container-configurations))
 

@@ -49,7 +49,8 @@
          (rc/setup {:clear-container-state-on-unmount? (not system/test?)
                     :state-atom                        state/state
                     :decorations                       decorations/decorations
-                    :components                        components/components
+                    :elements                          components/elements
+                    :components                        {}
                     :containers                        [application-config/root
                                                         application-config/application-page
                                                         application-config/front-page

@@ -5,14 +5,13 @@
 (defonce container-configurations (atom {}))
 (defonce handles-atom (atom {}))
 
-;; decorations and components - later also containers
+;; decorations and components and elements - later also containers
 (defonce configurations (r/atom {}))
 
 (defonce recontain-settings-atom (atom {}))
 
 (defonce reload-configuration-count (r/atom 0))
 (defonce container-fn (atom nil))
-(defonce component-fn (atom nil))
 
 (def ^:dynamic *current-container-handle* nil)
 (def ^:dynamic *passed-values* nil)
@@ -23,14 +22,14 @@
 (defn reload-container-configurations []
   (swap! reload-configuration-count inc))
 
-(defn setup [{:keys [decorations components] :as config} {:keys [container-function component-function]}]
+(defn setup [{:keys [decorations components elements] :as config} {:keys [container-function]}]
   (reset! container-fn container-function)
-  (reset! component-fn component-function)
 
   (reset! handles-atom {})
   (reset! recontain-settings-atom (assoc config :anonymous-count 0))
   (reset! container-configurations (reduce (fn [m v] (assoc m (:config-name v) v)) {} (:containers config)))
-  (reset! configurations (merge decorations components))
+  ;TODO validate no conflicts
+  (reset! configurations (merge decorations components elements))
 
   @recontain-settings-atom)
 
