@@ -45,7 +45,7 @@
                                                 [:div {:style {:display :flex :flex-direction :column :align-items :center}}
                                                  [:div {:style {:font-size 48 :padding "140px 0 30px 0"}}
                                                   "Instant tournaments"]
-                                                 [::create-tournament-button ::primary-button {:text "Create a tournament"}]
+                                                 [::create-tournament-button :e/large-button {:text "Create a tournament"}]
                                                  [:div {:style {:font-size 14 :color "#999999" :padding-top 6}} "No account required"]]])
 
                  [:create-tournament-button] {'action (fn []

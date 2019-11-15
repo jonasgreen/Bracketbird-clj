@@ -40,7 +40,6 @@
                 path)))]
     (reduce (fn [m k] (assoc m k (resolve k))) {} (keys hooks))))
 
-
 (defn path [hook ctx]
   (reduce (fn [v p]
             (if (set? p)

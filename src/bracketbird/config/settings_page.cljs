@@ -103,7 +103,7 @@
                         [:render]                 (fn [_]
                                                     [::row
                                                      ;[:e/icon {[:button :hover?]} "wat"]
-                                                     [::add-button :e/primary-button "click me"]
+                                                     [::add-button :e/button "click me"]
                                                      [::add-knockout {:events [:key :click :hover]} "Add Knockout"]])
 
 
@@ -114,15 +114,15 @@
                                                              :align-items  :center}))
 
                         [:add-button :style]      (fn [_]
-                                                    (rs/style :primary-button {:active? (rc/ls :add-group-active?)
-                                                                               :hover?  (rc/ls :add-group-hover?)}))
+                                                    (rs/style :button {:active? (rc/ls :add-group-active?)
+                                                                       :hover?  (rc/ls :add-group-hover?)}))
 
                         [:add-button :on-click]   (fn [_]
                                                     (rc/call 'create-stage :group))
 
                         [:add-knockout :style]    (fn [_]
-                                                    (rs/style :primary-button {:active? (rc/ls :add-knockout-active?)
-                                                                               :hover?  (rc/ls :add-knockout-hover?)} :margin-left 20))
+                                                    (rs/style :button {:active? (rc/ls :add-knockout-active?)
+                                                                       :hover?  (rc/ls :add-knockout-hover?)} :margin-left 20))
 
                         [:add-knockout :on-click] (fn [_]
                                                     (rc/put! :gensym (gensym))

@@ -63,7 +63,7 @@
                                                                         :width           [:app-padding]})
 
 
-             :primary-button    (fn [{:keys [active? hover?]}]
+             :button            (fn [{:keys [active? hover?]}]
                                   (merge {
                                           :box-shadow     "0 1px 1px rgba(0, 0, 0, 0.2)"
                                           :background     "#3B9EBF"
@@ -85,6 +85,14 @@
 
                                          (when active?
                                            {:box-shadow "0 1px 1px rgba(0, 0, 0, 0.2)"})))
+
+             :large-button      (fn [{:keys [active? hover?] :as params}]
+                                  {:inherit        [:button params]
+                                   :font-size      24
+                                   :padding-top    10
+                                   :padding-left   16
+                                   :padding-right  16
+                                   :padding-bottom 6})
 
 
              :delete-icon       (fn [{:keys [hover?]}]

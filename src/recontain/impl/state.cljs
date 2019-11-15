@@ -51,12 +51,12 @@
         (throw (js/Error. (str "No configuration found for: " config-name)))))
     cfg))
 
-(defn config-with-inherits [config-name]
+(defn get-config-with-inherits [config-name]
   (loop [cfg-name config-name configs []]
     (if-not cfg-name
       configs
       (let [cfg (get-config cfg-name)]
-        (recur (:inherits cfg) (conj configs cfg))))))
+        (recur (:inherits cfg) (conj configs [cfg-name cfg]))))))
 
 (defn get-handle [handle-id]
   (get @handles-atom handle-id))

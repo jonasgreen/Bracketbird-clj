@@ -13,6 +13,15 @@
 
 (declare mk-container mk-component)
 
+(defn- namespaced?
+  ([item]
+   (and (keyword? item) (namespace item)))
+
+  ([item str-namespace]
+   (and (keyword? item)
+        (= str-namespace (namespace item)))))
+
+
 (defn event-key? [k]
   (string/starts-with? (if (sequential? k) (name (last k)) (name k)) "on-"))
 
@@ -28,12 +37,20 @@
           (value data)))
       value)))
 
+
 (defn- mk-element
   "Returns a vector containing the element and the elements options"
   [data handle config-stack]
   (let [{:keys [rc-type rc-dom-id]} data
 
+
         ;;Add decorate configs to stack - TODO should be able to overwrite decorations somehow
+
+
+        config-stack (if (namespaced? rc-type "e")
+                       (->> (rc-state/get-config-with-inherits (keyword (name rc-type)))
+                            (reduce (fn [stack [c-name config]] (rc-config-stack/add-config stack handle c-name config)) config-stack))
+                       config-stack)
 
         config-stack (->> (rc-config-stack/config-value config-stack :decorate)
                           :value
@@ -44,22 +61,17 @@
 
         ;assemble options
         options (reduce (fn [m k]
-                          (if (or (symbol? k) (= :decorate k))
+                          (if (or (symbol? k) (= :render k) (= :decorate k))
                             m
                             (assoc m k (options-value config-stack data k))))
                         {} (rc-config-stack/config-keys config-stack))]
 
-    [rc-type (-> options
-                 (assoc :id rc-dom-id))]))
+    (if (namespaced? rc-type "e")
+      (ut/insert options 1 (options-value config-stack data :render))
+      [rc-type (-> options
+                   (assoc :id rc-dom-id))])))
 
 
-(defn- namespaced?
-  ([item]
-   (and (keyword? item) (namespace item)))
-
-  ([item str-namespace]
-   (and (keyword? item)
-        (= str-namespace (namespace item)))))
 
 (defn- container-form? [form]
   (and (vector? form)
@@ -68,12 +80,14 @@
 (defn- component-form? [form]
   (and (vector? form)
        (namespaced? (first form))
-       (namespaced? (second form))))
+       (namespaced? (second form) "c")))
 
 (defn- element-form? [form]
   (and
     (vector? form)
-    (namespaced? (first form))))
+    (namespaced? (first form))
+    (or (not (namespaced? (second form)))
+        (namespaced? (second form) "e"))))
 
 (defn- extract-passed-in-data [rest-of-form rc-name]
   (when-some [data (first rest-of-form)]
@@ -87,6 +101,7 @@
 (defn decorate-hiccup [form opts]
   (let [{:keys [component-data handle config-stack xs-data]} opts]
     (cond
+
       ;;container
       (container-form? form)
       (let [additional-ctx (second form)
@@ -138,6 +153,7 @@
                   (subvec form (if passed-in-data 3 2)))
             (with-meta (meta form))))
 
+
       ;;vector of special form with ::keyword
       (element-form? form)
       (let [rc-name (keyword (name (first form)))
@@ -165,6 +181,7 @@
             (into children)
             ;preserve meta
             (with-meta (meta form))))
+
 
       (vector? form)
       (let [v (->> form (map (fn [f] (decorate-hiccup f opts))) vec)]
@@ -223,13 +240,16 @@
                 :reactions               (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom v nil)))) {} all-state-paths)
                 :foreign-local-state-ids foreign-local-state-ids})))
 
+
 (defn mk-container [{:keys [rc-type rc-ctx rc-parent-handle-id rc-container-id] :as data}]
   (let [container-name rc-type
         parent-handle (get @rc-state/handles-atom rc-parent-handle-id)
 
         cfg (reaction (resolve-container-instance parent-handle data))
         ;org-handle (rc-state/mk-container-handle parent-handle ctx @cfg)
+
         ]
+
 
     (r/create-class
       {:component-did-mount    (fn [_]
@@ -310,11 +330,15 @@
 
 
                                      ;instead of reagent calling render function - we do it
-                                     (let [result (-> rendered
+                                     (let [
+                                           result (-> rendered
                                                       (decorate-hiccup {:component-data {}
                                                                         :handle         handle
                                                                         :config-stack   new-config-stack}))
 
+
+
+                                           ;_ (println "render-container: " container-name (- (.getTime (js/Date.)) start))
                                            ]
 
                                        result))))})))
@@ -333,7 +357,7 @@
 
         config-stack (rc-config-stack/shave-by-component config-stack rc-name)
 
-        raw-configs (reaction (rc-state/config-with-inherits rc-type))
+        raw-configs (reaction (rc-state/get-config-with-inherits rc-type))
         ]
 
     (r/create-class
@@ -354,9 +378,10 @@
                                                :local-state      local-state
                                                :local-state-path path}
 
+                                       _ (println "raw config" raw-configs)
                                        new-config-stack (->> @raw-configs
                                                              (reduce
-                                                               (fn [stack config] (rc-config-stack/add-config stack handle rc-type config))
+                                                               (fn [stack [c-name config]] (rc-config-stack/add-config stack handle c-name config))
                                                                config-stack))
 
                                        _ (swap! rc-state/handles-atom assoc rc-component-id (assoc handle :raw-config-stack new-config-stack))
