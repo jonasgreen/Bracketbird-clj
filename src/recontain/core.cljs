@@ -132,19 +132,18 @@
     (:foreign-states rc-state/*current-handle*)))
 
 (defn container
-  ([ctx c]
-   (container ctx c {}))
+  ([c-name]
+   (container c-name))
 
-  ([ctx c optional-value]
+  ([c-name m]
    ;;will be parsed and made fit [rc-container/mk-container data] like root calls it
-   [rc-container/mk-container ctx c optional-value]))
+   [rc-container/mk-container c-name m]))
 
 (defn root [root-config-name]
-  [rc-container/mk-container {:rc-type root-config-name
+  [rc-container/mk-container {:rc-type         root-config-name
                               :rc-component-id (rc-state/mk-container-id {} root-config-name)}])
 
-(defn component [data]
-  (rc-container/mk-component data))
+
 
 (defn setup [config] (rc-state/setup config {:container-function container}))
 

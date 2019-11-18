@@ -25,7 +25,7 @@
                                                          (if (seq stages-order)
                                                            [::stages
                                                             (map (fn [stage-id]
-                                                                   ^{:key stage-id} [rc/container {:stage-id stage-id} :stage-component]) stages-order)]
+                                                                   ^{:stage-id stage-id} [rc/container :stage-component]) stages-order)]
 
                                                            [::no-stages])
                                                          [::tournament-end-row
@@ -35,7 +35,7 @@
                                                            [::start-line {:style (rs/style :stage-line)}]
                                                            [::hook-end {:style (rs/style :stage-hook-end)}]]
                                                           ]]
-                                                        [rc/container {} :add-stage-buttons]]))
+                                                        [rc/container :add-stage-buttons]]))
 
                     [:tab-content :style]          (fn [_] (rs/style :tab-content {:scroll-top (rc/ls :scroll-panel-scroll-top)}))
 

@@ -14,7 +14,7 @@
            [:render]      (fn [_]
                             (let [app-id (rc/fs [:hook/system :active-application])]
                               (if app-id
-                                [rc/container {:application-id app-id} :application-page]
+                                ^{:application-id app-id} [rc/container :application-page]
                                 [:div "No application"])))})
 
 (def application-page {:config-name   :application-page
@@ -22,11 +22,13 @@
                        :local-state   (fn [_] {:active-page :front-page})
                        :foreign-state (fn [ctx] (state/path-map ctx :hook/application))
 
-                       [:render]      (fn [_]
+                       [:render]      (fn [data]
                                         (condp = (rc/ls :active-page)
-                                          :front-page ^{:key 1} [rc/container {} :front-page]
-                                          :tournament-page ^{:key 2} (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
-                                                                       [rc/container {:tournament-id tournament-id} :tournament-page])
+                                          :front-page ^{:key :front-page} [rc/container :front-page]
+
+                                          :tournament-page (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
+                                                             ^{:tournament-id tournament-id} [rc/container :tournament-page])
+
                                           [:div "page " (rc/ls :active-page) " not supported"]))})
 
 
@@ -73,13 +75,13 @@
                                                  :selected          :teams
                                                  :previous-selected :teams})
 
-                      [:render]         (fn [_]
+                      [:render]         (fn [data]
                                           (let [{:keys [items order]} (rc/ls)
                                                 tabs (sort-by #(ut/index-of (:id %) order) items)]
 
                                             [::page
                                              [::menu (map (fn [t] ^{:key (:id t)} [::menu-item (:header t)]) tabs)]
-                                             (map (fn [t] ^{:key (:id t)} [::content-holder [rc/container {} (:content t)]]) tabs)]))
+                                             (map (fn [t] ^{:key (:id t)} [::content-holder [rc/container (:content t)]]) tabs)]))
 
 
                       [:page]           {:style #(rs/style {:height         "100vh"

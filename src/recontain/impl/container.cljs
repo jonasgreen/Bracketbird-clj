@@ -89,14 +89,16 @@
     (or (not (namespaced? (second form)))
         (namespaced? (second form) "e"))))
 
-(defn- extract-passed-in-data [rest-of-form rc-name]
+(defn- extract-passed-in-data [rest-of-form]
   (when-some [data (first rest-of-form)]
-    ;passed in data should be a map if
     (when (map? data)
-      data)
-    ;string is considered a child
-    #_(when-not (or (sequential? data) (string? data))
-        (throw (js/Error. (str "Passed in data to " rc-name " is not a map. It should be."))))))
+      data)))
+
+;;for the moment only one additional ctx is supported
+(defn- extract-ctx [form handle]
+  (let [additional-ctx (-> (meta form) (dissoc :key))]
+    {:ctx          (merge (:ctx handle) additional-ctx)
+     :meta-content (if (seq additional-ctx) {:key (get (first additional-ctx) 1)} (meta form))}))
 
 (defn decorate-hiccup [form opts]
   (let [{:keys [component-data handle config-stack xs-data]} opts]
@@ -104,70 +106,62 @@
 
       ;;container
       (container-form? form)
-      (let [additional-ctx (second form)
-            rc-type (nth form 2)]
+      (let [rc-type (second form)]
 
-        (when-not (map? additional-ctx)
-          (throw (js/Error. (str "Rendering " (:config-name handle) " contains invalid recontain/container structure: First element should be a map of additional context - exampled by this {:team-id 23}). Hiccup: " form))))
-        (when-not rc-type
-          (throw (js/Error. (str "Render function of " (:config-name handle) " contains invalid recontain/container structure: Second element should be a keyword referencing the container in config. Hiccup: " form))))
-        (when-not (get @rc-state/container-configurations rc-type)
-          (throw (js/Error. (str "No container configuration found for " rc-type ". Please add to configuration."))))
-
-
-        (let [ctx (merge additional-ctx (:ctx handle))
-              passed-in-data (extract-passed-in-data (subvec form 3) rc-type)
+        ;additional context is found in meta and used as key if present
+        (let [{:keys [ctx meta-content]} (extract-ctx form handle)
+              passed-in-data (extract-passed-in-data (nnext form))
               rc-data {:rc-name             nil
                        :rc-type             rc-type
-                       :rc-key              (:key (meta form))
-                       :rc-ctx              (merge additional-ctx (:ctx handle))
+                       :rc-key              (:key meta-content)
+                       :rc-ctx              ctx
                        :rc-parent-handle-id (:handle-id handle)
                        :rc-container-id     (rc-state/mk-container-id ctx rc-type)}]
 
-
           (rc-state/validate-ctx rc-type ctx)
-          (-> (into [mk-container (merge passed-in-data rc-data (:xs-data opts))] (subvec form (if passed-in-data 4 3)))
-              (with-meta (meta form)))))
+          (-> (into [mk-container (merge passed-in-data rc-data (:xs-data opts))] (subvec form (if passed-in-data 3 2)))
+              (with-meta meta-content))))
 
 
       ;;component
       (component-form? form)
-      (let [rc-name (keyword (name (first form)))
+      (let [{:keys [ctx meta-content]} (extract-ctx form handle)
+            rc-name (keyword (name (first form)))
             rc-type (keyword (name (second form)))          ;remove namespace
             rc-component-id (rc-state/dom-id (:handle-id handle) rc-name)
 
-            rest-of-form (if (keyword? (second form))
-                           (nnext form)
-                           (next form))
-
-            passed-in-data (extract-passed-in-data rest-of-form rc-name)
+            rest-of-form (nnext form)
+            passed-in-data (extract-passed-in-data rest-of-form)
 
             rc-data {:rc-name         rc-name
                      :rc-type         rc-type
-                     :rc-key          (:key (meta form))
+                     :rc-key          (:key meta-content)
+                     :rc-ctx          ctx
                      :rc-component-id rc-component-id}
             ]
 
         (swap! stack-atom assoc rc-component-id {:config-stack config-stack :parent-handle handle})
         (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts))]
                   (subvec form (if passed-in-data 3 2)))
-            (with-meta (meta form))))
+            (with-meta meta-content)))
 
 
       ;;vector of special form with ::keyword
       (element-form? form)
-      (let [rc-name (keyword (name (first form)))
+      (let [{:keys [ctx meta-content]} (extract-ctx form handle)
+            rc-name (keyword (name (first form)))
             rc-type (if (keyword? (second form)) (second form) :div)
 
             rest-of-form (if (keyword? (second form))
                            (nnext form)
                            (next form))
 
-            passed-in-data (extract-passed-in-data rest-of-form rc-name)
+            passed-in-data (extract-passed-in-data rest-of-form)
 
             rc-data {:rc-type   rc-type
                      :rc-name   rc-name
-                     :rc-key    (:key (meta form))
+                     :rc-key    (:key meta-content)
+                     :rc-ctx    ctx
                      :rc-dom-id (rc-state/dom-id (:handle-id handle) rc-name)}
 
             ;index-children (filter (or vector? string?) form)
@@ -180,7 +174,7 @@
             (mk-element handle (rc-config-stack/shave-by-element config-stack rc-name))
             (into children)
             ;preserve meta
-            (with-meta (meta form))))
+            (with-meta meta-content)))
 
 
       (vector? form)
@@ -237,15 +231,15 @@
                 :reload-conf-count       @rc-state/reload-configuration-count
                 :path                    path
                 :all-paths               all-state-paths
+
                 :reactions               (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom v nil)))) {} all-state-paths)
                 :foreign-local-state-ids foreign-local-state-ids})))
 
 
-(defn mk-container [{:keys [rc-type rc-ctx rc-parent-handle-id rc-container-id] :as data}]
+(defn mk-container [{:keys [rc-type rc-ctx rc-parent-handle-id rc-container-id] :as data-in}]
   (let [container-name rc-type
         parent-handle (get @rc-state/handles-atom rc-parent-handle-id)
-
-        cfg (reaction (resolve-container-instance parent-handle data))
+        cfg (reaction (resolve-container-instance parent-handle data-in))
         ;org-handle (rc-state/mk-container-handle parent-handle ctx @cfg)
 
         ]
@@ -265,7 +259,7 @@
                                    #_(when (:clear-container-state-on-unmount? @rc-state/recontain-settings-atom)
                                        (rc-state/clear-container-state org-handle))))
 
-       :reagent-render         (fn [_]
+       :reagent-render         (fn [data]
                                  (let [
                                        cfg-config @cfg
                                        start (.getTime (js/Date.))
@@ -322,7 +316,6 @@
 
                                        _ (swap! rc-state/handles-atom assoc rc-container-id (assoc handle :raw-config-stack new-config-stack))
 
-
                                        rendered (options-value new-config-stack data :render)]
 
                                    (if-not rendered
@@ -330,11 +323,14 @@
 
 
                                      ;instead of reagent calling render function - we do it
-                                     (let [
+                                     (let [start (.getTime (js/Date.))
                                            result (-> rendered
                                                       (decorate-hiccup {:component-data {}
                                                                         :handle         handle
                                                                         :config-stack   new-config-stack}))
+
+
+                                           ;_ (println "Decorate time" container-name (- (js/Date.) start))
 
 
 
@@ -344,18 +340,28 @@
                                        result))))})))
 
 
+(defn- lp [p rc-name rc-key]
+  (if rc-key
+    (conj p rc-name rc-key)
+    (conj p rc-name)))
 
 (defn mk-component [data]
-  (let [{:keys [rc-name rc-type rc-component-id]} data
+  (let [{:keys [rc-name rc-type rc-component-id rc-key]} data
         {:keys [config-stack parent-handle]} (get @stack-atom rc-component-id)
 
-        path (-> (:local-state-path parent-handle) drop-last vec (conj rc-name) (conj :_local-state))
+        path (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
+                                                                     (conj % rc-name rc-key :_local-state)
+                                                                     (conj % rc-name :_local-state))))
 
-        local-state-atom (reaction (get-in @state/state path))
+        local-state* (reaction (get-in @state/state path))
+
+        foreign-state-fn (get (rc-state/get-config rc-type) :foreign-state)
+        foreign-state* (reaction (if foreign-state-fn (foreign-state-fn data) {}))
 
         ;_ (rc-config-stack/print-config-stack config-stack)
 
         config-stack (rc-config-stack/shave-by-component config-stack rc-name)
+
 
         raw-configs (reaction (rc-state/get-config-with-inherits rc-type))
         ]
@@ -364,9 +370,10 @@
       {:component-will-unmount (fn [_] #_(swap! stack-atom dissoc rc-component-id))
 
        :reagent-render         (fn [_ _ _]
-                                 (let [local-state @local-state-atom
+                                 (let [local-state @local-state*
                                        ;do overriding validations
 
+                                       input-data (merge data @foreign-state*)
                                        handle {:handle-id        rc-component-id
                                                :handle-type      :component
                                                :parent-handle-id (:handle-id parent-handle)
@@ -378,15 +385,16 @@
                                                :local-state      local-state
                                                :local-state-path path}
 
-                                       _ (println "raw config" raw-configs)
+
+                                       ;  _ (println "raw config" raw-configs)
                                        new-config-stack (->> @raw-configs
                                                              (reduce
                                                                (fn [stack [c-name config]] (rc-config-stack/add-config stack handle c-name config))
                                                                config-stack))
-
                                        _ (swap! rc-state/handles-atom assoc rc-component-id (assoc handle :raw-config-stack new-config-stack))
 
-                                       rendered (options-value new-config-stack data :render)]
+                                       ;_ (rc-config-stack/print-config-stack new-config-stack)
+                                       rendered (options-value new-config-stack input-data :render)]
 
 
                                    (if-not rendered
@@ -395,7 +403,7 @@
                                      ;instead of reagent calling render function - we do it
                                      (let [result
                                            (-> rendered
-                                               (decorate-hiccup {:component-data data
+                                               (decorate-hiccup {:component-data input-data
                                                                  :handle         handle
                                                                  :config-stack   new-config-stack}))]
                                        result

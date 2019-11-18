@@ -11,16 +11,17 @@
                  :ctx              [:application-id :tournament-id]
                  :foreign-state    (fn [ctx] (state/path-map ctx :hook/teams-order :hook/teams))
 
-                 [:render]         (fn [_]
+                 [:render]         (fn [{:keys [rc-ctx] :as data}]
                                      (let [{:keys [hook/teams-order hook/teams]} (rc/fs)]
                                        [::tab-content
                                         [::table
-                                         (map (fn [team-id]
-                                                ^{:key team-id} [rc/container {:team-id team-id} :team-row]) teams-order (range (count teams)))]
+                                         (map (fn [team-id _]
+                                                ^{:team-id team-id} [::team-row :c/team-row]) teams-order (range (count teams)))]
 
                                         ; input field
                                         [::bottom-panel
-                                         [rc/container {} :add-team]]]))
+                                         [rc/container :add-team]]]))
+
 
                  [:tab-content]    {:style #(rs/style :tab-content {:scroll-top (rc/ls :table-scroll-top)})}
 
@@ -46,9 +47,11 @@
 
 (def team-row {:config-name   :team-row
                :ctx           [:application-id :tournament-id :team-id]
+
                :foreign-state (fn [ctx] (state/path-map ctx :hook/team))
                :local-state   (fn [{:keys [hook/team]}]
                                 {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
+
 
                [:render]      (fn [data]
                                 [::row
@@ -57,7 +60,8 @@
 
                                  [::space]
                                  [::seeding (inc (:rc-index data))]
-                                 [::team-name :e/input]])
+                                 [::team-name :e/input]
+                                 ])
 
                [:row]         {:decorate [:hover]
                                :style    (fn [data]
@@ -100,8 +104,8 @@
                                           {:border    :none
                                            :padding   0
                                            :min-width 200})
-                               :value  #(or (rc/ls :team-name :input-value)
-                                            (rc/fs [:hook/team :team-name]))
+                               ;:value  #(or (rc/ls :team-name :input-value)
+                               ;             (rc/fs [:hook/team :team-name]))
                                'action #()}
 
 
@@ -139,7 +143,6 @@
                                      :ctx        (rc/this :ctx)
                                      :content    {:team-name (rc/ls :team-name-value)}})))
                'delete-team   (fn [_]
-                                (println "delete team")
                                 (let [this (rc/this)
                                       team-id (rc/fs [:hook/team :team-id])
                                       team-to-focus (or

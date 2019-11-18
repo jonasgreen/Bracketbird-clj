@@ -50,7 +50,7 @@
                     :state-atom                        state/state
                     :decorations                       decorations/decorations
                     :elements                          components/elements
-                    :components                        {}
+                    :components                        components/components
                     :containers                        [application-config/root
                                                         application-config/application-page
                                                         application-config/front-page
