@@ -65,6 +65,5 @@
       (tournament-api/after-team team-id)))
 
 (defn index-of [ctx team-id]
-  (-> ctx
-      (state/get-data :hook/teams-order)
-      (ut/index-of team-id)))
+  (->> (state/get-data ctx :hook/teams-order)
+       (ut/index-of team-id)))

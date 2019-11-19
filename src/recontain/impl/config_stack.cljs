@@ -26,13 +26,9 @@
   [handle stack-atom k v]
   (if (fn? v)
     ;;binding for later execution
-    (fn [element-data & params]
-      (binding [rc-state/*current-handle* (assoc handle :config-stack stack-atom
-                                                        :rc-data element-data)]
-
-        (if (symbol? k)
-          (apply v params)
-          (v element-data))))
+    (fn [& params]
+      (binding [rc-state/*current-handle* (assoc handle :config-stack stack-atom)]
+        (apply v params)))
     v))
 
 

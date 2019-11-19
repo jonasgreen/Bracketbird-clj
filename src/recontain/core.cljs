@@ -13,6 +13,8 @@
   (keyword (str (name rc-name) "-" (name sub-name))))
 
 
+(defn ui [name options value])
+
 (declare this)
 
 
@@ -40,7 +42,10 @@
   "Implicit assoc"
   (apply rc-state/put! (this) assoc args))
 
-(defn delete-local-state [handle] (rc-state/delete-local-state handle))
+(defn delete-local-state
+  ([] (delete-local-state (this)))
+
+  ([handle] (rc-state/delete-local-state handle)))
 
 (defn dispatch [{:keys [raw-config-stack config-name] :as handle} f-key & args]
   (if-let [f (rc-config-stack/config-value raw-config-stack f-key)]
@@ -56,27 +61,36 @@
       value)))
 
 (defn call [k & args]
+  (println "call" k (this))
   (let [{:keys [value _]} (-> @(:config-stack rc-state/*current-handle*) (rc-config-stack/config-value k))]
 
     (when-not value (throw (js/Error. (str "Function " k " not found in config-stack"))))
     (when-not (fn? value) (throw (js/Error. (str k "is not a function"))))
 
-    (apply value "whaaat" args)))
+    (apply value args)))
+
+(defn call-in [handle k & args]
+  (binding [rc-state/*current-handle* handle]
+    (apply call k args)))
+
+
+(defn get-handle-id
+  [handle sub-id & sub-ids]
+  (apply rc-state/dom-id (:handle-id handle) sub-id sub-ids))
+
+(defn get-dom-id
+  [handle sub-id & sub-ids]
+  (apply get-handle-id handle sub-id sub-ids))
 
 (defn dom-element
-  ([sub-id]
-   (dom-element (this) sub-id))
+  [handle sub-id & sub-ids]
+  (let [dom-id (apply get-dom-id handle sub-id sub-ids)]
+    (println "dom-id" dom-id)
+    (dom/getElement dom-id)))
 
-  ([handle sub-id]
-   (-> handle :handle-id (rc-state/dom-id sub-id) dom/getElement)))
 
-(defn focus-dom-element
-  ([sub-id]
-   (focus-dom-element (this) sub-id))
-
-  ([handle sub-id]
-   (-> (dom-element handle sub-id) (.focus))))
-
+(defn get-handle [handle-id]
+  (rc-state/get-handle handle-id))
 
 (defn component-handle [element-ref]
   (-> (this)

@@ -57,8 +57,6 @@
                                                         application-config/tournament-page
 
                                                         teams-page-config/teams-page
-                                                        teams-page-config/team-row
-                                                        teams-page-config/add-team
 
                                                         setting-page-config/settings-page
                                                         setting-page-config/stage-component

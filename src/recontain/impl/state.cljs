@@ -85,10 +85,10 @@
 (defn id->str [id]
   (if (keyword? id) (name id) (str id)))
 
-(defn dom-id [parent-id sub-id]
-  (str (id->str parent-id) "#" (id->str sub-id)))
-
-
+(defn dom-id [parent-id & sub-ids]
+  (->> sub-ids
+       (remove nil?)
+       (reduce (fn [r s] (str r "#" (id->str s))) (id->str parent-id))))
 
 (defn validate-ctx [container-name given-ctx]
   (let [rq-ctx (:ctx (get-container-config container-name))

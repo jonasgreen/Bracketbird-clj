@@ -67,7 +67,7 @@
                         {} (rc-config-stack/config-keys config-stack))]
 
     (if (namespaced? rc-type "e")
-      (ut/insert options 1 (options-value config-stack data :render))
+      (ut/insert (assoc options :id rc-dom-id) 1 (options-value config-stack data :render))
       [rc-type (-> options
                    (assoc :id rc-dom-id))])))
 
@@ -128,14 +128,15 @@
       (let [{:keys [ctx meta-content]} (extract-ctx form handle)
             rc-name (keyword (name (first form)))
             rc-type (keyword (name (second form)))          ;remove namespace
-            rc-component-id (rc-state/dom-id (:handle-id handle) rc-name)
+            rc-key (:key meta-content)
+            rc-component-id (rc-state/dom-id (:handle-id handle) rc-name rc-key)
 
             rest-of-form (nnext form)
             passed-in-data (extract-passed-in-data rest-of-form)
 
             rc-data {:rc-name         rc-name
                      :rc-type         rc-type
-                     :rc-key          (:key meta-content)
+                     :rc-key          rc-key
                      :rc-ctx          ctx
                      :rc-component-id rc-component-id}
             ]
@@ -346,44 +347,56 @@
     (conj p rc-name)))
 
 (defn mk-component [data]
-  (let [{:keys [rc-name rc-type rc-component-id rc-key]} data
+  (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
         {:keys [config-stack parent-handle]} (get @stack-atom rc-component-id)
+        state-atom* (get @rc-state/recontain-settings-atom :state-atom)
 
+        config (rc-state/get-config rc-type)
         path (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
                                                                      (conj % rc-name rc-key :_local-state)
                                                                      (conj % rc-name :_local-state))))
 
         local-state* (reaction (get-in @state/state path))
 
-        foreign-state-fn (get (rc-state/get-config rc-type) :foreign-state)
-        foreign-state* (reaction (if foreign-state-fn (foreign-state-fn data) {}))
+        foreign-state-paths (if-let [f (:foreign-state config)]
+                              (f data)
+                              {})
+
+
+        foreign-state-reactions* (reduce-kv (fn [m k v]
+                                              (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
 
         ;_ (rc-config-stack/print-config-stack config-stack)
 
         config-stack (rc-config-stack/shave-by-component config-stack rc-name)
-
-
         raw-configs (reaction (rc-state/get-config-with-inherits rc-type))
         ]
 
     (r/create-class
       {:component-will-unmount (fn [_] #_(swap! stack-atom dissoc rc-component-id))
 
-       :reagent-render         (fn [_ _ _]
-                                 (let [local-state @local-state*
+       :reagent-render         (fn [input-data]
+                                 (let [foreign-states (reduce-kv (fn[m k v] (assoc m k (deref v))) {} foreign-state-reactions*)
+
+                                       ;initialize local state with foreign states
+                                       local-state (or @local-state* (if-let [f (:local-state config)]
+                                                                       (f (merge input-data foreign-states)))
+                                                                       {})
                                        ;do overriding validations
 
-                                       input-data (merge data @foreign-state*)
+                                       ;local-state
+
                                        handle {:handle-id        rc-component-id
                                                :handle-type      :component
                                                :parent-handle-id (:handle-id parent-handle)
 
-                                               :raw-config-stack nil
                                                :config-name      rc-type
-                                               :ctx              nil
+                                               :ctx              rc-ctx
 
                                                :local-state      local-state
-                                               :local-state-path path}
+                                               :local-state-path path
+
+                                               :foreign-states   foreign-states}
 
 
                                        ;  _ (println "raw config" raw-configs)
