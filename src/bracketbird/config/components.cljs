@@ -2,22 +2,25 @@
   (:require [recontain.core :as rc]
             [restyle.core :as rs]
             [bracketbird.dom :as d]
-            [bracketbird.state :as state]
-            [bracketbird.ui-services :as ui-services]))
+            [bracketbird.state :as state]))
 
 
 
-(def elements {:icon         {:render [:i]
-                              :style  (rs/style :icon)}
+(def elements {:icon         {:render   [:i]
+                              :decorate [:hover :action]
+                              :style    (rs/style :icon)
 
-               :button       {:render      [:div]
-                              :decorate    [:hover :active :action]
-                              :style       (fn [{:keys [rc-button-style] :as d}]
-                                             (rs/style (if rc-button-style rc-button-style :button)
-                                                       {:active? (rc/ls (rc/sub-name d :active?))
-                                                        :hover?  (rc/ls (rc/sub-name d :hover?))}))
+                              'action   (fn [_] (println "icon 'action please implement... "))}
 
-                              'action      (fn [_] (println "button 'action please implement... "))}
+               :button       {:render    [:div]
+                              :decorate  [:hover :active :action]
+                              :tab-index 0
+                              :style     (fn [{:keys [rc-button-style] :as d}]
+                                           (rs/style (if rc-button-style rc-button-style :button)
+                                                     {:active? (rc/ls (rc/sub-name d :active?))
+                                                      :hover?  (rc/ls (rc/sub-name d :hover?))}))
+
+                              'action    (fn [_] (println "button 'action please implement... "))}
 
                :large-button {:inherits :button
                               :style    #(rc/super :style (assoc % :rc-button-style :large-button))}
@@ -35,7 +38,6 @@
 
 (def components {:team-row {:config-name    :team-row
                             :ctx            [:application-id :tournament-id :team-id]
-
                             :foreign-state  (fn [{:keys [rc-ctx]}] (state/path-map rc-ctx :hook/team))
                             :local-state    (fn [{:keys [hook/team]}] {:input-delete-on-backspace? (clojure.string/blank? (:team-name team))})
 
@@ -51,11 +53,11 @@
 
                             [:icons]        {:decorate [:hover]
                                              :style    #(rs/style :team-row-icons {:hover? (rc/ls :icons-hover?)})
-                                             :on-click #(rc/call 'delete-team (rc/fs [:hook/team :team-id]))}
+                                             'action   #(rc/call 'delete-team (rc/fs [:hook/team :team-id]))}
 
-                            [:delete-icon]  {:style    #(rs/style :team-row-delete-icon {:visible? (rc/ls :row-hover?)
-                                                                                         :hover?   (rc/ls :icons-hover?)})
-                                             :on-click #(rc/call 'delete-team (rc/fs [:hook/team :team-id]))}
+                            [:delete-icon]  {:style  #(rs/style :team-row-delete-icon {:visible? (rc/ls :row-hover?)
+                                                                                       :hover?   (rc/ls :icons-hover?)})
+                                             'action #(rc/call 'delete-team (rc/fs [:hook/team :team-id]))}
 
                             [:space]        {:style #(rs/style :team-row-space)}
                             [:seeding]      {:style #(rs/style :team-row-seeding)}
@@ -72,8 +74,7 @@
 
                                              'action      (fn [] (rc/call 'update-team (rc/fs [:hook/team :team-id]) (rc/ls :team-name-value)))}
 
-                            'focus          (fn [_] (-> (rc/this) (rc/dom-element :team-name) (.focus)))
-
+                            'focus          #(rc/focus :team-name)
                             'create-team-at (fn [team-id] (println "please implement 'create-team-at" team-id))
                             'update-team    (fn [team-id team-name] (println "please implement 'update-team" team-id team-name))
                             'delete-team    (fn [team-id] (println "please implement 'delete-team" team-id))

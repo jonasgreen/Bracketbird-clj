@@ -1,5 +1,5 @@
 (ns bracketbird.util
-  (:require [bracketbird.dom :as d]))
+  (:require [recontain.core :as rc]))
 
 
 (defn scroll-data [element]
@@ -16,33 +16,10 @@
 (defn update-scroll-top! [element scroll-data]
   (set! (.-scrollTop element) (:scroll-top scroll-data)))
 
-(defn scroll-elm-to-bottom! [elm]
-  (println "scroll" elm)
-  (->> elm
-       scroll-data
-       scroll-to-bottom
-       (update-scroll-top! elm)))
+(defn scroll-to-bottom! [sub-id & sub-ids]
+  (let [elm (apply rc/dom-element sub-id sub-ids)]
+    (->> elm
+         scroll-data
+         scroll-to-bottom
+         (update-scroll-top! elm))))
 
-(defn value [e] (.. e -target -value))
-
-(defn icon
-  ([icon-name] [icon {} icon-name])
-  ([opts icon-name] [:i (merge-with merge {:style {:font-family             "Material Icons"
-                                                   :font-weight             "normal"
-                                                   :font-style              "normal"
-                                                   :font-size               "14px"
-                                                   :display                 "inline-block"
-                                                   :width                   "1em"
-                                                   :height                  "1em"
-                                                   :line-height             "1"
-                                                   :text-transform          "none"
-                                                   :letter-spacing          "normal"
-                                                   :word-wrap               "normal"
-                                                   ;Support for all WebKit browsers.
-                                                   :-webkit-font-smoothing  "antialiased"
-                                                   ;Support for Safari and Chrome.
-                                                   :text-rendering          "optimizeLegibility"
-                                                   ;Support for Firefox.
-                                                   :-moz-osx-font-smoothing "grayscale"
-                                                   ;Support for IE.
-                                                   :font-feature-settings   "liga"}} opts) icon-name]))

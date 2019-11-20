@@ -115,5 +115,11 @@
   (let [upd (fn [m] (apply (first args) (if m m (:local-state (get-handle handle-id))) (rest args)))]
     (update-in state local-state-path upd)))
 
+(defn remove! [state {:keys [local-state-path]}]
+  (let [remove-key (-> local-state-path drop-last last)
+        path (->> local-state-path (drop-last 2) vec)]
+    (update-in state path dissoc remove-key)))
+
+
 (defn put! [handle & args]
   (swap! (:state-atom @recontain-settings-atom) #(apply update! % handle args)))

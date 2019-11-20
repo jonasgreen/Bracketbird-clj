@@ -38,6 +38,9 @@
 (defn update! [state-m handle & args]
   (apply rc-state/update! state-m handle args))
 
+(defn remove! [state-m handle]
+  (rc-state/remove! state-m handle))
+
 (defn put! [& args]
   "Implicit assoc"
   (apply rc-state/put! (this) assoc args))
@@ -61,7 +64,6 @@
       value)))
 
 (defn call [k & args]
-  (println "call" k (this))
   (let [{:keys [value _]} (-> @(:config-stack rc-state/*current-handle*) (rc-config-stack/config-value k))]
 
     (when-not value (throw (js/Error. (str "Function " k " not found in config-stack"))))
@@ -69,28 +71,26 @@
 
     (apply value args)))
 
-(defn call-in [handle k & args]
+(defn dom-id [sub-id & sub-ids]
+  (apply rc-state/dom-id (:handle-id (this)) sub-id sub-ids))
+
+(defn get-handle [sub-id & sub-ids]
+  (-> (apply dom-id sub-id sub-ids)
+      rc-state/get-handle))
+
+(defn dom-element [sub-id & sub-ids]
+  (-> (apply dom-id sub-id sub-ids)
+      dom/getElement))
+
+(defn focus [sub-id & sub-ids]
+  (let [elm (apply dom-element sub-id sub-ids)]
+    (if elm
+      (.focus elm)
+      (println (apply (str "*** unable to focus. Handle: " (:config-name (this)) ". Sub-ids: ") sub-id sub-ids)))))
+
+(defn in [handle f sub-id & sub-ids]
   (binding [rc-state/*current-handle* handle]
-    (apply call k args)))
-
-
-(defn get-handle-id
-  [handle sub-id & sub-ids]
-  (apply rc-state/dom-id (:handle-id handle) sub-id sub-ids))
-
-(defn get-dom-id
-  [handle sub-id & sub-ids]
-  (apply get-handle-id handle sub-id sub-ids))
-
-(defn dom-element
-  [handle sub-id & sub-ids]
-  (let [dom-id (apply get-dom-id handle sub-id sub-ids)]
-    (println "dom-id" dom-id)
-    (dom/getElement dom-id)))
-
-
-(defn get-handle [handle-id]
-  (rc-state/get-handle handle-id))
+    (apply f sub-id sub-ids)))
 
 (defn component-handle [element-ref]
   (-> (this)
@@ -108,20 +108,6 @@
         false
         (not= value org-value))
       (not= value org-value))))
-
-(defn focus
-  ([handle container-name ctx-id ctx-value]
-   (when-let [ctx-value (if (map? ctx-value) (get ctx-value ctx-id) ctx-value)]
-     (focus handle container-name {ctx-id ctx-value})))
-
-  ([handle container-name extra-ctx]
-   (-> (:ctx handle)
-       (merge extra-ctx)
-       (container-handle container-name)
-       (dispatch 'focus)))
-
-  ([handle container-name]
-   (focus handle container-name {})))
 
 
 

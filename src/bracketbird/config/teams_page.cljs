@@ -3,7 +3,8 @@
             [restyle.core :as rs]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.state :as state]
-            [bracketbird.util :as ut]))
+            [bracketbird.util :as but]
+            [stateless.util :as ut]))
 
 
 (def teams-page {:config-name      :teams-page
@@ -23,50 +24,42 @@
 
                  [:content]        {:style #(rs/style :tab-content {:scroll-top (rc/ls :table-scroll-top)})}
 
-                 [:team-row]       {'focus-up       (fn [team-id-from] (println "up" team-id-from)
-                                                      #_(->> (rc/fs [:hook/team :team-id])
-                                                             (ui-services/previous-team this)
-                                                             (rc/focus this :team-row :team-id))
+                 [:team-row]       {'focus-up       (fn [team-id-from]
+                                                      (when-let [previous-team-id (-> (ui-services/previous-team team-id-from) :team-id)]
+                                                        (rc/focus :team-row previous-team-id :team-name)))
 
-                                                      )
                                     'focus-down     (fn [team-id-from]
-                                                      (println "up" team-id-from)
-                                                      #_(let [team-to-focus (ui-services/after-team this (rc/fs [:hook/team :team-id]))]
-                                                          (if team-to-focus
-                                                            (rc/focus this :team-row :team-id team-to-focus)
-                                                            (rc/focus this :add-team)))
-                                                      )
+                                                      (if-let [team-id (-> (ui-services/next-team team-id-from) :team-id)]
+                                                        (rc/focus :team-row team-id :team-name)
+                                                        (rc/focus :add-team :team-name)))
 
                                     'create-team-at (fn [team-id]
-                                                      (println "create-team-at" team-id)
-                                                      #_(ui-services/dispatch-event
+                                                      (let [{:keys [ctx] :as this} (rc/this)]
+                                                        (ui-services/dispatch-event
                                                           {:event-type  [:team :create]
-                                                           :ctx         (:ctx this)
+                                                           :ctx         ctx
                                                            :content     {:team-name ""
-                                                                         :index     (ui-services/index-of (:ctx this) team-id)}
-                                                           :post-render (fn [event]
-                                                                          (-> (:ctx this)
-                                                                              (assoc :team-id (:team-id event))
-                                                                              (rc/container-handle :team-row)
-                                                                              (rc/dispatch 'focus)))})
-
-                                                      )
+                                                                         :index     (ui-services/index-of team-id)}
+                                                           :post-render (fn [{:keys [team-id]}]
+                                                                          (rc/in this rc/focus :team-row team-id :team-name))})))
 
 
                                     'delete-team    (fn [team-id]
-                                                      (println "delete team" team-id)
-                                                      #_(let [this (rc/this)
-                                                              team-id (rc/fs [:hook/team :team-id])
-                                                              team-to-focus (or
-                                                                              (ui-services/after-team this team-id)
-                                                                              (ui-services/previous-team this team-id))]
-                                                          (ui-services/dispatch-event
-                                                            {:event-type  [:team :delete]
-                                                             :ctx         (assoc (:ctx this) :team-id team-id)
-                                                             :post-render (fn [_]
-                                                                            (if team-to-focus
-                                                                              (rc/focus this :team-row :team-id team-to-focus)
-                                                                              (rc/focus this :add-team)))})))
+                                                      (let [{:keys [ctx] :as this} (rc/this)
+                                                            team-row-handle (rc/get-handle :team-row team-id)
+                                                            team-to-focus-after (-> (or
+                                                                                      (ui-services/next-team team-id)
+                                                                                      (ui-services/previous-team team-id))
+                                                                                    :team-id)]
+
+                                                        (ui-services/dispatch-event
+                                                          {:event-type     [:team :delete]
+                                                           :ctx            (assoc ctx :team-id team-id)
+                                                           :state-coeffect #(-> % (rc/remove! team-row-handle))
+                                                           :post-render    (fn [_]
+                                                                             (if team-to-focus-after
+                                                                               (rc/in this rc/focus :team-row team-to-focus-after :team-name)
+                                                                               (rc/in this rc/focus :add-team :team-name)))})))
 
                                     'update-team    (fn [team-id team-name]
                                                       (println "update-team" team-id team-name)
@@ -79,30 +72,21 @@
                                     }
                  [:add-team]       {'create-team (fn [team-name]
                                                    (let [{:keys [ctx] :as this} (rc/this)
-                                                         add-team-handle (-> this (rc/get-handle-id :add-team) rc/get-handle)]
+                                                         add-team-handle (rc/get-handle :add-team)]
+
                                                      (ui-services/dispatch-event
                                                        {:event-type     [:team :create]
                                                         :ctx            ctx
                                                         :content        {:team-name team-name}
-                                                        :state-coeffect #(-> % (rc/update! add-team-handle dissoc :team-name-value))
+                                                        :state-coeffect #(-> %
+                                                                             (rc/update! add-team-handle dissoc :team-name-value))
                                                         :post-render    (fn [_]
-                                                                          (rc/call-in this 'scroll-to-bottom)
-                                                                          (println "-------")
-                                                                          (-> this (rc/dom-element :add-team :team-name) (.focus))
-                                                                          )})))}
+                                                                          (rc/in this rc/call 'scroll-to-bottom)
+                                                                          (rc/in this rc/focus :add-team :team-name))})))}
                  [:table]          {:decorate [:scroll]
-                                    :style    (fn [_] (rs/style
-                                                        (merge {:padding-top    [:layout-unit]
-                                                                :max-height     :100%
-                                                                :min-height     :200px
-                                                                :padding-bottom [:layout-unit]
-                                                                :overflow-y     :auto}
-                                                               (when (< 0 (rc/ls :table-scroll-bottom)) {:border-bottom [:border]}))))}
+                                    :style    #(rs/style :teams-page-table {:border-bottom? (< 0 (rc/ls :table-scroll-bottom))})}
 
-                 'scroll-to-bottom (fn []
-                                     (-> (rc/this)
-                                         (rc/dom-element :table)
-                                         (ut/scroll-elm-to-bottom!)))
+                 'scroll-to-bottom #(but/scroll-to-bottom! :table)
 
                  'focus-last-team  (fn []
                                      (when (seq (rc/fs :hook/teams-order))

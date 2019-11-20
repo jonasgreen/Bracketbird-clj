@@ -12,7 +12,10 @@
                   :focus            {:on-focus (fn [data] (rc/put! (rc/sub-name data "focus?") true))
                                      :on-blur  (fn [data] (rc/put! (rc/sub-name data "focus?") false))}
 
-                  :action           {:on-click    #(rc/call 'action)
+                  :action           {:on-click    (fn[{:keys [rc-event]}]
+                                                    (rc/call 'action)
+                                                    (.stopPropagation rc-event))
+
                                      :on-key-down (fn [{:keys [rc-event]}]
                                                     (d/handle-key
                                                       rc-event

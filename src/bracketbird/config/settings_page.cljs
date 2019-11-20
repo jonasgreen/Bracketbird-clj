@@ -2,8 +2,7 @@
   (:require [bracketbird.state :as state]
             [recontain.core :as rc]
             [restyle.core :as rs]
-            [bracketbird.ui-services :as ui-services]
-            [bracketbird.util :as ut]))
+            [bracketbird.ui-services :as ui-services]))
 
 
 
@@ -81,7 +80,7 @@
                                             [::content
                                              [:upper-row
                                               [::icons {:events [:hover :click]}
-                                               [ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]
+                                               ;[ut/icon (rc/bind-options {:id :delete-icon :events [:click]}) "clear"]
                                                [::state-box]
                                                ]
                                               ]

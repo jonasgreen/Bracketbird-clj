@@ -2,7 +2,8 @@
   (:require [bracketbird.tournament-api :as tournament-api]
             [bracketbird.event-dispatcher :as event-dispatcher]
             [stateless.util :as ut]
-            [bracketbird.state :as state]))
+            [bracketbird.state :as state]
+            [recontain.core :as rc]))
 
 
 (defn dispatch-event [{:keys [ctx event-type content state-coeffect post-render] :as m}]
@@ -53,17 +54,20 @@
       (state/get-data :hook/tournament)
       tournament-api/last-team))
 
-(defn previous-team [h team-id]
-  (-> (:ctx h)
+(defn previous-team
+  [team-id]
+  (-> (rc/this)
+      :ctx
       (state/get-data :hook/tournament)
       (tournament-api/previous-team team-id)))
 
-
-(defn after-team [h team-id]
-  (-> (:ctx h)
+(defn next-team [team-id]
+  (-> (rc/this)
+      :ctx
       (state/get-data :hook/tournament)
       (tournament-api/after-team team-id)))
 
-(defn index-of [ctx team-id]
-  (->> (state/get-data ctx :hook/teams-order)
-       (ut/index-of team-id)))
+(defn index-of [team-id]
+  (let [ctx (rc/this :ctx)]
+    (->> (state/get-data ctx :hook/teams-order)
+         (ut/index-of team-id))))

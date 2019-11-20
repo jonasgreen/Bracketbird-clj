@@ -45,13 +45,6 @@
                                              :height         :100%}
                                             (when (< 0 scroll-top) {:border-top [:border]})))
 
-             :teams-table          (fn [{:keys [scroll-bottom]}]
-                                     (merge {:padding-top    [:layout-unit]
-                                             :max-height     :100%
-                                             :min-height     :200px
-                                             :padding-bottom [:layout-unit]
-                                             :overflow-y     :auto}
-                                            (when (< 0 scroll-bottom) {:border-bottom [:border]})))
 
              :teams-row            {:display :flex :align-items :center :min-height [:row-height]}
 
@@ -138,6 +131,15 @@
                                     :transition              "background 0.2s, color 0.2s, border-radius 0.2s"}
 
 
+
+             :teams-page-table     (fn [{:keys [border-bottom?]}]
+                                     (merge {:padding-top    [:layout-unit]
+                                             :max-height     :100%
+                                             :min-height     :200px
+                                             :padding-bottom [:layout-unit]
+                                             :overflow-y     :auto}
+                                            (when border-bottom? {:border-bottom [:border]})))
+
              :team-row             {:display     :flex
                                     :align-items :center
                                     :min-height  [:row-height]}
@@ -173,11 +175,11 @@
                                     :min-width 200}
 
 
-             :add-team-row (fn[{:keys [extra-padding?]}]
-                             {:padding-left [+ :app-padding :page-padding (when extra-padding? :seeding-width)]
-                              :display      :flex
-                              :min-height   [:app-padding]
-                              :align-items  :center})
+             :add-team-row         (fn [{:keys [extra-padding?]}]
+                                     {:padding-left [+ :app-padding :page-padding (when extra-padding? :seeding-width)]
+                                      :display      :flex
+                                      :min-height   [:app-padding]
+                                      :align-items  :center})
 
              })
 

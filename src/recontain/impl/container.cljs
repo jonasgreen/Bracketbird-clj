@@ -59,6 +59,7 @@
                                                        (rc-config-stack/add-config stack handle cfg)))
                                   config-stack))
 
+
         ;assemble options
         options (reduce (fn [m k]
                           (if (or (symbol? k) (= :render k) (= :decorate k))
