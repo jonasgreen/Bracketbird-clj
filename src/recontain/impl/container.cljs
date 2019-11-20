@@ -6,7 +6,8 @@
             [stateless.util :as ut]
             [recontain.impl.state :as rc-state]
             [recontain.impl.config-stack :as rc-config-stack]
-            [bracketbird.state :as state]))
+            [recontain.impl.call-stack :as rc-stack]
+            ))
 
 
 (def stack-atom (atom nil))
@@ -342,72 +343,51 @@
                                        result))))})))
 
 
-(defn- lp [p rc-name rc-key]
-  (if rc-key
-    (conj p rc-name rc-key)
-    (conj p rc-name)))
+(defn mk-component
+  "
+  comp-configs is a vector of maps, each containing
+  - rc-name: the ref name to the component
+  - config:  untouched configuration
+  - ls-path: a vector
+  - fs-paths a map of the form {:xxx-key path}
 
-(defn mk-component [data]
-  (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
-        {:keys [config-stack parent-handle]} (get @stack-atom rc-component-id)
+  "
+
+
+  [input comp-configs path]
+  (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} input
+
         state-atom* (get @rc-state/recontain-settings-atom :state-atom)
-
         config (rc-state/get-config rc-type)
-        path (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
-                                                                     (conj % rc-name rc-key :_local-state)
-                                                                     (conj % rc-name :_local-state))))
 
-        local-state* (reaction (get-in @state/state path))
+        local-state-path (-> path (#(if rc-key (conj % rc-name rc-key :_local-state) (conj % rc-name :_local-state))))
+        foreign-state-paths (if-let [f (:foreign-state config)] (f input) {})
 
-        foreign-state-paths (if-let [f (:foreign-state config)]
-                              (f data)
-                              {})
+        comp-config {:rc-name             rc-name
+                     :config              config
+                     :local-state-path    local-state-path
+                     :foreign-state-paths foreign-state-paths}
 
-
-        foreign-state-reactions* (reduce-kv (fn [m k v]
-                                              (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
-
-        ;_ (rc-config-stack/print-config-stack config-stack)
-
-        config-stack (rc-config-stack/shave-by-component config-stack rc-name)
-        raw-configs (reaction (rc-state/get-config-with-inherits rc-type))
-        ]
+        local-state-reaction* (reaction (get-in @state-atom* local-state-path))
+        foreign-state-reactions* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)]
 
     (r/create-class
       {:component-will-unmount (fn [_] #_(swap! stack-atom dissoc rc-component-id))
 
        :reagent-render         (fn [input-data]
-                                 (let [foreign-states (reduce-kv (fn[m k v] (assoc m k (deref v))) {} foreign-state-reactions*)
+                                 (let [call-stack (rc-stack/mk {:state-atom state-atom*
+                                                                :local-state @local-state-reaction*
+                                                                :foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-state-reactions*)
+                                                                :comp-configs (conj comp-config comp-config)})
+                                       foreign-states
 
                                        ;initialize local state with foreign states
-                                       local-state (or @local-state* (if-let [f (:local-state config)]
-                                                                       (f (merge input-data foreign-states)))
-                                                                       {})
-                                       ;do overriding validations
-
-                                       ;local-state
-
-                                       handle {:handle-id        rc-component-id
-                                               :handle-type      :component
-                                               :parent-handle-id (:handle-id parent-handle)
-
-                                               :config-name      rc-type
-                                               :ctx              rc-ctx
-
-                                               :local-state      local-state
-                                               :local-state-path path
-
-                                               :foreign-states   foreign-states}
+                                       local-state (or @local-state-reaction*
+                                                       (if-let [f (:local-state config)]
+                                                         (f (merge input-data foreign-states))
+                                                         {}))
 
 
-                                       ;  _ (println "raw config" raw-configs)
-                                       new-config-stack (->> @raw-configs
-                                                             (reduce
-                                                               (fn [stack [c-name config]] (rc-config-stack/add-config stack handle c-name config))
-                                                               config-stack))
-                                       _ (swap! rc-state/handles-atom assoc rc-component-id (assoc handle :raw-config-stack new-config-stack))
-
-                                       ;_ (rc-config-stack/print-config-stack new-config-stack)
                                        rendered (options-value new-config-stack input-data :render)]
 
 

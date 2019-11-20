@@ -60,6 +60,9 @@
 (defn get-handle [handle-id]
   (get @handles-atom handle-id))
 
+(defn get-state-atom []
+  (get @recontain-settings-atom :state-atom))
+
 (defn- dissoc-path [state path]
   (if (= 1 (count path))
     (dissoc state (last path))
