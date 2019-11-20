@@ -3,8 +3,7 @@
             [restyle.core :as rs]
             [bracketbird.ui-services :as ui-services]
             [bracketbird.state :as state]
-            [bracketbird.util :as but]
-            [stateless.util :as ut]))
+            [bracketbird.util :as but]))
 
 
 (def teams-page {:config-name      :teams-page
