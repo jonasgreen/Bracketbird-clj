@@ -13,6 +13,7 @@
             [bracketbird.config.teams-page :as teams-page-config]
             [bracketbird.config.components :as components]
             [bracketbird.config.decorations :as decorations]
+            [recontain.impl.container :as container]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]
@@ -50,13 +51,15 @@
                     :state-atom                        state/state
                     :decorations                       decorations/decorations
                     :elements                          components/elements
-                    :components                        components/components
-                    :containers                        [application-config/root
+                    :components                        [application-config/root
                                                         application-config/application-page
                                                         application-config/front-page
                                                         application-config/tournament-page
 
+                                                        ;; teams tab
                                                         teams-page-config/teams-page
+                                                        teams-page-config/team-row
+                                                        teams-page-config/add-team
 
                                                         setting-page-config/settings-page
                                                         setting-page-config/stage-component

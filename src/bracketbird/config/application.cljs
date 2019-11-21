@@ -52,15 +52,17 @@
 
                  [:create-tournament-button] {'action (fn []
                                                         (let [{:keys [ctx]} (rc/this)
-                                                              tournament-id (system/unique-id :tournament)]
+                                                              tournament-id (system/unique-id :tournament)
+                                                              application-page-handle (rc/container-handle ctx :application-page)
+                                                              ]
                                                           (ui-services/dispatch-event
                                                             {:event-type     [:tournament :create]
                                                              :ctx            (assoc ctx :tournament-id tournament-id)
                                                              :content        {:tournament-id tournament-id}
-                                                             :state-coeffect #(-> (rc/update! % (rc/container-handle ctx :application-page)
-                                                                                              assoc
-                                                                                              :active-page
-                                                                                              :tournament-page))
+                                                             :state-coeffect #(rc/update! % application-page-handle
+                                                                                          assoc
+                                                                                          :active-page
+                                                                                          :tournament-page)
                                                              :post-render    (fn [_])})))}})
 
 (def tournament-page {:config-name      :tournament-page

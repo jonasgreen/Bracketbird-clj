@@ -84,11 +84,10 @@
          (bind-config-values stack-atom handle)
          (swap! stack-atom update :configs conj))))
 
-(defn mk [handle config-name config]
-  (-> {:shaved       []
-       :config-names []
-       :configs      []}
-      (add-config handle config-name config)))
+(defn mk []
+  {:shaved       []
+   :config-names []
+   :configs      []})
 
 
 (defn- shave-config [config element-ref preserve-symbols?]
@@ -126,7 +125,6 @@
        (map keys)
        flatten
        (remove nil?)
-
        (reduce (fn [s k] (if (keyword? k)
                            (conj s k)
                            s))

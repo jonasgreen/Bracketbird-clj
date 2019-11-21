@@ -5,29 +5,10 @@
             [recontain.impl.container :as rc-container]
             [recontain.impl.config-stack :as rc-config-stack]))
 
-
-
 (declare ls put!)
 
 (defn sub-name [{:keys [rc-name]} sub-name]
   (keyword (str (name rc-name) "-" (name sub-name))))
-
-
-(defn ui [name options value])
-
-(declare this)
-
-
-(def event-bindings #_{:key {:on-key-down (fn [h sub-id ls e]
-                                            (let [backspace? (= 8 (.-keyCode e))
-                                                  delete? (get ls (sub-name "delete-on-backspace?"))]
-                                              (when (and backspace? delete?)
-                                                (.stopPropagation e)
-                                                #_(dispatch-silent h [sub-id :delete-on-backspace]))))
-                             :on-key-up   (fn [h sub-id _ e]
-                                            (when (= "text" (.-type (.-target e)))
-                                              (rc-state/put! h (sub-name "delete-on-backspace?") (clojure.string/blank? (.. e -target -value)))))}})
-
 
 (defn this [& ks]
   (let [h rc-state/*current-handle*]
@@ -92,12 +73,6 @@
   (binding [rc-state/*current-handle* handle]
     (apply f sub-id sub-ids)))
 
-(defn component-handle [element-ref]
-  (-> (this)
-      :handle-id
-      (rc-state/dom-id element-ref)
-      rc-state/get-handle))
-
 (defn container-handle ([ctx container-name] (rc-state/get-container-handle ctx container-name)))
 
 (defn has-changed [value org-value]
@@ -108,8 +83,6 @@
         false
         (not= value org-value))
       (not= value org-value))))
-
-
 
 (defn ls
   "Local state of children-components can be accessed in this way (ls ::child-a ::child-of-child-a :button-hover?)"
@@ -122,14 +95,14 @@
      (ls k-or-handle nil)))
 
   ([handle k]
-   (let [h (if (keyword? handle) (component-handle handle) handle)
-         lsm (:local-state h)]
-     (if k (get lsm k) lsm))))
+   (let [local-state (-> handle :handle-id rc-state/component-state-cache :local-state)]
+     (if k (get local-state k) local-state))))
 
 (defn fs [& ks]
-  (if (seq ks)
-    (get-in (:foreign-states rc-state/*current-handle*) (if (vector? (first ks)) (first ks) (vec ks)))
-    (:foreign-states rc-state/*current-handle*)))
+  (let [foreign-states (-> (this) :handle-id rc-state/component-state-cache :foreign-states)]
+    (if (seq ks)
+      (get-in foreign-states (if (vector? (first ks)) (first ks) (vec ks)))
+      foreign-states)))
 
 (defn container
   ([c-name]
@@ -141,9 +114,7 @@
 
 (defn root [root-config-name]
   [rc-container/mk-container {:rc-type         root-config-name
-                              :rc-component-id (rc-state/mk-container-id {} root-config-name)}])
-
-
+                              :rc-component-id (rc-state/mk-container-id {} root-config-name)} nil])
 
 (defn setup [config] (rc-state/setup config {:container-function container}))
 
