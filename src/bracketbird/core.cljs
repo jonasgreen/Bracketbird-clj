@@ -11,7 +11,7 @@
             [bracketbird.config.ranking-page :as ranking-page-config]
             [bracketbird.config.settings-page :as setting-page-config]
             [bracketbird.config.teams-page :as teams-page-config]
-            [bracketbird.config.components :as components]
+            [bracketbird.config.elements :as components]
             [bracketbird.config.decorations :as decorations]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
@@ -74,9 +74,12 @@
   (setup-styles)
   (setup-recontain)
   (let [start (.getTime (js/Date.))]
+
     (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    ;(r/force-update-all)
-    (rc/reload-configurations)))
+    (mount-reagent)
+    (r/force-update-all)
+    ))
+
 
 (defn main []
   (enable-console-print!)

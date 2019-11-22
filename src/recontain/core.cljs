@@ -114,11 +114,10 @@
 
 (defn root [root-config-name]
   [rc-container/mk-component {:rc-type         root-config-name
-                              :rc-component-id (rc-state/mk-container-id {} root-config-name)} nil])
+                              :rc-component-id (rc-state/mk-container-id {} root-config-name)} nil rc-state/shadow-configuration*])
 
 (defn setup [config] (rc-state/setup config {:container-function container}))
 
-(defn reload-configurations [] (rc-state/reload-container-configurations))
 
 
 

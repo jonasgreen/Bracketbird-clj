@@ -3,18 +3,16 @@
   (:require [reagent.core :as r]))
 
 (defonce components-state-cache* (atom {}))
-(defonce configurations* (r/atom {}))
+
+(defonce configurations* (atom {}))
+(defonce shadow-configuration* (r/atom {}))
+
 (defonce recontain-settings* (atom {}))
-(defonce reload-configuration-count* (r/atom 0))
 (defonce container-fn* (atom nil))
 
 (def ^:dynamic *passed-values* nil)
 (def ^:dynamic *current-handle* nil)
 (def ^:dynamic *execution-stack* nil)
-
-
-(defn reload-container-configurations []
-  (swap! reload-configuration-count* inc))
 
 (defn setup [{:keys [decorations elements] :as config} {:keys [container-function]}]
   (reset! container-fn* container-function)
@@ -25,28 +23,38 @@
   (reset! configurations* (merge (reduce (fn [m v] (assoc m (:config-name v) v)) {} (:components config))
                                  decorations
                                  elements))
+  (reset! shadow-configuration* @configurations*)
+
 
   @recontain-settings*)
 
 (defn debug [f]
   (when (:debug? @recontain-settings*) (f)))
 
-(defn get-config [config-name]
-  (let [cfg (get @configurations* config-name)]
-    (when-not cfg
-      (do
-        (throw (js/Error. (str "No configuration found for: " config-name)))))
-    cfg))
+(defn get-config
+  ([config-name]
+   (get-config config-name @configurations*))
+
+  ([config-name config-archive]
+   (let [cfg (get config-archive config-name)]
+     (when-not cfg
+       (do
+         (throw (js/Error. (str "No configuration found for: " config-name)))))
+     cfg)))
 
 (defn component-state-cache [component-id]
   (get @components-state-cache* component-id))
 
-(defn get-config-with-inherits [config-name]
-  (loop [cfg-name config-name configs []]
-    (if-not cfg-name
-      configs
-      (let [cfg (get-config cfg-name)]
-        (recur (:inherits cfg) (conj configs [cfg-name cfg]))))))
+(defn get-config-with-inherits
+  ([config-name]
+   (get-config-with-inherits config-name @configurations*))
+
+  ([config-name config-archive]
+   (loop [cfg-name config-name configs []]
+     (if-not cfg-name
+       configs
+       (let [cfg (get-config cfg-name config-archive)]
+         (recur (:inherits cfg) (conj configs [cfg-name cfg])))))))
 
 (defn get-handle [handle-id]
   (get @components-state-cache* handle-id))

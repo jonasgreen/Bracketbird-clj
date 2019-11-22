@@ -82,9 +82,11 @@
                                           (let [{:keys [items order]} (rc/ls)
                                                 tabs (sort-by #(ut/index-of (:id %) order) items)]
 
+
                                             [::page
                                              [::menu (map (fn [t] ^{:key (:id t)} [::menu-item (:header t)]) tabs)]
                                              (map (fn [t] ^{:key (:id t)} [::content-holder [rc/container (:content t)]]) tabs)]))
+
 
 
                       [:page]           {:style #(rs/style {:height         "100vh"

@@ -1,7 +1,6 @@
-(ns bracketbird.config.components
+(ns bracketbird.config.elements
   (:require [recontain.core :as rc]
             [restyle.core :as rs]))
-
 
 (def elements {:icon         {:render   [:i]
                               :decorate [:hover :action]

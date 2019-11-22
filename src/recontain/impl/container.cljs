@@ -113,7 +113,7 @@
                        :rc-component-id (rc-state/mk-container-id ctx rc-type)}]
 
           (rc-state/validate-ctx rc-type ctx)
-          (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts)) handle] (subvec form (if passed-in-data 3 2)))
+          (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts)) handle rc-state/shadow-configuration*] (subvec form (if passed-in-data 3 2)))
               (with-meta meta-content))))
 
 
@@ -136,7 +136,7 @@
             ]
 
         (swap! stack-atom assoc rc-component-id {:config-stack config-stack})
-        (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts)) handle]
+        (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts)) handle rc-state/shadow-configuration*]
                   (subvec form (if passed-in-data 3 2)))
             (with-meta meta-content)))
 
@@ -189,12 +189,14 @@
 ;only used to indicate a container (found in hiccup-decoration) will eventually result in a call to mk-component
 (defn mk-container [_ _])
 
-(defn mk-component [data parent-handle]
+(defn mk-component [data parent-handle configurations*]
+
   (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
         {:keys [config-stack]} (get @stack-atom rc-component-id)
+        _ (println "MK" rc-type)
 
         state-atom* (get @rc-state/recontain-settings* :state-atom)
-        config (rc-state/get-config rc-type)
+        config* (reaction (rc-state/get-config rc-type @configurations*))
 
         path-name (or rc-name rc-type)                      ; containers have no rc-name
         local-state-path (if parent-handle
@@ -202,7 +204,7 @@
                                                                                    (conj % path-name rc-key :_local-state)
                                                                                    (conj % path-name :_local-state))))
                            [path-name :_local-state])
-        foreign-state-paths (if-let [f (:foreign-state config)] (f data) {})
+        foreign-state-paths (if-let [f (:foreign-state @config*)] (f data) {})
 
         local-state* (reaction (get-in @state-atom* local-state-path))
         foreign-states* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
@@ -211,7 +213,7 @@
 
         ;containers create a new stack
         config-stack (if rc-name (rc-config-stack/shave-by-component config-stack rc-name) (rc-config-stack/mk))
-        raw-configs* (reaction (rc-state/get-config-with-inherits rc-type))
+        raw-configs* (reaction (rc-state/get-config-with-inherits rc-type @configurations*))
 
         handle {:handle-id        rc-component-id
                 :handle-type      :component
@@ -224,12 +226,11 @@
     (r/create-class
       {:component-will-unmount (fn [_] (swap! stack-atom dissoc rc-component-id))
 
-       :reagent-render         (fn [input-data _]
-
+       :reagent-render         (fn [input-data _ configs]
                                  (let [foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-states*)
 
                                        ;initialize local state with foreign states
-                                       local-state (or @local-state* (if-let [f (:local-state config)] (f (merge input-data foreign-states))) {})
+                                       local-state (or @local-state* (if-let [f (:local-state @config*)] (f (merge input-data foreign-states))) {})
 
                                        ;local-state
 
