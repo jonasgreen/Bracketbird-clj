@@ -86,7 +86,7 @@
 
 (def teams-page {:config-name      :teams-page
                  :ctx              [:application-id :tournament-id]
-                 :foreign-state    (fn [ctx] (state/path-map ctx :hook/teams-order :hook/teams))
+                 :foreign-state    (fn [{:keys [rc-ctx]}] (state/path-map rc-ctx :hook/teams-order :hook/teams))
 
                  [:render]         (fn [_]
                                      (let [{:keys [hook/teams-order hook/teams]} (rc/fs)]
@@ -139,7 +139,6 @@
                                                                                (rc/in this rc/focus :add-team :team-name)))})))
 
                                     'update-team    (fn [team-id team-name]
-                                                      (println "update-team" team-id team-name)
                                                       #_(when (rc/has-changed (rc/ls :team-name-value) (rc/fs [:hook/team :team-name]))
                                                           (ui-services/dispatch-event
                                                             {:event-type [:team :update]

@@ -113,7 +113,7 @@
    [rc-container/mk-container c-name m]))
 
 (defn root [root-config-name]
-  [rc-container/mk-container {:rc-type         root-config-name
+  [rc-container/mk-component {:rc-type         root-config-name
                               :rc-component-id (rc-state/mk-container-id {} root-config-name)} nil])
 
 (defn setup [config] (rc-state/setup config {:container-function container}))

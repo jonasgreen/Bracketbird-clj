@@ -9,7 +9,7 @@
 
 
 (def root {:config-name   :root
-           :foreign-state (fn [ctx] (state/path-map ctx :hook/system))
+           :foreign-state (fn [{:keys [rc-ctx]}] (state/path-map rc-ctx :hook/system))
 
            [:render]      (fn [_]
                             (let [app-id (rc/fs [:hook/system :active-application])]
@@ -20,11 +20,11 @@
 (def application-page {:config-name   :application-page
                        :ctx           [:application-id]
                        :local-state   (fn [_] {:active-page :front-page})
-                       :foreign-state (fn [ctx] (state/path-map ctx :hook/application))
+                       :foreign-state (fn [{:keys [rc-ctx]}] (state/path-map rc-ctx :hook/application))
 
                        [:render]      (fn [data]
                                         (condp = (rc/ls :active-page)
-                                          :front-page ^{:key :front-page} [rc/container :front-page]
+                                          :front-page [rc/container :front-page]
 
                                           :tournament-page (let [tournament-id (-> (rc/fs [:hook/application :tournaments]) keys first)]
                                                              ^{:tournament-id tournament-id} [rc/container :tournament-page])

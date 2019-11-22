@@ -6,13 +6,14 @@
 (def decorations {:change           {:on-change (fn [data] (rc/put! (rc/sub-name data "value") (.. (:rc-event data) -target -value)))
                                      :value     (fn [data] (rc/ls (rc/sub-name data "value")))}
 
-                  :hover            {:on-mouse-enter (fn [data] (rc/put! (rc/sub-name data "hover?") true))
+                  :hover            {:on-mouse-enter (fn [data]
+                                                       (rc/put! (rc/sub-name data "hover?") true))
                                      :on-mouse-leave (fn [data] (rc/put! (rc/sub-name data "hover?") false))}
 
                   :focus            {:on-focus (fn [data] (rc/put! (rc/sub-name data "focus?") true))
                                      :on-blur  (fn [data] (rc/put! (rc/sub-name data "focus?") false))}
 
-                  :action           {:on-click    (fn[{:keys [rc-event]}]
+                  :action           {:on-click    (fn [{:keys [rc-event]}]
                                                     (rc/call 'action)
                                                     (.stopPropagation rc-event))
 

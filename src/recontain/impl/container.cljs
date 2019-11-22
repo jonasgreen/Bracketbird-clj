@@ -42,11 +42,6 @@
   [data handle config-stack]
   (let [{:keys [rc-type rc-dom-id]} data
 
-        _ (println "handle" handle)
-        _ (println "mk-element" rc-type)
-
-        _ (println "data" data)
-
         ;;Add decorate configs to stack - TODO should be able to overwrite decorations somehow
 
         config-stack (if (namespaced? rc-type "e")
@@ -60,8 +55,6 @@
                                                        rc-state/get-config
                                                        (rc-config-stack/add-config stack handle cfg)))
                                   config-stack))
-
-        _ (rc-config-stack/print-config-stack config-stack)
 
         ;assemble options
         options (reduce (fn [m k]
@@ -115,14 +108,14 @@
         ;additional context is found in meta and used as key if present
         (let [{:keys [ctx meta-content]} (extract-ctx form handle)
               passed-in-data (extract-passed-in-data (nnext form))
-              rc-data {:rc-name             nil
-                       :rc-type             rc-type
-                       :rc-key              (:key meta-content)
-                       :rc-ctx              ctx
-                       :rc-container-id     (rc-state/mk-container-id ctx rc-type)}]
+              rc-data {:rc-name         nil
+                       :rc-type         rc-type
+                       :rc-key          (:key meta-content)
+                       :rc-ctx          ctx
+                       :rc-component-id (rc-state/mk-container-id ctx rc-type)}]
 
           (rc-state/validate-ctx rc-type ctx)
-          (-> (into [mk-container (merge passed-in-data rc-data (:xs-data opts)) handle] (subvec form (if passed-in-data 3 2)))
+          (-> (into [mk-component (merge passed-in-data rc-data (:xs-data opts)) handle] (subvec form (if passed-in-data 3 2)))
               (with-meta meta-content))))
 
 
@@ -196,40 +189,29 @@
 
 
 
-(defn mk-container [{:keys [rc-key rc-name rc-type rc-ctx rc-container-id]} parent-handle]
+(defn mk-container [{:keys [rc-key rc-name rc-type rc-ctx rc-component-id]} parent-handle]
+  (println "make container")
   (let [state-atom* (get @rc-state/recontain-settings* :state-atom)
         config (rc-state/get-config rc-type)
 
-        _ (println "container-id" rc-container-id)
-        _ (println "local-state-path" rc-type (:local-state-path parent-handle))
-
-
-        local-state-path (let [context-p (->> (first (data/diff rc-ctx (:ctx parent-handle))) keys sort (map rc-ctx) (reduce str))
-                   p (-> (into [] (drop-last (:local-state-path parent-handle)))
-                         (into [rc-type context-p :_local-state]))]
-               (->> p
-                    (remove nil?)
-                    (remove string/blank?)
-                    vec))
-
-
-        #_local-state-path #_(-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
-                                                                                 (conj % rc-name rc-key :_local-state)
-                                                                                 (conj % rc-name :_local-state))))
-
-        _ (println "local-state-path" rc-type (:local-state-path parent-handle))
+        path-name (or rc-name rc-type)                      ; containers have no rc-name
+        local-state-path (if parent-handle
+                           (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
+                                                                                   (conj % path-name rc-key :_local-state)
+                                                                                   (conj % path-name :_local-state))))
+                           [path-name :_local-state])
 
 
         foreign-state-paths (if-let [f (:foreign-state config)] (f rc-ctx) {})
 
-        local-state* (reaction (get-in state-atom* local-state-path))
+        local-state* (reaction (get-in @state-atom* local-state-path))
         foreign-states* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
 
         config-stack (rc-config-stack/mk)
         raw-configs* (reaction (rc-state/get-config-with-inherits rc-type))
 
 
-        handle {:handle-id        rc-container-id
+        handle {:handle-id        rc-component-id
                 :handle-type      :container
                 :parent-handle-id (:handle-id parent-handle)
                 :local-state-path local-state-path
@@ -252,10 +234,12 @@
                                    (rc-state/debug #(println "WILL UNMOUNT - " container-name))
                                    #_(when will-mount (will-mount org-handle))))
 
-       :reagent-render         (fn [data]
+
+       :reagent-render         (fn [data _]
                                  (let [start (.getTime (js/Date.))
                                        _ (println "render" rc-type)
                                        foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-states*)
+
                                        local-state (or @local-state* (if-let [f (:local-state config)] (f (merge data foreign-states))) {})
                                        new-config-stack (->> @raw-configs*
                                                              (reduce
@@ -263,7 +247,8 @@
                                                                  (rc-config-stack/add-config stack handle c-name c))
                                                                config-stack))
 
-                                       _ (swap! rc-state/components-state-cache* assoc rc-container-id
+
+                                       _ (swap! rc-state/components-state-cache* assoc rc-component-id
                                                 (merge handle {:local-state      local-state
                                                                :foreign-states   foreign-states
                                                                :raw-config-stack new-config-stack}))
@@ -286,21 +271,28 @@
   (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
         {:keys [config-stack]} (get @stack-atom rc-component-id)
 
+
         state-atom* (get @rc-state/recontain-settings* :state-atom)
         config (rc-state/get-config rc-type)
 
-        local-state-path (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
-                                                                                 (conj % rc-name rc-key :_local-state)
-                                                                                 (conj % rc-name :_local-state))))
+        path-name (or rc-name rc-type)                      ; containers have no rc-name
+        local-state-path (if parent-handle
+                           (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
+                                                                                   (conj % path-name rc-key :_local-state)
+                                                                                   (conj % path-name :_local-state))))
+                           [path-name :_local-state])
         foreign-state-paths (if-let [f (:foreign-state config)] (f data) {})
 
+        _ (println "mk-component" rc-type)
+        _ (println "local-state-path" local-state-path)
 
         local-state* (reaction (get-in state-atom* local-state-path))
         foreign-states* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
 
         ;_ (rc-config-stack/print-config-stack config-stack)
 
-        config-stack (rc-config-stack/shave-by-component config-stack rc-name)
+        ;containers create a new stack
+        config-stack (if rc-name (rc-config-stack/shave-by-component config-stack rc-name) (rc-config-stack/mk))
         raw-configs* (reaction (rc-state/get-config-with-inherits rc-type))
 
         handle {:handle-id        rc-component-id
@@ -316,6 +308,7 @@
 
        :reagent-render         (fn [input-data _]
 
+                                 _ (println "render" rc-type local-state-path)
                                  (let [foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-states*)
 
                                        ;initialize local state with foreign states

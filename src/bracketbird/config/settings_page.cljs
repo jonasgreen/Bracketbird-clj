@@ -72,7 +72,7 @@
 
 (def stage-component {:config-name    :stage-component
                       :ctx            [:application-id :tournament-id :stage-id]
-                      :foreign-state  (fn [ctx] (state/path-map ctx :hook/stage))
+                      :foreign-state  (fn [{:keys [rc-ctx]}] (state/path-map rc-ctx :hook/stage))
 
                       [:render]       (fn [_]
                                         [:div]
