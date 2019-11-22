@@ -13,6 +13,7 @@
 
            [:render]      (fn [_]
                             (let [app-id (rc/fs [:hook/system :active-application])]
+                              (println "app-id" app-id)
                               (if app-id
                                 ^{:application-id app-id} [rc/container :application-page]
                                 [:div "No application"])))})

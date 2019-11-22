@@ -20,6 +20,7 @@
                                   [::seeding (inc (:rc-index data))]
                                   [::team-name :e/input]])
 
+
                [:row]          {:decorate [:hover] :style #(rs/style :team-row)}
 
                [:icons]        {:decorate [:hover]
@@ -52,7 +53,7 @@
                'focus-up       (fn [from-team-id] (println "please implement 'focus-up" from-team-id))
                'focus-down     (fn [from-team-id] (println "please implement 'focus-down" from-team-id))})
 
-;-----
+
 
 (def add-team {:config-name   :add-team
                :ctx           [:application-id :tournament-id]

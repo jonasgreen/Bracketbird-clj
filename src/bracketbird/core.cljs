@@ -13,7 +13,6 @@
             [bracketbird.config.teams-page :as teams-page-config]
             [bracketbird.config.components :as components]
             [bracketbird.config.decorations :as decorations]
-            [recontain.impl.container :as container]
             [bracketbird.dom :as d]
             [recontain.core :as rc]
             [restyle.core :as rs]

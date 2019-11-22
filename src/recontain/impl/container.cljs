@@ -1,12 +1,10 @@
 (ns recontain.impl.container
   (:require-macros [reagent.ratom :refer [reaction]])
-  (:require [clojure.data :as data]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [reagent.core :as r]
             [stateless.util :as ut]
             [recontain.impl.state :as rc-state]
-            [recontain.impl.config-stack :as rc-config-stack]
-            [bracketbird.state :as state]))
+            [recontain.impl.config-stack :as rc-config-stack]))
 
 (def stack-atom (atom nil))
 
@@ -188,89 +186,12 @@
       :else form)))
 
 
-
-(defn mk-container [{:keys [rc-key rc-name rc-type rc-ctx rc-component-id]} parent-handle]
-  (println "make container")
-  (let [state-atom* (get @rc-state/recontain-settings* :state-atom)
-        config (rc-state/get-config rc-type)
-
-        path-name (or rc-name rc-type)                      ; containers have no rc-name
-        local-state-path (if parent-handle
-                           (-> (:local-state-path parent-handle) drop-last vec (#(if rc-key
-                                                                                   (conj % path-name rc-key :_local-state)
-                                                                                   (conj % path-name :_local-state))))
-                           [path-name :_local-state])
-
-
-        foreign-state-paths (if-let [f (:foreign-state config)] (f rc-ctx) {})
-
-        local-state* (reaction (get-in @state-atom* local-state-path))
-        foreign-states* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
-
-        config-stack (rc-config-stack/mk)
-        raw-configs* (reaction (rc-state/get-config-with-inherits rc-type))
-
-
-        handle {:handle-id        rc-component-id
-                :handle-type      :container
-                :parent-handle-id (:handle-id parent-handle)
-                :local-state-path local-state-path
-                :config-name      rc-type
-                :ctx              rc-ctx}
-
-        reload-conf-count-reaction (reaction @rc-state/reload-configuration-count*)
-        ]
-
-
-    (r/create-class
-      {:component-did-mount    (fn [_]
-                                 (let [{:keys [container-name did-mount]} config]
-                                   ;;todo wrap in try catch
-                                   (rc-state/debug #(println "DID MOUNT - " container-name))
-                                   #_(when did-mount (did-mount org-handle))))
-
-       :component-will-unmount (fn [_]
-                                 (let [{:keys [container-name will-mount]} config]
-                                   (rc-state/debug #(println "WILL UNMOUNT - " container-name))
-                                   #_(when will-mount (will-mount org-handle))))
-
-
-       :reagent-render         (fn [data _]
-                                 (let [start (.getTime (js/Date.))
-                                       _ (println "render" rc-type)
-                                       foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-states*)
-
-                                       local-state (or @local-state* (if-let [f (:local-state config)] (f (merge data foreign-states))) {})
-                                       new-config-stack (->> @raw-configs*
-                                                             (reduce
-                                                               (fn [stack [c-name c]]
-                                                                 (rc-config-stack/add-config stack handle c-name c))
-                                                               config-stack))
-
-
-                                       _ (swap! rc-state/components-state-cache* assoc rc-component-id
-                                                (merge handle {:local-state      local-state
-                                                               :foreign-states   foreign-states
-                                                               :raw-config-stack new-config-stack}))
-
-                                       rendered (options-value new-config-stack data :render)]
-
-                                   (if-not rendered
-                                     [:div (str "No render: " rc-type "(Container)")]
-
-                                     ;instead of reagent calling render function - we do it
-                                     (let [start (.getTime (js/Date.))
-                                           result (-> rendered
-                                                      (decorate-hiccup {:component-data {}
-                                                                        :handle         handle
-                                                                        :config-stack   new-config-stack}))]
-
-                                       result))))})))
+;only used to indicate a container (found in hiccup-decoration) will eventually result in a call to mk-component
+(defn mk-container [_ _])
 
 (defn mk-component [data parent-handle]
   (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
         {:keys [config-stack]} (get @stack-atom rc-component-id)
-
 
         state-atom* (get @rc-state/recontain-settings* :state-atom)
         config (rc-state/get-config rc-type)
@@ -283,10 +204,7 @@
                            [path-name :_local-state])
         foreign-state-paths (if-let [f (:foreign-state config)] (f data) {})
 
-        _ (println "mk-component" rc-type)
-        _ (println "local-state-path" local-state-path)
-
-        local-state* (reaction (get-in state-atom* local-state-path))
+        local-state* (reaction (get-in @state-atom* local-state-path))
         foreign-states* (reduce-kv (fn [m k v] (assoc m k (reaction (get-in @state-atom* v)))) {} foreign-state-paths)
 
         ;_ (rc-config-stack/print-config-stack config-stack)
@@ -304,11 +222,10 @@
         ]
 
     (r/create-class
-      {:component-will-unmount (fn [_] #_(swap! stack-atom dissoc rc-component-id))
+      {:component-will-unmount (fn [_] (swap! stack-atom dissoc rc-component-id))
 
        :reagent-render         (fn [input-data _]
 
-                                 _ (println "render" rc-type local-state-path)
                                  (let [foreign-states (reduce-kv (fn [m k v] (assoc m k (deref v))) {} foreign-states*)
 
                                        ;initialize local state with foreign states

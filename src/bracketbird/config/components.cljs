@@ -1,9 +1,6 @@
 (ns bracketbird.config.components
   (:require [recontain.core :as rc]
-            [restyle.core :as rs]
-            [bracketbird.dom :as d]
-            [bracketbird.state :as state]))
-
+            [restyle.core :as rs]))
 
 
 (def elements {:icon         {:render   [:i]
@@ -16,7 +13,6 @@
                               :decorate  [:hover :active :action]
                               :tab-index 0
                               :style     (fn [{:keys [rc-button-style] :as d}]
-                                           (println "button")
                                            (rs/style (if rc-button-style rc-button-style :button)
                                                      {:active? (rc/ls (rc/sub-name d :active?))
                                                       :hover?  (rc/ls (rc/sub-name d :hover?))}))
@@ -25,7 +21,6 @@
 
                :large-button {:inherits :button
                               :style    (fn [d]
-                                          (println "large-button style ls:" (rc/ls))
                                           (rc/super :style (assoc d :rc-button-style :large-button)))}
 
 
