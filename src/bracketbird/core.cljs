@@ -70,15 +70,13 @@
                     :debug?                            (system/debug?)
                     :component-hiccup-decorator        (when (system/debug?) component-hiccup-decorator)})))
 
-(defn- reload-ui []
-  (setup-styles)
-  (setup-recontain)
-  (let [start (.getTime (js/Date.))]
 
-    (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))
-    (mount-reagent)
-    (r/force-update-all)
-    ))
+
+(defn- reload-ui []
+  (let [start (.getTime (js/Date.))]
+    (setup-styles)
+    (setup-recontain)
+    (r/after-render #(println "reload time: " (- (.getTime (js/Date.)) start)))))
 
 
 (defn main []

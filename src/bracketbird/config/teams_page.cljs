@@ -23,7 +23,7 @@
 
                [:row]          {:decorate [:hover] :style #(rs/style :team-row)}
 
-               [:icons]        {:decorate [:hover]
+               [:icons]        {:decorate [:hover :action]
                                 :style    #(rs/style :team-row-icons {:hover? (rc/ls :icons-hover?)})
                                 'action   #(rc/call 'delete-team (rc/fs [:hook/team :team-id]))}
 

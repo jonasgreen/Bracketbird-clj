@@ -193,7 +193,8 @@
 
   (let [{:keys [rc-name rc-type rc-component-id rc-key rc-ctx]} data
         {:keys [config-stack]} (get @stack-atom rc-component-id)
-        _ (println "MK" rc-type)
+        ;_ (println "MK" rc-type)
+
 
         state-atom* (get @rc-state/recontain-settings* :state-atom)
         config* (reaction (rc-state/get-config rc-type @configurations*))
@@ -232,9 +233,6 @@
                                        ;initialize local state with foreign states
                                        local-state (or @local-state* (if-let [f (:local-state @config*)] (f (merge input-data foreign-states))) {})
 
-                                       ;local-state
-
-                                       ;  _ (println "raw config" raw-configs)
                                        new-config-stack (->> @raw-configs*
                                                              (reduce
                                                                (fn [stack [c-name config]] (rc-config-stack/add-config stack handle c-name config))
@@ -245,7 +243,6 @@
                                                                :foreign-states   foreign-states
                                                                :raw-config-stack new-config-stack}))
 
-                                       ;_ (rc-config-stack/print-config-stack new-config-stack)
                                        rendered (options-value new-config-stack input-data :render)]
 
 
