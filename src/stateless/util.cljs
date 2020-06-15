@@ -65,3 +65,63 @@
           (js-apply found js/console args)
           (js-apply (.-warn js/console) js/console
                     (conj args ". You where trying to log:" (str "Logging error. Given type " type " not valid. Valid types are " (keys types)))))))))
+
+
+(defn map-preserve-coll
+  [f coll]
+  (if (coll? coll)
+    (into (empty coll) (map f coll))
+    (map f coll)))
+
+
+;;Use partition-by instead
+(defn split-after
+  "Takes a sequence and splits it into multiple sequences."
+  [pred xs]
+  (println "xs" xs)
+  (loop [[k & ks] xs accumulated {:buffer [] :sequences []}]
+    (if-not k
+      (->> (conj (:sequences accumulated) (:buffer accumulated))
+           (remove empty?))
+      (recur ks
+             (if (pred k)
+               (-> accumulated
+                   (assoc :buffer [])
+                   (update :sequences conj (conj (:buffer accumulated) k)))
+               (update accumulated :buffer conj k))))))
+
+
+(defn update-when-exists
+  "Takes a collection and a path into that collection, where the last item in the path should be an update function,
+   and updates the item at the given path, only if items are present all the way down the path.
+   Ex: (update-when-exists {:a {:b {:c 'c'}}} [:a :b :c keyword]) => {:a {:b {:c :c}}}.
+
+   Express multiple updates in the same vector
+   Ex: (update-when-exists {:a {:b {:c 'c' :d 'd'}}} [:a :b c: keyword :a :b :d keyword]) => {:a {:b {:c :c :d :d}}
+
+   Multiple updates that share path:
+   Ex: (update-when-exists {:a {:b {:c 'c' :d 'd'}}} [:a :b [c: keyword :d keyword]]) => {:a {:b {:c :c :d :d}}
+
+   Handles sequences data structure by reducing over them.
+   Ex: (update-when-exists {:a [{:b 'b'} {:c 'c'}]} [:a [:b keyword :c keyword]]) => {:a [{:b :b} {:c :c}]}
+
+   Multi arity gives the option to leave out the outer parenthesises
+   E: (update-when-exists {:a 'a' :b 'b'}]} :a keyword :b keyword) => {:a :a :b :b}
+   "
+  ([coll path]
+   (let [split (fn [xs] (split-after #(or (fn? %) (vector? %)) xs))
+         up (fn up [coll [k & ks]]
+              (if k
+                (cond
+                  (fn? k) (k coll)
+                  (vector? k) (->> (split k) (reduce up coll))
+                  (sequential? coll) (map-preserve-coll #(up % (cons k ks)) coll)
+                  :else (if-let [v (get coll k)]
+                          (assoc coll k (up v ks))
+                          coll))
+                coll))]
+     (->> (split path) (reduce up coll))))
+
+  ([coll k & kfs]
+   (update-when-exists coll (into [k] (vec kfs)))))
+
